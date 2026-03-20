@@ -1,8 +1,9 @@
-import type {SanityColumnDef} from './useColumnProjection'
 import type {DocumentBase} from '@sanetti/sanity-table-kit'
 import type {ReactNode} from 'react'
 import React from 'react'
+
 import {PreviewCell} from './PreviewCell'
+import type {SanityColumnDef} from './useColumnProjection'
 
 /**
  * Options for `sanityColumn.reference()`.

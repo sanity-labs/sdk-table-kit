@@ -1,8 +1,9 @@
-import {describe, it, expect, vi} from 'vitest'
+import {DocumentTable} from '@sanetti/sanity-table-kit'
 import {screen, within} from '@testing-library/react'
 import React from 'react'
+import {describe, it, expect, vi} from 'vitest'
+
 import {column} from '../src/index'
-import {DocumentTable} from '@sanetti/sanity-table-kit'
 import {renderWithTheme} from './helpers'
 
 // Mock useUsers from @sanity/sdk-react

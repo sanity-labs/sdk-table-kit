@@ -1,10 +1,11 @@
-import {describe, it, expect, vi} from 'vitest'
+import {DocumentTable} from '@sanetti/sanity-table-kit'
 import {screen, within} from '@testing-library/react'
 import {userEvent} from '@testing-library/user-event'
 import React from 'react'
+import {describe, it, expect, vi} from 'vitest'
+
 import {column} from '../src/column'
 import type {SanityColumnDef} from '../src/useColumnProjection'
-import {DocumentTable} from '@sanetti/sanity-table-kit'
 import {renderWithTheme} from './helpers'
 
 // ── Mocks ────────────────────────────────────────────────────────────────────

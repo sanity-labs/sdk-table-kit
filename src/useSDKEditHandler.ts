@@ -1,7 +1,7 @@
-import {useCallback} from 'react'
-import {useApplyDocumentActions} from '@sanity/sdk-react'
-import {editDocument} from '@sanity/sdk'
 import type {DocumentBase} from '@sanetti/sanity-table-kit'
+import {editDocument} from '@sanity/sdk'
+import {useApplyDocumentActions} from '@sanity/sdk-react'
+import {useCallback} from 'react'
 
 /**
  * Result from the SDK edit handler hook.

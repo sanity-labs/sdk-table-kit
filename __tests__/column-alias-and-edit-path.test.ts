@@ -1,6 +1,7 @@
-import {describe, it, expect, vi, beforeEach} from 'vitest'
 import {column} from '@sanetti/sanity-table-kit'
 import type {ColumnDef} from '@sanetti/sanity-table-kit'
+import {describe, it, expect, vi, beforeEach} from 'vitest'
+
 import {resolveColumnAliases} from '../src/resolveColumnAliases'
 
 describe('Cell accessor — projected alias resolution', () => {
@@ -55,10 +56,11 @@ vi.mock('@sanity/sdk', () => ({
   })),
 }))
 
-// Import after mocks
-import {useResolvedColumns} from '../src/useResolvedColumns'
 import {editDocument} from '@sanity/sdk'
 import {renderHook} from '@testing-library/react'
+
+// Import after mocks
+import {useResolvedColumns} from '../src/useResolvedColumns'
 
 describe('Edit path resolution — auto-extract document path', () => {
   beforeEach(() => {

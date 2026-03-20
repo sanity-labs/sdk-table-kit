@@ -1,6 +1,6 @@
-import {useMemo} from 'react'
-import {useCurrentUser} from '@sanity/sdk-react'
 import type {ColumnDef} from '@sanetti/sanity-table-kit'
+import {useCurrentUser} from '@sanity/sdk-react'
+import {useMemo} from 'react'
 
 /**
  * Extended column def with role-based visibility props.

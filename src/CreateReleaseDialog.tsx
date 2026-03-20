@@ -1,5 +1,6 @@
-import {useCallback, useState} from 'react'
 import {Button, Dialog, Flex, Stack, Text, TextArea, TextInput, useToast} from '@sanity/ui'
+import {useCallback, useState} from 'react'
+
 import {useReleaseContext} from './ReleaseContext'
 import type {CreateReleaseMetadata} from './ReleaseContext'
 

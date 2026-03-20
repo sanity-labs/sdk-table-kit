@@ -1,8 +1,8 @@
-import React, {Suspense, useState, useDeferredValue, useEffect, useCallback, useRef} from 'react'
-import {useDocuments, useDocumentProjection} from '@sanity/sdk-react'
 import type {DocumentHandle} from '@sanity/sdk'
+import {useDocuments, useDocumentProjection} from '@sanity/sdk-react'
 import type {PreviewConfig, PreviewValue} from '@sanity/types'
 import {Box, Button, Card, Flex, Spinner, Text} from '@sanity/ui'
+import React, {Suspense, useState, useDeferredValue, useEffect, useCallback, useRef} from 'react'
 
 /** Shimmer skeleton for a loading option row */
 function OptionSkeleton() {

@@ -1,4 +1,5 @@
 import type {ColumnDef, DocumentBase} from '@sanetti/sanity-table-kit'
+
 import {parseFieldExpression} from './useColumnProjection'
 
 /**

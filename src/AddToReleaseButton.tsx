@@ -1,6 +1,7 @@
-import React, {useCallback, useState} from 'react'
-import {Button, Flex, Menu, MenuButton, MenuDivider, MenuItem, Text, useToast} from '@sanity/ui'
 import {AddIcon} from '@sanity/icons'
+import {Button, Flex, Menu, MenuButton, MenuDivider, MenuItem, Text, useToast} from '@sanity/ui'
+import React, {useCallback, useState} from 'react'
+
 import {useReleaseContext} from './ReleaseContext'
 
 const DOT_COLORS: Record<string, string> = {

@@ -1,6 +1,7 @@
-import {describe, it, expect, vi, beforeEach} from 'vitest'
 import {screen, within} from '@testing-library/react'
 import React from 'react'
+import {describe, it, expect, vi, beforeEach} from 'vitest'
+
 import {column} from '../src/column'
 import {SanityDocumentTable} from '../src/SanityDocumentTable'
 import {renderWithTheme} from './helpers'

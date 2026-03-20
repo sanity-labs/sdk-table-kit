@@ -1,14 +1,15 @@
 import {column as baseColumn} from '@sanetti/sanity-table-kit'
 import type {DocumentBase} from '@sanetti/sanity-table-kit'
-import type {SanityColumnDef} from './useColumnProjection'
+import type {PreviewConfig, PreviewValue} from '@sanity/types'
 import type {ReactNode} from 'react'
 import React from 'react'
-import {PreviewCell} from './PreviewCell'
-import {UserCell} from './UserCell'
-import {ReferenceCell} from './ReferenceCell'
+
 import {DocumentStatusCell, getStatusSortPriority} from './DocumentStatusCell'
 import {OpenInStudioCell} from './OpenInStudioCell'
-import type {PreviewConfig, PreviewValue} from '@sanity/types'
+import {PreviewCell} from './PreviewCell'
+import {ReferenceCell} from './ReferenceCell'
+import type {SanityColumnDef} from './useColumnProjection'
+import {UserCell} from './UserCell'
 
 /**
  * Re-export for internal use — the canonical types from @sanity/types.

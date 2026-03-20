@@ -1,6 +1,6 @@
-import {describe, it, expect, vi, beforeEach} from 'vitest'
-import {renderHook} from '@testing-library/react'
 import {column} from '@sanetti/sanity-table-kit'
+import {renderHook} from '@testing-library/react'
+import {describe, it, expect, vi, beforeEach} from 'vitest'
 
 // Mock @sanity/sdk-react
 const mockUsePaginatedDocuments = vi.fn()

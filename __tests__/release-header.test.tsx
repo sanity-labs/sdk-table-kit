@@ -1,6 +1,7 @@
-import {describe, it, expect, vi, beforeEach} from 'vitest'
 import {screen} from '@testing-library/react'
 import React from 'react'
+import {describe, it, expect, vi, beforeEach} from 'vitest'
+
 import {ReleaseHeader} from '../src/ReleaseHeader'
 import {renderWithTheme} from './helpers'
 

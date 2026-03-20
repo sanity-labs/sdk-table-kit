@@ -1,8 +1,9 @@
-import {describe, it, expect, vi, beforeEach} from 'vitest'
+import {column} from '@sanetti/sanity-table-kit'
 import {screen} from '@testing-library/react'
 import {userEvent} from '@testing-library/user-event'
 import React from 'react'
-import {column} from '@sanetti/sanity-table-kit'
+import {describe, it, expect, vi, beforeEach} from 'vitest'
+
 import {SanityDocumentTable} from '../src/SanityDocumentTable'
 import {renderWithTheme} from './helpers'
 

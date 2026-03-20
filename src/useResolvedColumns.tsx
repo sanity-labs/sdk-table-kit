@@ -1,11 +1,12 @@
-import React, {useMemo, useCallback, useEffect, useRef} from 'react'
 import type {ColumnDef, DocumentBase} from '@sanetti/sanity-table-kit'
 import {ToggleSwitch} from '@sanetti/sanity-table-kit'
-import {useApplyDocumentActions} from '@sanity/sdk-react'
 import {editDocument} from '@sanity/sdk'
+import {useApplyDocumentActions} from '@sanity/sdk-react'
+import type {PreviewConfig, PreviewValue} from '@sanity/types'
+import React, {useMemo, useCallback, useEffect, useRef} from 'react'
+
 import {ReferenceCell} from './ReferenceCell'
 import {useOptionalReleaseContext} from './ReleaseContext'
-import type {PreviewConfig, PreviewValue} from '@sanity/types'
 
 /**
  * Resolve a document ID for editing based on the active release.

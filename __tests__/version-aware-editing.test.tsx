@@ -1,7 +1,8 @@
-import {describe, it, expect, vi, beforeEach} from 'vitest'
+import type {ColumnDef, DocumentBase} from '@sanetti/sanity-table-kit'
 import {renderHook} from '@testing-library/react'
 import React from 'react'
-import type {ColumnDef, DocumentBase} from '@sanetti/sanity-table-kit'
+import {describe, it, expect, vi, beforeEach} from 'vitest'
+
 import {useResolvedColumns} from '../src/useResolvedColumns'
 
 // Track editDocument calls

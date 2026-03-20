@@ -1,6 +1,7 @@
-import React from 'react'
-import {Button, Flex, Menu, MenuButton, MenuDivider, MenuItem, Text} from '@sanity/ui'
 import {ChevronDownIcon} from '@sanity/icons'
+import {Button, Flex, Menu, MenuButton, MenuDivider, MenuItem, Text} from '@sanity/ui'
+import React from 'react'
+
 import {useReleaseContext} from './ReleaseContext'
 
 const DOT_COLORS: Record<string, string> = {

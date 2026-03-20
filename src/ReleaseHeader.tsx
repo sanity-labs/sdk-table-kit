@@ -1,5 +1,6 @@
-import React from 'react'
 import {Badge, Card, Flex, Text} from '@sanity/ui'
+import React from 'react'
+
 import {useReleaseContext} from './ReleaseContext'
 
 type ReleaseType = 'asap' | 'scheduled' | 'undecided'

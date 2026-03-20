@@ -1,6 +1,6 @@
-import type {ReactNode} from 'react'
 import type {ColumnDef, DocumentBase} from '@sanetti/sanity-table-kit'
 import type {PreviewConfig, PreviewValue} from '@sanity/types'
+import type {ReactNode} from 'react'
 
 interface SanityColumnEditConfig<
   TDocument extends DocumentBase = DocumentBase,

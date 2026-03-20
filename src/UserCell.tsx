@@ -1,5 +1,5 @@
-import React, {useMemo} from 'react'
 import {useUsers} from '@sanity/sdk-react'
+import React, {useMemo} from 'react'
 
 interface UserCellProps {
   userId: string | null | undefined

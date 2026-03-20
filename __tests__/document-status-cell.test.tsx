@@ -1,9 +1,9 @@
-import {describe, it, expect, vi, beforeEach, beforeAll} from 'vitest'
-import React from 'react'
-import {render, screen, within, fireEvent} from '@testing-library/react'
 import {ThemeProvider} from '@sanity/ui'
 import {buildTheme} from '@sanity/ui/theme'
+import {render, screen, within, fireEvent} from '@testing-library/react'
 import {NuqsTestingAdapter} from 'nuqs/adapters/testing'
+import React from 'react'
+import {describe, it, expect, vi, beforeEach, beforeAll} from 'vitest'
 
 // Mock SDK hooks
 const mockCurrentUser = vi.fn()
@@ -26,9 +26,9 @@ vi.mock('@sanity/sdk', () => ({
   editDocument: vi.fn(),
 }))
 
-import {SanityDocumentTable} from '../src/SanityDocumentTable'
 import {column} from '../src/column'
 import {DocumentStatusCell, getStatusSortPriority} from '../src/DocumentStatusCell'
+import {SanityDocumentTable} from '../src/SanityDocumentTable'
 
 const theme = buildTheme()
 

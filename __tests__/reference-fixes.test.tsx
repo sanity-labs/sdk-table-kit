@@ -1,8 +1,9 @@
 import '@testing-library/jest-dom/vitest'
-import {describe, it, expect, vi, beforeEach} from 'vitest'
 import {screen, within, waitFor} from '@testing-library/react'
 import {userEvent} from '@testing-library/user-event'
 import React from 'react'
+import {describe, it, expect, vi, beforeEach} from 'vitest'
+
 import {column} from '../src/column'
 import {SanityDocumentTable} from '../src/SanityDocumentTable'
 import {renderWithTheme} from './helpers'

@@ -1,7 +1,8 @@
-import {describe, it, expect, vi, beforeEach, beforeAll} from 'vitest'
-import React from 'react'
-import {screen, within} from '@testing-library/react'
 import type {ColumnDef} from '@sanetti/sanity-table-kit'
+import {screen, within} from '@testing-library/react'
+import React from 'react'
+import {describe, it, expect, vi, beforeEach, beforeAll} from 'vitest'
+
 import {column} from '../src/column'
 import {renderWithTheme} from './helpers'
 

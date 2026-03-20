@@ -1,6 +1,6 @@
-import React, {useMemo} from 'react'
 import {useQuery, useActiveReleases} from '@sanity/sdk-react'
 import {Box, Flex, Text, Tooltip, Stack} from '@sanity/ui'
+import React, {useMemo} from 'react'
 
 /**
  * Compute a numeric sort priority for document status.

@@ -29,8 +29,9 @@ vi.mock('@sanity/sdk', () => ({
   createDocument: vi.fn(() => ({type: 'createDocument'})),
 }))
 
-import {useSanityTableData} from '../src/useSanityTableData'
 import {renderHook} from '@testing-library/react'
+
+import {useSanityTableData} from '../src/useSanityTableData'
 
 const baseColumns = [
   {id: 'title', header: 'Title', field: 'title'},

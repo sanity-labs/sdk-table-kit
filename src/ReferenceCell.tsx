@@ -1,9 +1,10 @@
-import React, {useState, useCallback, useEffect, memo, Suspense} from 'react'
-import type {PreviewValue} from '@sanity/types'
 import type {DocumentBase} from '@sanetti/sanity-table-kit'
-import {ReferenceEditPopover} from './ReferenceEditPopover'
-import {Box, Button, Card, Flex, Popover, Spinner, Text} from '@sanity/ui'
 import {AddIcon} from '@sanity/icons'
+import type {PreviewValue} from '@sanity/types'
+import {Box, Button, Card, Flex, Popover, Spinner, Text} from '@sanity/ui'
+import React, {useState, useCallback, useEffect, memo, Suspense} from 'react'
+
+import {ReferenceEditPopover} from './ReferenceEditPopover'
 
 interface EditMeta {
   onSave: (row: DocumentBase, newValue: {_type: 'reference'; _ref: string} | null) => void

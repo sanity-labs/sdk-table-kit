@@ -1,8 +1,8 @@
-import React, {Suspense} from 'react'
+import {LaunchIcon} from '@sanity/icons'
 import {useClient} from '@sanity/sdk-react'
 import {useNavigateToStudioDocument} from '@sanity/sdk-react'
-import {LaunchIcon} from '@sanity/icons'
 import {Button} from '@sanity/ui'
+import React, {Suspense} from 'react'
 
 interface OpenInStudioCellProps {
   documentId: string

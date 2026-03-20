@@ -1,9 +1,10 @@
-import {describe, it, expect, vi, beforeEach, beforeAll} from 'vitest'
-import React from 'react'
-import {render} from '@testing-library/react'
 import {ThemeProvider} from '@sanity/ui'
 import {buildTheme} from '@sanity/ui/theme'
+import {render} from '@testing-library/react'
 import {NuqsTestingAdapter} from 'nuqs/adapters/testing'
+import React from 'react'
+import {describe, it, expect, vi, beforeEach, beforeAll} from 'vitest'
+
 import {DocumentStatusCell} from '../src/DocumentStatusCell'
 
 const mockUseQuery = vi.fn()

@@ -1,6 +1,6 @@
-import {describe, it, expect, vi, beforeEach} from 'vitest'
 import type {ColumnDef} from '@sanetti/sanity-table-kit'
 import {column} from '@sanetti/sanity-table-kit'
+import {describe, it, expect, vi, beforeEach} from 'vitest'
 
 // Mock useCurrentUser from SDK
 const mockCurrentUser = vi.fn()
@@ -13,8 +13,9 @@ vi.mock('@sanity/sdk', () => ({
   editDocument: vi.fn(),
 }))
 
-import {useRoleFilteredColumns} from '../src/useRoleFilteredColumns'
 import {renderHook} from '@testing-library/react'
+
+import {useRoleFilteredColumns} from '../src/useRoleFilteredColumns'
 
 describe('useRoleFilteredColumns — role-based visibility + editability', () => {
   beforeEach(() => {

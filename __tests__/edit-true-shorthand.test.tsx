@@ -1,6 +1,6 @@
 import {describe, expect, it, vi} from 'vitest'
-import {column as baseColumn} from '../../table-kit/src/columns'
 
+import {column as baseColumn} from '../../table-kit/src/columns'
 // We test the SDK-native column helpers from table-kit-sanity
 // which wrap the base helpers to accept `edit: true`
 import {column} from '../src/column'

@@ -1,7 +1,7 @@
-import React, {Suspense} from 'react'
-import {Button, Card, Dialog, Flex, Spinner, Stack, Text} from '@sanity/ui'
-import {useDocumentPermissions} from '@sanity/sdk-react'
 import {publishDocument} from '@sanity/sdk'
+import {useDocumentPermissions} from '@sanity/sdk-react'
+import {Button, Card, Dialog, Flex, Spinner, Stack, Text} from '@sanity/ui'
+import React, {Suspense} from 'react'
 
 /**
  * Props for the PublishConfirmDialog component.

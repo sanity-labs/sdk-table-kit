@@ -1,9 +1,9 @@
-import {useState, useCallback, useMemo} from 'react'
 import type {ColumnDef, SortConfig} from '@sanetti/sanity-table-kit'
-import {useColumnProjection} from './useColumnProjection'
-
 // In tests, this is mocked via vi.mock('@sanity/sdk-react').
 import {useQuery} from '@sanity/sdk-react'
+import {useState, useCallback, useMemo} from 'react'
+
+import {useColumnProjection} from './useColumnProjection'
 
 /**
  * Configuration for the core SDK data-fetching hook.

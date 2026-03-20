@@ -1,6 +1,7 @@
-import {describe, it, expect, vi, beforeEach} from 'vitest'
-import {renderHook, act} from '@testing-library/react'
 import {column} from '@sanetti/sanity-table-kit'
+import {renderHook, act} from '@testing-library/react'
+import {describe, it, expect, vi, beforeEach} from 'vitest'
+
 import {useSDKEditHandler} from '../src/useSDKEditHandler'
 
 // Mock @sanity/sdk-react

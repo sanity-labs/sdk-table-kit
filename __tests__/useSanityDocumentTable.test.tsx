@@ -1,10 +1,11 @@
-import {describe, it, expect, vi, beforeEach} from 'vitest'
+import {column, DocumentTable} from '@sanetti/sanity-table-kit'
 import {renderHook} from '@testing-library/react'
 import {render, screen} from '@testing-library/react'
 import React from 'react'
-import {column, DocumentTable} from '@sanetti/sanity-table-kit'
-import {useSanityDocumentTable} from '../src/useSanityDocumentTable'
+import {describe, it, expect, vi, beforeEach} from 'vitest'
+
 import {PaginationControls} from '../src/PaginationControls'
+import {useSanityDocumentTable} from '../src/useSanityDocumentTable'
 import {renderWithTheme} from './helpers'
 
 // Mock @sanity/sdk-react

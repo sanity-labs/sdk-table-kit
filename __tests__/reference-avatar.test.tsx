@@ -1,8 +1,9 @@
-import {describe, it, expect} from 'vitest'
+import {DocumentTable} from '@sanetti/sanity-table-kit'
 import {screen, within} from '@testing-library/react'
 import React from 'react'
+import {describe, it, expect} from 'vitest'
+
 import {column} from '../src/index'
-import {DocumentTable} from '@sanetti/sanity-table-kit'
 import {renderWithTheme} from './helpers'
 
 // Mock data: reference columns resolve to the dereferenced value at query time.

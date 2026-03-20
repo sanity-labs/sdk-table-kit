@@ -4,11 +4,12 @@ import type {
   DocumentBase,
   DocumentTableProps,
 } from '@sanetti/sanity-table-kit'
+
+import type {PaginationControlsProps} from './PaginationControls'
+import {resolveColumnAliases} from './resolveColumnAliases'
+import {useResolvedColumns} from './useResolvedColumns'
 import {useSanityTableData} from './useSanityTableData'
 import type {SanityTableDataConfig, PaginationState} from './useSanityTableData'
-import type {PaginationControlsProps} from './PaginationControls'
-import {useResolvedColumns} from './useResolvedColumns'
-import {resolveColumnAliases} from './resolveColumnAliases'
 
 /**
  * Result from the composed hook.

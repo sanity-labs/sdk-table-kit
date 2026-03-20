@@ -1,9 +1,9 @@
-import {describe, it, expect, vi, beforeAll} from 'vitest'
-import React from 'react'
-import {render, screen, within, fireEvent, act} from '@testing-library/react'
 import {ThemeProvider} from '@sanity/ui'
 import {buildTheme} from '@sanity/ui/theme'
+import {render, screen, within, fireEvent, act} from '@testing-library/react'
 import {NuqsTestingAdapter} from 'nuqs/adapters/testing'
+import React from 'react'
+import {describe, it, expect, vi, beforeAll} from 'vitest'
 
 const mockApply = vi.fn().mockResolvedValue({})
 
@@ -44,9 +44,9 @@ vi.mock('@sanity/sdk', () => ({
   })),
 }))
 
+import {column} from '../src/column'
 import {SanityDocumentTable} from '../src/SanityDocumentTable'
 import type {SanityDocumentTableProps} from '../src/SanityDocumentTable'
-import {column} from '../src/column'
 
 const theme = buildTheme()
 

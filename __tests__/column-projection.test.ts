@@ -1,5 +1,6 @@
-import {describe, it, expect} from 'vitest'
 import {column} from '@sanetti/sanity-table-kit'
+import {describe, it, expect} from 'vitest'
+
 import {useColumnProjection, parseFieldExpression} from '../src/useColumnProjection'
 
 describe('parseFieldExpression', () => {
