@@ -11,7 +11,6 @@ const mockUsePaginatedDocuments = vi.fn()
 const mockUseQuery = vi.fn()
 const mockUseDocumentProjection = vi.fn()
 const mockUseActiveReleases = vi.fn()
-const _mockUseClient = vi.fn()
 
 const mockClient = {
   action: vi.fn().mockResolvedValue({}),
