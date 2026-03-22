@@ -64,7 +64,7 @@ describe('useSanityTableData — sorting', () => {
   })
 
   it('Behavior 2: onSortChange updates orderings on next render', () => {
-    const {result, rerender} = renderHook(() =>
+    const {result, _rerender} = renderHook(() =>
       useSanityTableData({
         documentType: 'article',
         columns: testColumns,

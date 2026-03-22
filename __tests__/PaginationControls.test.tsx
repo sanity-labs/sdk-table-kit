@@ -62,7 +62,7 @@ describe('PaginationControls', () => {
   })
 
   it('Behavior 6: loading state reduces opacity', () => {
-    const {container} = render(<PaginationControls pagination={makePagination()} loading />)
+    const {_container} = render(<PaginationControls pagination={makePagination()} loading />)
 
     // Buttons should be disabled during loading
     expect(screen.getByText('Next')).toBeDisabled()
@@ -70,7 +70,7 @@ describe('PaginationControls', () => {
   })
 
   it('Behavior 7: hidden when single page', () => {
-    const {container} = render(
+    const {_container} = render(
       <PaginationControls
         pagination={makePagination({totalPages: 1, hasNextPage: false, hasPreviousPage: false})}
       />,

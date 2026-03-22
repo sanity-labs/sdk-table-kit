@@ -1,9 +1,4 @@
-import type {
-  ColumnDef,
-  SortConfig,
-  DocumentBase,
-  DocumentTableProps,
-} from '@sanetti/sanity-table-kit'
+import type {ColumnDef, DocumentBase, DocumentTableProps} from '@sanetti/sanity-table-kit'
 
 import type {PaginationControlsProps} from './PaginationControls'
 import {resolveColumnAliases} from './resolveColumnAliases'

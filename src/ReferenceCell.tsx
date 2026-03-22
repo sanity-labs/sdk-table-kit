@@ -59,7 +59,7 @@ export const ReferenceCell = memo(function ReferenceCell({
   value,
   row,
   prepare,
-  selectKeys,
+  selectKeys: _selectKeys,
   editMeta,
 }: ReferenceCellProps) {
   const [isEditing, setIsEditing] = useState(false)
@@ -277,7 +277,7 @@ function renderDisplay(
     try {
       const prepared = prepare(value as Record<string, unknown>)
       return renderPrepared(prepared)
-    } catch (err) {
+    } catch {
       return <span style={{color: 'var(--card-muted-fg-color)'}}>—</span>
     }
   }

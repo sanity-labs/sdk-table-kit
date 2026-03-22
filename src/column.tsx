@@ -1,7 +1,6 @@
 import {column as baseColumn} from '@sanetti/sanity-table-kit'
 import type {DocumentBase} from '@sanetti/sanity-table-kit'
 import type {PreviewConfig, PreviewValue} from '@sanity/types'
-import type {ReactNode} from 'react'
 import React from 'react'
 
 import {DocumentStatusCell, getStatusSortPriority} from './DocumentStatusCell'

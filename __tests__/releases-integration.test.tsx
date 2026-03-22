@@ -1,7 +1,6 @@
 import {ThemeProvider} from '@sanity/ui'
 import {buildTheme} from '@sanity/ui/theme'
-import {render, screen, within} from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
+import {render, screen} from '@testing-library/react'
 import {NuqsTestingAdapter} from 'nuqs/adapters/testing'
 import React from 'react'
 import {describe, it, expect, vi, beforeEach, beforeAll} from 'vitest'
@@ -12,7 +11,7 @@ const mockUsePaginatedDocuments = vi.fn()
 const mockUseQuery = vi.fn()
 const mockUseDocumentProjection = vi.fn()
 const mockUseActiveReleases = vi.fn()
-const mockUseClient = vi.fn()
+const _mockUseClient = vi.fn()
 
 const mockClient = {
   action: vi.fn().mockResolvedValue({}),

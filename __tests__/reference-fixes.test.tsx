@@ -135,7 +135,7 @@ function setupMocks(articles: MockArticle[] = mockArticlesWithAuthor) {
   })
 }
 
-function renderTableWithPlaceholder(articles: MockArticle[] = mockArticlesWithAuthor) {
+function renderTableWithPlaceholder(_articles: MockArticle[] = mockArticlesWithAuthor) {
   return renderWithTheme(
     <SanityDocumentTable
       documentType="article"
@@ -158,7 +158,7 @@ function renderTableWithPlaceholder(articles: MockArticle[] = mockArticlesWithAu
   )
 }
 
-function renderTableNoPlaceholder(articles: MockArticle[] = mockArticlesWithAuthor) {
+function renderTableNoPlaceholder(_articles: MockArticle[] = mockArticlesWithAuthor) {
   return renderWithTheme(
     <SanityDocumentTable
       documentType="article"

@@ -3,7 +3,7 @@ import {ToggleSwitch} from '@sanetti/sanity-table-kit'
 import {editDocument} from '@sanity/sdk'
 import {useApplyDocumentActions} from '@sanity/sdk-react'
 import type {PreviewConfig, PreviewValue} from '@sanity/types'
-import React, {useMemo, useCallback, useEffect, useRef} from 'react'
+import React, {useMemo, useCallback} from 'react'
 
 import {ReferenceCell} from './ReferenceCell'
 import {useOptionalReleaseContext} from './ReleaseContext'
@@ -142,11 +142,6 @@ export function useResolvedColumns<T extends DocumentBase = DocumentBase>(
           placeholder,
         })
 
-        // Get the original cell's prepare function from the column
-        // The cell was created by column.reference() and renders ReferenceCell
-        // We need to wrap it to inject edit metadata
-        const originalCell = col.cell
-
         return {
           ...col,
           edit: undefined, // Remove edit config — ReferenceCell handles its own edit UI
@@ -190,7 +185,6 @@ export function useResolvedColumns<T extends DocumentBase = DocumentBase>(
       // Boolean toggle — replace cell with OptimisticBooleanCell for instant UI feedback
       if (col.edit.mode === 'custom' && col.edit._autoSave && col.edit._field) {
         const field = col.edit._field
-        const onSave = createOnSave(field)
         return {
           ...col,
           edit: undefined, // Remove edit config — cell handles its own toggle

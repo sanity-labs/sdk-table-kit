@@ -57,12 +57,12 @@ export function useRoleFilteredColumns(columns: ColumnDef[]): ColumnDef[] {
         if (col.editableBy && col.editableBy.length > 0) {
           const canEdit = col.editableBy.some((role) => userRoleNames.has(role))
           if (!canEdit) {
-            const {edit, editableBy, visibleTo, ...rest} = col
+            const {edit: _edit, editableBy: _editableBy, visibleTo: _visibleTo, ...rest} = col
             return rest as ColumnDef
           }
         }
         // Clean up SDK-specific props before passing to base DocumentTable
-        const {editableBy, visibleTo, ...rest} = col
+        const {editableBy: _stripEditableBy, visibleTo: _stripVisibleTo, ...rest} = col
         return rest as ColumnDef
       })
   }, [columns, currentUser])

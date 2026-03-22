@@ -2,7 +2,6 @@ import {createDocument} from '@sanity/sdk'
 import {useApplyDocumentActions} from '@sanity/sdk-react'
 import {useCallback, useRef, useState} from 'react'
 
-import {useOptionalReleaseContext} from './ReleaseContext'
 import {useSafeToast} from './useSafeToast'
 
 export interface CreateDocumentConfig {
@@ -40,7 +39,6 @@ const SAFETY_TIMEOUT_MS = 10_000
 export function useCreateDocument(options: UseCreateDocumentOptions): UseCreateDocumentResult {
   const {documentType, initialValues, activeFilters} = options
   const apply = useApplyDocumentActions()
-  const releaseCtx = useOptionalReleaseContext()
   const toast = useSafeToast()
   const [isCreating, setIsCreating] = useState(false)
   const isCreatingRef = useRef(false)

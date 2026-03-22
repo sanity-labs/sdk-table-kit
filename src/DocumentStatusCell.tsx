@@ -40,7 +40,7 @@ const DOT_OVERLAP = -3 // negative margin for overlapping effect
  */
 export function DocumentStatusCell({
   documentId,
-  documentType,
+  documentType: _documentType,
 }: {
   documentId: string
   documentType: string
