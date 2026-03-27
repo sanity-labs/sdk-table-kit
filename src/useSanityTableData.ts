@@ -37,6 +37,11 @@ export interface SanityTableDataConfig {
    * - [releaseName, 'published'] — show data as if release were published
    */
   perspective?: 'published' | [string, 'published'] | string[]
+  /**
+   * Custom GROQ query parameters merged into the generated query.
+   * Internal params ($docType/$docTypes) take precedence.
+   */
+  params?: Record<string, unknown>
 }
 
 /**
@@ -82,6 +87,7 @@ function buildQuery(
   filter: string | undefined,
   projection: string,
   sort: SortConfig | null,
+  userParams?: Record<string, unknown>,
 ): {query: string; params: Record<string, unknown>} {
   const isArray = Array.isArray(documentType)
   const typeFilter = isArray ? '_type in $docTypes' : '_type == $docType'
@@ -90,7 +96,10 @@ function buildQuery(
 
   return {
     query: `*[${fullFilter}]${projection}${orderClause}`,
-    params: isArray ? {docTypes: documentType} : {docType: documentType},
+    params: {
+      ...userParams,
+      ...(isArray ? {docTypes: documentType} : {docType: documentType}),
+    },
   }
 }
 
@@ -114,6 +123,7 @@ export function useSanityTableData<T = Record<string, unknown>>(
     projection: projectionOverride,
     defaultSort,
     perspective,
+    params: userParams,
   } = config
 
   // Generate projection from columns (or use override)
@@ -134,7 +144,7 @@ export function useSanityTableData<T = Record<string, unknown>>(
 
   // Always query projected row data directly. The paginated SDK hook now returns
   // document handles only, which does not satisfy the table's projected row model.
-  const {query, params} = buildQuery(documentType, filter, projection, currentSort)
+  const {query, params} = buildQuery(documentType, filter, projection, currentSort, userParams)
   const result = useQuery<T[]>({
     query,
     params,

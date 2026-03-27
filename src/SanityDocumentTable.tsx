@@ -42,6 +42,14 @@ export interface SanityDocumentTableProps<T extends DocumentBase = DocumentBase>
    */
   filter?: string
 
+  /**
+   * Custom GROQ query parameters merged into the generated query.
+   * Use for filter expressions that reference variables (e.g., `$userId`).
+   * Internal params ($docType/$docTypes) take precedence over user params.
+   * @example { userId: currentUser.id }
+   */
+  params?: Record<string, unknown>
+
   // === Columns (required) ===
   /** Column definitions. Fields are treated as GROQ projection expressions. */
   columns: ColumnDef<T>[]
@@ -127,6 +135,7 @@ function SanityDocumentTableInner<T extends DocumentBase = DocumentBase>(
   const {
     documentType,
     filter,
+    params,
     columns,
     pageSize,
     defaultSort,
@@ -194,6 +203,7 @@ function SanityDocumentTableInner<T extends DocumentBase = DocumentBase>(
     defaultSort,
     projection,
     perspective,
+    params,
   })
 
   // Client-side filter: when a release is selected, only show documents in that release
