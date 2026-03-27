@@ -146,21 +146,11 @@ export function useSanityTableData<T = Record<string, unknown>>(
   // document handles only, which does not satisfy the table's projected row model.
   const {query, params} = buildQuery(documentType, filter, projection, currentSort, userParams)
 
-  // DEBUG: Log the generated query and params
-  console.log('[useSanityTableData] query:', query)
-  console.log('[useSanityTableData] params:', JSON.stringify(params))
-  console.log('[useSanityTableData] perspective:', perspective)
-
   const result = useQuery<T[]>({
     query,
     params,
     ...(perspective && {perspective}),
   })
-
-  // DEBUG: Log the result
-  console.log('[useSanityTableData] isPending:', result.isPending)
-  console.log('[useSanityTableData] data:', result.data?.length ?? 'undefined', 'rows')
-  console.log('[useSanityTableData] error:', (result as any).error ?? 'none')
 
   const resolvedPageSize = pageSize ?? 25
   const [currentPage, setCurrentPage] = useState(1)
