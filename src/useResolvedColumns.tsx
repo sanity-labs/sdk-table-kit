@@ -118,28 +118,31 @@ export function useResolvedColumns<T extends DocumentBase = DocumentBase>(
     [applyFieldPatch],
   )
 
-  // Diagnostic: track which dep changed
+  // Diagnostic: track which dep changed on EVERY render
   const prevDepsRef = useRef<{
     columns: unknown
     createOnSave: unknown
     createReferenceOnSave: unknown
     applyFieldPatch: unknown
-  }>({columns: null, createOnSave: null, createReferenceOnSave: null, applyFieldPatch: null})
+    apply: unknown
+    selectedReleaseId: unknown
+  }>({columns: undefined, createOnSave: undefined, createReferenceOnSave: undefined, applyFieldPatch: undefined, apply: undefined, selectedReleaseId: undefined})
 
-  if (prevDepsRef.current.columns !== null) {
-    const changed: string[] = []
-    if (prevDepsRef.current.columns !== columns) changed.push('columns')
-    if (prevDepsRef.current.createOnSave !== createOnSave) changed.push('createOnSave')
-    if (prevDepsRef.current.createReferenceOnSave !== createReferenceOnSave)
-      changed.push('createReferenceOnSave')
-    if (prevDepsRef.current.applyFieldPatch !== applyFieldPatch) changed.push('applyFieldPatch')
-    if (changed.length > 0) {
-      console.log('[useResolvedColumns] deps that changed:', changed.join(', '))
-    }
-  }
-  prevDepsRef.current = {columns, createOnSave, createReferenceOnSave, applyFieldPatch}
+  const changed: string[] = []
+  if (prevDepsRef.current.columns !== undefined && prevDepsRef.current.columns !== columns) changed.push('columns')
+  if (prevDepsRef.current.createOnSave !== undefined && prevDepsRef.current.createOnSave !== createOnSave) changed.push('createOnSave')
+  if (prevDepsRef.current.createReferenceOnSave !== undefined && prevDepsRef.current.createReferenceOnSave !== createReferenceOnSave) changed.push('createReferenceOnSave')
+  if (prevDepsRef.current.applyFieldPatch !== undefined && prevDepsRef.current.applyFieldPatch !== applyFieldPatch) changed.push('applyFieldPatch')
+  if (prevDepsRef.current.apply !== undefined && prevDepsRef.current.apply !== apply) changed.push('apply(useApplyDocumentActions)')
+  if (prevDepsRef.current.selectedReleaseId !== undefined && prevDepsRef.current.selectedReleaseId !== selectedReleaseId) changed.push('selectedReleaseId')
+  prevDepsRef.current = {columns, createOnSave, createReferenceOnSave, applyFieldPatch, apply, selectedReleaseId}
 
   console.count('[useResolvedColumns] render')
+  if (changed.length > 0) {
+    console.warn('[useResolvedColumns] ⚠️ DEPS CHANGED:', changed.join(', '))
+  } else {
+    console.log('[useResolvedColumns] first render or no deps changed')
+  }
 
   return useMemo(() => {
     console.log(
