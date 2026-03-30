@@ -3,7 +3,7 @@ import {ToggleSwitch} from '@sanetti/sanity-table-kit'
 import {editDocument} from '@sanity/sdk'
 import {useApplyDocumentActions} from '@sanity/sdk-react'
 import type {PreviewConfig, PreviewValue} from '@sanity/types'
-import React, {useMemo, useCallback} from 'react'
+import React, {useMemo, useCallback, useRef} from 'react'
 
 import {ReferenceCell} from './ReferenceCell'
 import {useOptionalReleaseContext} from './ReleaseContext'
