@@ -1,5 +1,11 @@
 import {DocumentTable} from '@sanetti/sanity-table-kit'
-import type {ColumnDef, SortConfig, DocumentBase, SelectionConfig} from '@sanetti/sanity-table-kit'
+import type {
+  ColumnDef,
+  SortConfig,
+  DocumentBase,
+  SelectionConfig,
+  ComputedFilterConfig,
+} from '@sanetti/sanity-table-kit'
 import {column as baseColumn} from '@sanetti/sanity-table-kit'
 import {PublishIcon} from '@sanity/icons'
 import {publishDocument} from '@sanity/sdk'
@@ -94,6 +100,10 @@ export interface SanityDocumentTableProps<T extends DocumentBase = DocumentBase>
   /** Enable release-aware UI (header bar, perspective picker, version-aware editing). */
   releases?: boolean
 
+  // === Computed Filters ===
+  /** Named computed filters that can be activated externally (e.g., by stats cards). */
+  computedFilters?: Record<string, ComputedFilterConfig>
+
   // === Column Reordering ===
   /** Enable drag-and-drop column reordering. */
   reorderable?: boolean
@@ -150,6 +160,7 @@ function SanityDocumentTableInner<T extends DocumentBase = DocumentBase>(
     columnOrder,
     onColumnOrderChange,
     createDocument: createDocumentConfig,
+    computedFilters,
   } = props
 
   // Always call the optional hook to preserve hook ordering.
@@ -339,6 +350,7 @@ function SanityDocumentTableInner<T extends DocumentBase = DocumentBase>(
           onCreateDocument={isCreateEnabled ? createHook.create : undefined}
           createButtonText={isCreateEnabled ? createButtonText : undefined}
           isCreating={createHook.isCreating}
+          computedFilters={computedFilters}
         />
         {pagination && <PaginationControls pagination={pagination} loading={loading} />}
         {publishDialogDocs && (
