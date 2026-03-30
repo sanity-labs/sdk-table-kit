@@ -118,6 +118,29 @@ export function useResolvedColumns<T extends DocumentBase = DocumentBase>(
     [applyFieldPatch],
   )
 
+  // Diagnostic: track which dep changed
+  const prevDepsRef = useRef<{
+    columns: unknown
+    createOnSave: unknown
+    createReferenceOnSave: unknown
+    applyFieldPatch: unknown
+  }>({columns: null, createOnSave: null, createReferenceOnSave: null, applyFieldPatch: null})
+
+  if (prevDepsRef.current.columns !== null) {
+    const changed: string[] = []
+    if (prevDepsRef.current.columns !== columns) changed.push('columns')
+    if (prevDepsRef.current.createOnSave !== createOnSave) changed.push('createOnSave')
+    if (prevDepsRef.current.createReferenceOnSave !== createReferenceOnSave)
+      changed.push('createReferenceOnSave')
+    if (prevDepsRef.current.applyFieldPatch !== applyFieldPatch) changed.push('applyFieldPatch')
+    if (changed.length > 0) {
+      console.log('[useResolvedColumns] deps that changed:', changed.join(', '))
+    }
+  }
+  prevDepsRef.current = {columns, createOnSave, createReferenceOnSave, applyFieldPatch}
+
+  console.count('[useResolvedColumns] render')
+
   return useMemo(() => {
     console.log(
       '[useResolvedColumns] useMemo recalculating — columns changed or createOnSave/createReferenceOnSave changed',
