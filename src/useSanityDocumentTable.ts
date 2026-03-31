@@ -1,5 +1,6 @@
 import type {ColumnDef, DocumentBase, DocumentTableProps} from '@sanetti/sanity-table-kit'
 
+import {getServerSortableColumnIds} from './getServerSortableColumnIds'
 import type {PaginationControlsProps} from './PaginationControls'
 import {resolveColumnAliases} from './resolveColumnAliases'
 import {useResolvedColumns} from './useResolvedColumns'
@@ -62,13 +63,26 @@ export function useSanityDocumentTable<T extends DocumentBase = DocumentBase>(
 
   // Resolve edit: true markers into actual onSave callbacks via SDK
   const resolvedColumns = useResolvedColumns(aliasedColumns as ColumnDef<T>[])
+  const serverSortableColumnIds = useMemo(
+    () => (result.sorting ? getServerSortableColumnIds(resolvedColumns as ColumnDef[]) : undefined),
+    [resolvedColumns, result.sorting],
+  )
 
   const tableProps: DocumentTableProps<T> = {
     data: result.data,
     columns: resolvedColumns,
     loading: result.loading,
+    ...(result.transitionLoading &&
+      config.pageSize && {transitionLoadingRowCount: config.pageSize}),
     emptyMessage,
     ...(result.sorting?.current && {defaultSort: result.sorting.current}),
+    ...(result.sorting && {
+      serverSort: {
+        sort: result.sorting.current,
+        onSortChange: result.sorting.onSortChange,
+        sortableColumnIds: serverSortableColumnIds,
+      },
+    }),
   }
 
   // Provide a safe default pagination for PaginationControls

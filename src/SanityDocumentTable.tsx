@@ -19,6 +19,7 @@ import {useCallback, useEffect, useMemo, useRef, useState, type ReactNode} from 
 import {AddToReleaseButton} from './AddToReleaseButton'
 import {CreateReleaseDialog} from './CreateReleaseDialog'
 import {DocumentStatusBatchProvider} from './DocumentStatusBatchContext'
+import {getServerSortableColumnIds} from './getServerSortableColumnIds'
 import {PaginationControls} from './PaginationControls'
 import {PublishConfirmDialog} from './PublishConfirmDialog'
 import {ReleaseProvider, useOptionalReleaseContext} from './ReleaseContext'
@@ -226,6 +227,7 @@ function SanityDocumentTableInner<T extends DocumentBase = DocumentBase>(
   const {
     data: rawData,
     loading: rawLoading,
+    transitionLoading,
     pagination,
     sorting,
   } = useSanityTableData<T>({
@@ -351,15 +353,29 @@ function SanityDocumentTableInner<T extends DocumentBase = DocumentBase>(
     if (hasSelect) return resolvedColumns
     return [baseColumn.select(), ...resolvedColumns]
   }, [resolvedColumns])
+  const serverSortableColumnIds = useMemo(
+    () => (sorting ? getServerSortableColumnIds(finalColumns as ColumnDef[]) : undefined),
+    [finalColumns, sorting],
+  )
   const hasDocumentStatusColumn = finalColumns.some((column) => column.id === '_status')
   const tableElement = (
     <DocumentTable<T>
       data={data}
       columns={finalColumns}
       loading={loading}
+      transitionLoadingRowCount={pagination && transitionLoading ? pageSize : undefined}
       emptyMessage={emptyMessage}
       stripedRows={stripedRows}
       defaultSort={sorting?.current ?? defaultSort}
+      serverSort={
+        sorting
+          ? {
+              sort: sorting.current,
+              onSortChange: sorting.onSortChange,
+              sortableColumnIds: serverSortableColumnIds,
+            }
+          : undefined
+      }
       onRowClick={onRowClick}
       bulkActions={wrappedBulkActions}
       onSelectionChange={onSelectionChange}

@@ -1,6 +1,6 @@
 import type {ColumnDef, SortConfig} from '@sanetti/sanity-table-kit'
 // In tests, this is mocked via vi.mock('@sanity/sdk-react').
-import {useQuery} from '@sanity/sdk-react'
+import {usePaginatedDocuments, useQuery} from '@sanity/sdk-react'
 import {useState, useCallback, useMemo} from 'react'
 
 import {useColumnProjection} from './useColumnProjection'
@@ -73,6 +73,8 @@ export interface SanityTableDataResult<T = Record<string, unknown>> {
   data: T[] | undefined
   /** Whether the SDK hook is still loading. */
   loading: boolean
+  /** Whether the current paginated page is still hydrating projected row data. */
+  transitionLoading: boolean
   /** Server-side pagination state. Null when using useQuery mode. */
   pagination: PaginationState | null
   /** Server-side sorting state. Null when using useQuery mode (client-side sorting). */
@@ -136,15 +138,33 @@ export function useSanityTableData<T = Record<string, unknown>>(
   const onSortChange = useCallback((sort: SortConfig | null) => {
     setCurrentSort(sort)
   }, [])
-
-  // Determine whether to expose pagination controls:
-  // - Single string documentType + no filter → expose pagination state
-  // - Array documentType OR filter → return full query results
-  const usePaginatedMode = typeof documentType === 'string' && !filter
-
-  // Always query projected row data directly. The paginated SDK hook now returns
-  // document handles only, which does not satisfy the table's projected row model.
   const {query, params} = buildQuery(documentType, filter, projection, currentSort, userParams)
+
+  const resolvedPageSize = pageSize ?? 25
+  const useSdkPagination = pageSize !== undefined
+  const paginatedOrderings = currentSort
+    ? [{field: currentSort.field, direction: currentSort.direction}]
+    : undefined
+
+  const paginatedDocuments = usePaginatedDocuments({
+    documentType: useSdkPagination ? documentType : [],
+    filter: useSdkPagination ? filter : '_id == "___never___"',
+    orderings: useSdkPagination ? paginatedOrderings : undefined,
+    pageSize: useSdkPagination ? resolvedPageSize : 1,
+    params: useSdkPagination ? userParams : {},
+    ...(perspective && {perspective}),
+  })
+
+  const pageDocumentIds = useMemo(
+    () => (useSdkPagination ? paginatedDocuments.data.map((handle) => handle.documentId) : []),
+    [paginatedDocuments.data, useSdkPagination],
+  )
+
+  const pagedProjectionResult = useQuery<T[]>({
+    query: `*[_id in $documentIds]${projection}`,
+    params: {documentIds: pageDocumentIds},
+    ...(perspective && {perspective}),
+  })
 
   const result = useQuery<T[]>({
     query,
@@ -152,43 +172,73 @@ export function useSanityTableData<T = Record<string, unknown>>(
     ...(perspective && {perspective}),
   })
 
-  const resolvedPageSize = pageSize ?? 25
-  const [currentPage, setCurrentPage] = useState(1)
+  const projectionRowsById = useMemo(() => {
+    const byId = new Map<string, T>()
 
-  const totalCount = result.data?.length ?? 0
-  const totalPages = Math.max(1, Math.ceil(totalCount / resolvedPageSize))
-  const safeCurrentPage = Math.min(currentPage, totalPages)
+    if (!Array.isArray(pagedProjectionResult.data)) {
+      return byId
+    }
+
+    for (const row of pagedProjectionResult.data) {
+      const rowId =
+        row && typeof row === 'object' && '_id' in (row as Record<string, unknown>)
+          ? String((row as Record<string, unknown>)._id)
+          : null
+
+      if (rowId) {
+        byId.set(rowId, row)
+      }
+    }
+
+    return byId
+  }, [pagedProjectionResult.data])
+
+  const pageRowsReady = useMemo(() => {
+    if (!useSdkPagination) return true
+    if (pageDocumentIds.length === 0) return !paginatedDocuments.isPending
+
+    return pageDocumentIds.every((id) => projectionRowsById.has(id))
+  }, [pageDocumentIds, paginatedDocuments.isPending, projectionRowsById, useSdkPagination])
+
+  const transitionLoading = useSdkPagination && (paginatedDocuments.isPending || !pageRowsReady)
 
   const pagedData = useMemo(() => {
-    if (!usePaginatedMode || !Array.isArray(result.data)) return result.data
-    const start = (safeCurrentPage - 1) * resolvedPageSize
-    const end = start + resolvedPageSize
-    return result.data.slice(start, end)
-  }, [resolvedPageSize, result.data, safeCurrentPage, usePaginatedMode])
+    if (!useSdkPagination) return result.data
+    if (pageDocumentIds.length === 0) {
+      return paginatedDocuments.isPending ? undefined : []
+    }
+    if (!pageRowsReady) return undefined
 
-  const nextPage = useCallback(() => {
-    setCurrentPage((page) => Math.min(page + 1, totalPages))
-  }, [totalPages])
-
-  const previousPage = useCallback(() => {
-    setCurrentPage((page) => Math.max(page - 1, 1))
-  }, [])
+    return paginatedDocuments.data
+      .map((handle) => projectionRowsById.get(handle.documentId))
+      .filter((row): row is T => row !== undefined)
+  }, [
+    pageDocumentIds.length,
+    pageRowsReady,
+    paginatedDocuments.data,
+    paginatedDocuments.isPending,
+    projectionRowsById,
+    useSdkPagination,
+  ])
 
   return {
-    data: (usePaginatedMode ? pagedData : result.data) as T[] | undefined,
-    loading: result.isPending,
-    pagination: usePaginatedMode
+    data: (useSdkPagination ? pagedData : result.data) as T[] | undefined,
+    loading: useSdkPagination
+      ? paginatedDocuments.isPending || pagedProjectionResult.isPending
+      : result.isPending,
+    transitionLoading,
+    pagination: useSdkPagination
       ? {
-          currentPage: safeCurrentPage,
-          totalPages,
-          hasNextPage: safeCurrentPage < totalPages,
-          hasPreviousPage: safeCurrentPage > 1,
-          totalCount,
-          nextPage,
-          previousPage,
+          currentPage: paginatedDocuments.currentPage,
+          totalPages: paginatedDocuments.totalPages,
+          hasNextPage: paginatedDocuments.hasNextPage,
+          hasPreviousPage: paginatedDocuments.hasPreviousPage,
+          totalCount: paginatedDocuments.count,
+          nextPage: paginatedDocuments.nextPage,
+          previousPage: paginatedDocuments.previousPage,
         }
       : null,
-    sorting: usePaginatedMode
+    sorting: useSdkPagination
       ? {
           current: currentSort,
           onSortChange,
