@@ -71,7 +71,21 @@ describe('DocumentStatusCell — SDK-native status via useDocumentProjection', (
       name: 'Test',
       roles: [{name: 'editor', title: 'Editor'}],
     })
-    mockUseQuery.mockReturnValue({data: mockData, isPending: false})
+    mockUseQuery.mockImplementation(
+      ({query, params}: {params?: Record<string, unknown>; query: string}) => {
+        if (query.includes('_id in $documentIds')) {
+          const existingIds = new Set(['drafts.doc-1', 'doc-2', 'drafts.doc-3'])
+          return {
+            data: ((params?.documentIds as string[] | undefined) ?? [])
+              .filter((id) => existingIds.has(id))
+              .map((_id) => ({_id})),
+            isPending: false,
+          }
+        }
+
+        return {data: mockData, isPending: false}
+      },
+    )
     mockUsePaginatedDocuments.mockReturnValue({
       data: mockData,
       isPending: false,
@@ -154,6 +168,24 @@ describe('DocumentStatusCell — SDK-native status via useDocumentProjection', (
     expect(headers.length).toBeGreaterThanOrEqual(4)
     // Second header should be the status column with no text (first is auto-inserted select)
     expect(headers[1].textContent?.trim()).toBe('')
+  })
+
+  it('Behavior 5b: table batches status lookups instead of querying each row', () => {
+    renderWithTheme(
+      <SanityDocumentTable
+        documentType={['article']}
+        columns={[column.documentStatus(), column.title(), column.type()]}
+      />,
+    )
+
+    const queryConfigs = mockUseQuery.mock.calls.map((call) => call[0] as {query: string})
+    const batchedCalls = queryConfigs.filter((config) =>
+      config.query.includes('_id in $documentIds'),
+    )
+    const perRowCalls = queryConfigs.filter((config) => config.query.includes('sanity::versionOf'))
+
+    expect(batchedCalls).toHaveLength(1)
+    expect(perRowCalls).toHaveLength(0)
   })
 
   it('Behavior 6: omitting column.documentStatus() excludes status column', () => {

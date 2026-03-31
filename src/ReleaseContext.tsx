@@ -148,10 +148,6 @@ export function ReleaseProvider({children}: {children: React.ReactNode}) {
 
 export function useReleaseContext(): ReleaseContextValue {
   const ctx = useContext(ReleaseContext)
-  console.log(
-    '[useReleaseContext] ctx:',
-    ctx ? 'found (' + ctx.activeReleases.length + ' releases)' : 'null — will throw',
-  )
   if (!ctx) {
     throw new Error('useReleaseContext must be used within a ReleaseProvider')
   }
@@ -163,10 +159,5 @@ export function useReleaseContext(): ReleaseContextValue {
  * Safe to use in components that may or may not be inside a ReleaseProvider.
  */
 export function useOptionalReleaseContext(): ReleaseContextValue | null {
-  const ctx = useContext(ReleaseContext)
-  console.log(
-    '[useOptionalReleaseContext] ctx:',
-    ctx ? 'found (' + ctx.activeReleases.length + ' releases)' : 'null',
-  )
-  return ctx
+  return useContext(ReleaseContext)
 }

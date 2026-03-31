@@ -3,7 +3,7 @@ import {ToggleSwitch} from '@sanetti/sanity-table-kit'
 import {editDocument} from '@sanity/sdk'
 import {useApplyDocumentActions} from '@sanity/sdk-react'
 import type {PreviewConfig, PreviewValue} from '@sanity/types'
-import React, {useMemo, useCallback, useRef} from 'react'
+import React, {useMemo, useCallback} from 'react'
 
 import {ReferenceCell} from './ReferenceCell'
 import {useOptionalReleaseContext} from './ReleaseContext'
@@ -83,20 +83,8 @@ export function useResolvedColumns<T extends DocumentBase = DocumentBase>(
   const createOnSave = useCallback(
     (field: string) => {
       return (document: DocumentBase, newValue: string) => {
-        console.log('[useResolvedColumns] SDK auto-save:', {
-          documentId: document._id,
-          field,
-          newValue,
-        })
         try {
-          const result = applyFieldPatch(document, field, newValue)
-          console.log('[useResolvedColumns] apply() returned:', result)
-          if (result && typeof result.then === 'function') {
-            result.then(
-              (res: unknown) => console.log('[useResolvedColumns] apply() resolved:', res),
-              (err: unknown) => console.error('[useResolvedColumns] apply() rejected:', err),
-            )
-          }
+          void applyFieldPatch(document, field, newValue)
         } catch (err) {
           console.error('[useResolvedColumns] apply() threw:', err)
         }
@@ -118,36 +106,7 @@ export function useResolvedColumns<T extends DocumentBase = DocumentBase>(
     [applyFieldPatch],
   )
 
-  // Diagnostic: track which dep changed on EVERY render
-  const prevDepsRef = useRef<{
-    columns: unknown
-    createOnSave: unknown
-    createReferenceOnSave: unknown
-    applyFieldPatch: unknown
-    apply: unknown
-    selectedReleaseId: unknown
-  }>({columns: undefined, createOnSave: undefined, createReferenceOnSave: undefined, applyFieldPatch: undefined, apply: undefined, selectedReleaseId: undefined})
-
-  const changed: string[] = []
-  if (prevDepsRef.current.columns !== undefined && prevDepsRef.current.columns !== columns) changed.push('columns')
-  if (prevDepsRef.current.createOnSave !== undefined && prevDepsRef.current.createOnSave !== createOnSave) changed.push('createOnSave')
-  if (prevDepsRef.current.createReferenceOnSave !== undefined && prevDepsRef.current.createReferenceOnSave !== createReferenceOnSave) changed.push('createReferenceOnSave')
-  if (prevDepsRef.current.applyFieldPatch !== undefined && prevDepsRef.current.applyFieldPatch !== applyFieldPatch) changed.push('applyFieldPatch')
-  if (prevDepsRef.current.apply !== undefined && prevDepsRef.current.apply !== apply) changed.push('apply(useApplyDocumentActions)')
-  if (prevDepsRef.current.selectedReleaseId !== undefined && prevDepsRef.current.selectedReleaseId !== selectedReleaseId) changed.push('selectedReleaseId')
-  prevDepsRef.current = {columns, createOnSave, createReferenceOnSave, applyFieldPatch, apply, selectedReleaseId}
-
-  console.count('[useResolvedColumns] render')
-  if (changed.length > 0) {
-    console.warn('[useResolvedColumns] ⚠️ DEPS CHANGED:', changed.join(', '))
-  } else {
-    console.log('[useResolvedColumns] first render or no deps changed')
-  }
-
   return useMemo(() => {
-    console.log(
-      '[useResolvedColumns] useMemo recalculating — columns changed or createOnSave/createReferenceOnSave changed',
-    )
     return columns.map((col) => {
       if (!col.edit || !col.edit._autoSave || !col.edit._field) {
         return col
@@ -162,11 +121,6 @@ export function useResolvedColumns<T extends DocumentBase = DocumentBase>(
         const preview = editConfig._preview as Required<Pick<PreviewConfig, 'select' | 'prepare'>>
         const placeholder = editConfig._placeholder
         const onSave = createReferenceOnSave(field)
-        console.log('[useResolvedColumns] reference column resolved', {
-          field,
-          referenceType,
-          placeholder,
-        })
 
         return {
           ...col,

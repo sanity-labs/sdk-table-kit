@@ -2,6 +2,10 @@ import {useQuery, useActiveReleases} from '@sanity/sdk-react'
 import {Box, Flex, Text, Tooltip, Stack} from '@sanity/ui'
 import React, {useMemo} from 'react'
 
+import type {ActiveReleaseSnapshot} from './DocumentStatusBatchContext'
+import {useOptionalDocumentStatusBatchContext} from './DocumentStatusBatchContext'
+import {normalizeBaseDocumentId} from './useDocumentStatusBatch'
+
 /**
  * Compute a numeric sort priority for document status.
  * Lower = less "done", sorts first (drafts bubble to top).
@@ -31,116 +35,58 @@ interface StatusDot {
 const DOT_SIZE = 9
 const DOT_OVERLAP = -3 // negative margin for overlapping effect
 
-/**
- * Renders document status dots with tooltip.
- *
- * Uses `sanity::versionOf()` GROQ function to find ALL versions of a document
- * (published, draft, and release versions) in a single query.
- * Requires perspective: 'raw' and apiVersion >= 2025-02-19.
- */
-export function DocumentStatusCell({
-  documentId,
-  documentType: _documentType,
-}: {
-  documentId: string
-  documentType: string
-}) {
-  // Strip any prefix to get the published base ID
-  let baseId = documentId
-  if (baseId.startsWith('drafts.')) {
-    baseId = baseId.slice(7)
-  } else if (baseId.startsWith('versions.')) {
-    const parts = baseId.split('.')
-    baseId = parts.slice(2).join('.')
-  }
-
-  // Always fetch active releases directly — works with or without ReleaseProvider
-  const activeReleases = useActiveReleases()
-
-  // Use sanity::versionOf() to find ALL versions of this document
-  // This returns published, drafts.*, and versions.*.* documents
-  const {data: versionDocs} = useQuery({
-    query: `*[sanity::versionOf($publishedId)]{ _id, _updatedAt }`,
-    params: {publishedId: baseId},
-    perspective: 'raw' as unknown as undefined,
-  })
-
-  // Build set of existing IDs
-  const existingIds = useMemo(() => {
-    const set = new Set<string>()
-    if (Array.isArray(versionDocs)) {
-      for (const doc of versionDocs) {
-        if (doc && typeof doc === 'object' && '_id' in doc) {
-          set.add((doc as {_id: string})._id)
-        }
-      }
-    }
-    console.log('[DocumentStatusCell]', baseId, 'versions found:', [...set])
-    return set
-  }, [versionDocs, baseId])
-
-  // Build a map of release name → release for quick lookup
-  const releaseMap = useMemo(() => {
-    const map = new Map<string, (typeof activeReleases)[number]>()
-    for (const r of activeReleases) {
-      map.set(r.name, r)
-    }
-    return map
-  }, [activeReleases])
-
-  // Build dots array in order: published → draft → ASAP → scheduled → undecided
+function buildStatusDots(
+  baseId: string,
+  existingIds: ReadonlySet<string>,
+  activeReleases: ReadonlyArray<ActiveReleaseSnapshot>,
+) {
   const dots: StatusDot[] = []
 
   if (existingIds.has(baseId)) {
     dots.push({color: STATUS_COLORS.published, label: 'Published'})
   }
+
   if (existingIds.has(`drafts.${baseId}`)) {
     dots.push({color: STATUS_COLORS.draft, label: 'Draft'})
   }
 
-  // Check each existing version ID against active releases, grouped by type
+  const releaseMap = new Map<string, ActiveReleaseSnapshot>()
+  for (const release of activeReleases) {
+    releaseMap.set(release.name, release)
+  }
+
   const releaseDots: Array<StatusDot & {type: string}> = []
   for (const id of existingIds) {
     if (!id.startsWith('versions.')) continue
-    // Extract release name: versions.<releaseName>.<docId>
+
     const withoutPrefix = id.slice('versions.'.length)
     const dotIndex = withoutPrefix.indexOf('.')
     if (dotIndex === -1) continue
+
     const releaseName = withoutPrefix.slice(0, dotIndex)
     const release = releaseMap.get(releaseName)
-    if (release) {
-      const type = release.metadata.releaseType
-      releaseDots.push({
-        color: STATUS_COLORS[type as keyof typeof STATUS_COLORS] ?? STATUS_COLORS.muted,
-        label: release.metadata.title,
-        type,
-      })
-    }
+    if (!release) continue
+
+    const type = release.metadata.releaseType ?? 'undecided'
+    releaseDots.push({
+      color: STATUS_COLORS[type] ?? STATUS_COLORS.muted,
+      label: release.metadata.title ?? release.name,
+      type,
+    })
   }
 
-  // Sort release dots by type order: asap → scheduled → undecided
   const typeOrder = ['asap', 'scheduled', 'undecided']
   releaseDots.sort((a, b) => typeOrder.indexOf(a.type) - typeOrder.indexOf(b.type))
   dots.push(...releaseDots)
 
-  console.log(
-    '[DocumentStatusCell]',
-    baseId,
-    'dots built:',
-    dots.map((d) => d.label),
-    'from existingIds:',
-    [...existingIds],
-    'activeReleases:',
-    activeReleases.map((r) => r.name),
-    'releaseMap keys:',
-    [...releaseMap.keys()],
-  )
-
-  // Fallback: if no dots at all, show muted "New" dot
   if (dots.length === 0) {
     dots.push({color: STATUS_COLORS.muted, label: 'New'})
   }
 
+  return dots
+}
+
+function StatusDots({dots}: {dots: StatusDot[]}) {
   const tooltipContent = (
     <Box padding={2}>
       <Stack space={2}>
@@ -200,4 +146,83 @@ export function DocumentStatusCell({
       </Box>
     </Tooltip>
   )
+}
+
+/**
+ * Renders document status dots with tooltip.
+ *
+ * Uses `sanity::versionOf()` GROQ function to find ALL versions of a document
+ * (published, draft, and release versions) in a single query.
+ * Requires perspective: 'raw' and apiVersion >= 2025-02-19.
+ */
+export function DocumentStatusCell({
+  documentId,
+  documentType: _documentType,
+}: {
+  documentId: string
+  documentType: string
+}) {
+  const statusBatch = useOptionalDocumentStatusBatchContext()
+
+  if (statusBatch) {
+    return (
+      <BatchedDocumentStatusCell
+        documentId={documentId}
+        activeReleases={statusBatch.activeReleases}
+        versionIds={
+          statusBatch.statusByBaseId.get(normalizeBaseDocumentId(documentId))?.versionIds ?? []
+        }
+      />
+    )
+  }
+
+  return <LegacyDocumentStatusCell documentId={documentId} />
+}
+
+function BatchedDocumentStatusCell({
+  documentId,
+  activeReleases,
+  versionIds,
+}: {
+  documentId: string
+  activeReleases: ReadonlyArray<ActiveReleaseSnapshot>
+  versionIds: ReadonlyArray<string>
+}) {
+  const baseId = normalizeBaseDocumentId(documentId)
+  const dots = useMemo(
+    () => buildStatusDots(baseId, new Set(versionIds), activeReleases),
+    [activeReleases, baseId, versionIds],
+  )
+
+  return <StatusDots dots={dots} />
+}
+
+function LegacyDocumentStatusCell({documentId}: {documentId: string}) {
+  const baseId = normalizeBaseDocumentId(documentId)
+  const activeReleases = useActiveReleases()
+
+  const {data: versionDocs} = useQuery({
+    query: `*[sanity::versionOf($publishedId)]{ _id, _updatedAt }`,
+    params: {publishedId: baseId},
+    perspective: 'raw' as unknown as undefined,
+  })
+
+  const existingIds = useMemo(() => {
+    const set = new Set<string>()
+    if (Array.isArray(versionDocs)) {
+      for (const doc of versionDocs) {
+        if (doc && typeof doc === 'object' && '_id' in doc) {
+          set.add((doc as {_id: string})._id)
+        }
+      }
+    }
+    return set
+  }, [versionDocs])
+
+  const dots = useMemo(
+    () => buildStatusDots(baseId, existingIds, activeReleases),
+    [activeReleases, baseId, existingIds],
+  )
+
+  return <StatusDots dots={dots} />
 }

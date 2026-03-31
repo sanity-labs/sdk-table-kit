@@ -18,6 +18,7 @@ import {useCallback, useEffect, useMemo, useRef, useState, type ReactNode} from 
 
 import {AddToReleaseButton} from './AddToReleaseButton'
 import {CreateReleaseDialog} from './CreateReleaseDialog'
+import {DocumentStatusBatchProvider} from './DocumentStatusBatchContext'
 import {PaginationControls} from './PaginationControls'
 import {PublishConfirmDialog} from './PublishConfirmDialog'
 import {ReleaseProvider, useOptionalReleaseContext} from './ReleaseContext'
@@ -25,6 +26,7 @@ import {ReleaseHeader} from './ReleaseHeader'
 import {ReleasePicker} from './ReleasePicker'
 import {resolveColumnAliases} from './resolveColumnAliases'
 import {useCreateDocument, type CreateDocumentConfig} from './useCreateDocument'
+import {useDocumentStatusBatch} from './useDocumentStatusBatch'
 import {useResolvedColumns} from './useResolvedColumns'
 import {useRoleFilteredColumns} from './useRoleFilteredColumns'
 import {useSanityTableData} from './useSanityTableData'
@@ -128,19 +130,45 @@ export function SanityDocumentTable<T extends DocumentBase = DocumentBase>(
   if (props.releases) {
     return (
       <ReleaseProvider>
-        <SanityDocumentTableInner {...props} />
+        <ReleaseEnabledTableInner {...props} />
       </ReleaseProvider>
     )
   }
-  return <SanityDocumentTableInner {...props} />
+  return <SanityDocumentTableInner {...props} releaseQueryData={null} releaseQueryPending={false} />
 }
 
 /**
- * Inner table component — all hooks run here, INSIDE ReleaseProvider when releases=true.
- * This ensures useReleaseContext() is available to useResolvedColumns, DocumentStatusCell, etc.
+ * Release-enabled wrapper — runs release-only hooks inside ReleaseProvider.
+ */
+function ReleaseEnabledTableInner<T extends DocumentBase = DocumentBase>(
+  props: SanityDocumentTableProps<T>,
+) {
+  const releaseCtx = useOptionalReleaseContext()
+  const selectedReleaseId = releaseCtx?.selectedReleaseId ?? null
+  const releaseVersionQuery = useQuery({
+    query: selectedReleaseId
+      ? `*[_id in path("versions.${selectedReleaseId}.*")]._id`
+      : '*[_id == "___never___"][0..0]',
+    params: {},
+  })
+
+  return (
+    <SanityDocumentTableInner
+      {...props}
+      releaseQueryData={releaseVersionQuery.data}
+      releaseQueryPending={releaseVersionQuery.isPending}
+    />
+  )
+}
+
+/**
+ * Inner table component — all common hooks run here.
  */
 function SanityDocumentTableInner<T extends DocumentBase = DocumentBase>(
-  props: SanityDocumentTableProps<T>,
+  props: SanityDocumentTableProps<T> & {
+    releaseQueryData: unknown
+    releaseQueryPending: boolean
+  },
 ) {
   const {
     documentType,
@@ -161,6 +189,8 @@ function SanityDocumentTableInner<T extends DocumentBase = DocumentBase>(
     onColumnOrderChange,
     createDocument: createDocumentConfig,
     computedFilters,
+    releaseQueryData,
+    releaseQueryPending,
   } = props
 
   // Always call the optional hook to preserve hook ordering.
@@ -168,24 +198,16 @@ function SanityDocumentTableInner<T extends DocumentBase = DocumentBase>(
   const perspective = releases ? releaseCtx?.getQueryPerspective() : undefined
   const selectedReleaseId = releases ? (releaseCtx?.selectedReleaseId ?? null) : null
 
-  // When a release is selected, fetch version document IDs to filter client-side
-  const releaseVersionQuery = useQuery({
-    query: selectedReleaseId
-      ? `*[_id in path("versions.${selectedReleaseId}.*")]._id`
-      : '*[_id == "___never___"][0..0]',
-    params: {},
-  })
-
   // Extract base document IDs from version IDs (versions.<release>.<docId> → <docId>)
   const releaseDocIds = useMemo(() => {
-    if (!selectedReleaseId || !Array.isArray(releaseVersionQuery.data)) return null
+    if (!selectedReleaseId || !Array.isArray(releaseQueryData)) return null
     const prefix = `versions.${selectedReleaseId}.`
     return new Set(
-      (releaseVersionQuery.data as string[])
+      (releaseQueryData as string[])
         .filter((id) => typeof id === 'string' && id.startsWith(prefix))
         .map((id) => id.slice(prefix.length)),
     )
-  }, [selectedReleaseId, releaseVersionQuery.data])
+  }, [selectedReleaseId, releaseQueryData])
 
   // Inline document creation
   const createConfig = typeof createDocumentConfig === 'object' ? createDocumentConfig : undefined
@@ -225,7 +247,7 @@ function SanityDocumentTableInner<T extends DocumentBase = DocumentBase>(
       return releaseDocIds.has(baseId)
     })
   }, [rawData, releaseDocIds])
-  const loading = rawLoading || (selectedReleaseId !== null && releaseVersionQuery.isPending)
+  const loading = rawLoading || (selectedReleaseId !== null && releaseQueryPending)
 
   // Watch for new data arriving after creation — reset spinner when new row appears
   const {isCreating: isCreateInFlight, resetCreating} = createHook
@@ -329,29 +351,39 @@ function SanityDocumentTableInner<T extends DocumentBase = DocumentBase>(
     if (hasSelect) return resolvedColumns
     return [baseColumn.select(), ...resolvedColumns]
   }, [resolvedColumns])
+  const hasDocumentStatusColumn = finalColumns.some((column) => column.id === '_status')
+  const tableElement = (
+    <DocumentTable<T>
+      data={data}
+      columns={finalColumns}
+      loading={loading}
+      emptyMessage={emptyMessage}
+      stripedRows={stripedRows}
+      defaultSort={sorting?.current ?? defaultSort}
+      onRowClick={onRowClick}
+      bulkActions={wrappedBulkActions}
+      onSelectionChange={onSelectionChange}
+      reorderable={reorderable}
+      columnOrder={columnOrder}
+      onColumnOrderChange={onColumnOrderChange}
+      onCreateDocument={isCreateEnabled ? createHook.create : undefined}
+      createButtonText={isCreateEnabled ? createButtonText : undefined}
+      isCreating={createHook.isCreating}
+      computedFilters={computedFilters}
+    />
+  )
 
   return (
     <PortalProvider>
       <div>
         {releases && <ReleaseHeaderWithPicker />}
-        <DocumentTable<T>
-          data={data}
-          columns={finalColumns}
-          loading={loading}
-          emptyMessage={emptyMessage}
-          stripedRows={stripedRows}
-          defaultSort={sorting?.current ?? defaultSort}
-          onRowClick={onRowClick}
-          bulkActions={wrappedBulkActions}
-          onSelectionChange={onSelectionChange}
-          reorderable={reorderable}
-          columnOrder={columnOrder}
-          onColumnOrderChange={onColumnOrderChange}
-          onCreateDocument={isCreateEnabled ? createHook.create : undefined}
-          createButtonText={isCreateEnabled ? createButtonText : undefined}
-          isCreating={createHook.isCreating}
-          computedFilters={computedFilters}
-        />
+        {hasDocumentStatusColumn ? (
+          <DocumentStatusBatchTable rows={data as DocumentBase[] | undefined}>
+            {tableElement}
+          </DocumentStatusBatchTable>
+        ) : (
+          tableElement
+        )}
         {pagination && <PaginationControls pagination={pagination} loading={loading} />}
         {publishDialogDocs && (
           <PublishConfirmDialog
@@ -364,6 +396,18 @@ function SanityDocumentTableInner<T extends DocumentBase = DocumentBase>(
       </div>
     </PortalProvider>
   )
+}
+
+function DocumentStatusBatchTable({
+  rows,
+  children,
+}: {
+  rows: Array<Pick<DocumentBase, '_id'>> | undefined
+  children: React.ReactNode
+}) {
+  const statusBatch = useDocumentStatusBatch(rows)
+
+  return <DocumentStatusBatchProvider value={statusBatch}>{children}</DocumentStatusBatchProvider>
 }
 
 /**

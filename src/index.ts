@@ -41,6 +41,17 @@ export type {SDKEditHandlerResult} from './useSDKEditHandler'
 
 // Dialog components
 export {CreateReleaseDialog} from './CreateReleaseDialog'
+export {
+  DocumentStatusBatchProvider,
+  useOptionalDocumentStatusBatchContext,
+} from './DocumentStatusBatchContext'
+export type {
+  ActiveReleaseSnapshot,
+  DocumentStatusBatchContextValue,
+  DocumentStatusMap,
+  DocumentStatusSnapshot,
+} from './DocumentStatusBatchContext'
+export {useDocumentStatusBatch, normalizeBaseDocumentId} from './useDocumentStatusBatch'
 
 // Composable cell components — use in column.custom() for custom columns
 export {DocumentStatusCell} from './DocumentStatusCell'
