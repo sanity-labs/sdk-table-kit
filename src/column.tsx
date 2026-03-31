@@ -293,6 +293,8 @@ export const column = {
       field,
       projection,
       cell,
+      _referencePreview: preview,
+      _referenceType: referenceType,
       ...(sortable != null && {sortable}),
       ...(filterable != null && {filterable}),
       ...(groupable != null && {groupable}),

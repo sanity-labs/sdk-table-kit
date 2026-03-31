@@ -2,14 +2,52 @@
 // Re-exports everything from @sanetti/sanity-table-kit + SDK additions
 
 // Re-export base table-kit
-export {DocumentTable, BadgeCell} from '@sanetti/sanity-table-kit'
+export {
+  DocumentTable,
+  BadgeCell,
+  filter,
+  useFilterPresets,
+  useFilterUrlState,
+} from '@sanetti/sanity-table-kit'
 export type {BadgeCellProps, BadgeColorMap, BadgeColorMapEntry} from '@sanetti/sanity-table-kit'
 export type {
+  BaseFilterOptions,
+  BaseFilterDef,
+  BooleanFilterDef,
+  BooleanFilterOptions,
   ColumnDef,
+  CustomFilterComponentProps,
+  CustomFilterControl,
+  CustomFilterDef,
+  CustomFilterOptions,
+  CustomFilterQueryContext,
+  CustomFilterQueryResult,
+  CustomFilterValueType,
+  DateFilterDef,
+  DateFilterOptions,
   SortConfig,
   DocumentBase,
   SelectionConfig,
   DocumentTableProps,
+  FieldFilterOptions,
+  FieldFilterDef,
+  FilterDef,
+  FilterKind,
+  FilterOperatorByKind,
+  FilterOption,
+  FilterPreset,
+  FilterValueByKind,
+  NumberFilterDef,
+  NumberFilterOptions,
+  ReferenceFilterDef,
+  ReferenceFilterOptions,
+  ReferenceFilterSourceOptions,
+  SearchFieldPath,
+  SearchFilterDef,
+  SearchFilterOptions,
+  StringFilterDef,
+  StringFilterOptions,
+  UseFilterUrlStateResult,
 } from '@sanetti/sanity-table-kit'
 
 // Unified column namespace — base + SDK helpers in one object

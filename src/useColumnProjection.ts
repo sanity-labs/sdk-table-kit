@@ -34,6 +34,10 @@ export interface SanityColumnDef<TDocument extends DocumentBase = DocumentBase> 
 > {
   /** Custom GROQ projection expression for this column. */
   projection?: string
+  /** Internal preview metadata reused by reference filters when available. */
+  _referencePreview?: Required<Pick<PreviewConfig, 'select' | 'prepare'>>
+  /** Internal reference target type metadata reused by reference-aware features. */
+  _referenceType?: string
   /** SDK-specific edit metadata for reference columns. */
   edit?: SanityColumnEditConfig<TDocument>
 }

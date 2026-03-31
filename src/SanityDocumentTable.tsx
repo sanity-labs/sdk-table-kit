@@ -1,12 +1,15 @@
 import {DocumentTable} from '@sanetti/sanity-table-kit'
 import type {
   ColumnDef,
+  FilterDef,
   SortConfig,
+  UseFilterUrlStateResult,
   DocumentBase,
   SelectionConfig,
   ComputedFilterConfig,
 } from '@sanetti/sanity-table-kit'
 import {column as baseColumn} from '@sanetti/sanity-table-kit'
+import {mapFilterValuesToInitialValues, useFilterUrlState} from '@sanetti/sanity-table-kit'
 import {PublishIcon} from '@sanity/icons'
 import {publishDocument} from '@sanity/sdk'
 import {useApplyDocumentActions, useQuery} from '@sanity/sdk-react'
@@ -17,6 +20,7 @@ import React from 'react'
 import {useCallback, useEffect, useMemo, useRef, useState, type ReactNode} from 'react'
 
 import {AddToReleaseButton} from './AddToReleaseButton'
+import {compileFilters} from './compileFilters'
 import {CreateReleaseDialog} from './CreateReleaseDialog'
 import {DocumentStatusBatchProvider} from './DocumentStatusBatchContext'
 import {getServerSortableColumnIds} from './getServerSortableColumnIds'
@@ -26,6 +30,7 @@ import {ReleaseProvider, useOptionalReleaseContext} from './ReleaseContext'
 import {ReleaseHeader} from './ReleaseHeader'
 import {ReleasePicker} from './ReleasePicker'
 import {resolveColumnAliases} from './resolveColumnAliases'
+import {ServerFilterBar} from './ServerFilterBar'
 import {useCreateDocument, type CreateDocumentConfig} from './useCreateDocument'
 import {useDocumentStatusBatch} from './useDocumentStatusBatch'
 import {useResolvedColumns} from './useResolvedColumns'
@@ -58,6 +63,17 @@ export interface SanityDocumentTableProps<T extends DocumentBase = DocumentBase>
    * @example { userId: currentUser.id }
    */
   params?: Record<string, unknown>
+  /**
+   * Explicit server-backed filters rendered above the table.
+   * These are compiled into GROQ and merged with the low-level `filter` prop.
+   */
+  filters?: FilterDef[]
+  /**
+   * Optional shared filter state source of truth.
+   * Useful when another surface such as stats cards or presets should apply the
+   * same URL-backed filter state the table itself uses.
+   */
+  filterState?: UseFilterUrlStateResult
 
   // === Columns (required) ===
   /** Column definitions. Fields are treated as GROQ projection expressions. */
@@ -179,6 +195,8 @@ function SanityDocumentTableInner<T extends DocumentBase = DocumentBase>(
     documentType,
     filter,
     params,
+    filters,
+    filterState: controlledFilterState,
     columns,
     pageSize,
     pageSizeOptions,
@@ -216,17 +234,43 @@ function SanityDocumentTableInner<T extends DocumentBase = DocumentBase>(
     )
   }, [selectedReleaseId, releaseQueryData])
 
+  const internalFilterState = useFilterUrlState(filters)
+  const filterState = controlledFilterState ?? internalFilterState
+  const compiledFilters = useMemo(
+    () =>
+      compileFilters(filters, {
+        documentType,
+        values: filterState.values,
+        params,
+      }),
+    [documentType, filterState.values, filters, params],
+  )
+
   // Inline document creation
   const createConfig = typeof createDocumentConfig === 'object' ? createDocumentConfig : undefined
   const docTypeStr = Array.isArray(documentType) ? documentType[0] : documentType
+  const activeCreateFilters = useMemo(
+    () => mapFilterValuesToInitialValues(filters, filterState.values),
+    [filterState.values, filters],
+  )
   const createHook = useCreateDocument({
     documentType: docTypeStr,
     initialValues: createConfig?.initialValues,
+    activeFilters: Object.keys(activeCreateFilters).length > 0 ? activeCreateFilters : undefined,
   })
   const isCreateEnabled = !!createDocumentConfig
   const createButtonText = createConfig?.buttonText || `Add ${docTypeStr}`
-
-  const combinedFilter = filter || undefined
+  const combinedFilter = useMemo(() => {
+    if (filter && compiledFilters.groq) return `(${filter}) && (${compiledFilters.groq})`
+    return filter ?? compiledFilters.groq ?? undefined
+  }, [compiledFilters.groq, filter])
+  const combinedParams = useMemo(
+    () => ({
+      ...(params ?? {}),
+      ...compiledFilters.params,
+    }),
+    [compiledFilters.params, params],
+  )
 
   // Generate data using ORIGINAL columns (with raw field expressions like 'web.dueDate')
   // so useColumnProjection generates correct GROQ: "dueDate": web.dueDate
@@ -245,7 +289,7 @@ function SanityDocumentTableInner<T extends DocumentBase = DocumentBase>(
     defaultSort,
     projection,
     perspective,
-    params,
+    params: combinedParams,
   })
 
   // Client-side filter: when a release is selected, only show documents in that release
@@ -393,6 +437,7 @@ function SanityDocumentTableInner<T extends DocumentBase = DocumentBase>(
       createButtonText={isCreateEnabled ? createButtonText : undefined}
       isCreating={createHook.isCreating}
       computedFilters={computedFilters}
+      hideFilterBar={!!filters?.length}
     />
   )
 
@@ -400,6 +445,13 @@ function SanityDocumentTableInner<T extends DocumentBase = DocumentBase>(
     <PortalProvider>
       <div>
         {releases && <ReleaseHeaderWithPicker />}
+        {filters && filters.length > 0 && (
+          <ServerFilterBar
+            filterState={filterState}
+            filters={filters}
+            columns={columns as ColumnDef[]}
+          />
+        )}
         {hasDocumentStatusColumn ? (
           <DocumentStatusBatchTable rows={data as DocumentBase[] | undefined}>
             {tableElement}
