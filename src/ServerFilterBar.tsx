@@ -59,7 +59,7 @@ export function ServerFilterBar({filterState, filters, columns}: ServerFilterBar
   if (visibleFilters.length === 0) return null
 
   return (
-    <Stack space={3}>
+    <Stack space={3} marginBottom={3}>
       <Flex gap={4} wrap="wrap" align="center">
         {visibleFilters.map((filterDef) => (
           <FilterControl
@@ -174,7 +174,7 @@ function SearchFilterControl({
   }, [draftValue, filterDef, filterState])
 
   return (
-    <Stack space={2} className="max-w-sm">
+    <Stack space={2} style={{marginLeft: 'auto'}}>
       <Label size={2} muted>
         {filterDef.label}
       </Label>
