@@ -20,6 +20,10 @@ const mockArticles = [
   {_id: 'article-2', _type: 'article', title: 'Second Article', _updatedAt: '2026-01-02'},
   {_id: 'article-3', _type: 'article', title: 'Third Article', _updatedAt: '2026-01-03'},
 ]
+const mockHandles = mockArticles.map((article) => ({
+  documentId: article._id,
+  documentType: article._type,
+}))
 
 const testColumns = [column.title(), column.type(), column.updatedAt()]
 
@@ -28,12 +32,17 @@ describe('useSanityTableData', () => {
     vi.clearAllMocks()
     // Default mock: usePaginatedDocuments returns data
     mockUsePaginatedDocuments.mockReturnValue({
-      data: mockArticles,
+      data: mockHandles,
       isPending: false,
       hasNextPage: false,
       hasPreviousPage: false,
-      fetchNextPage: vi.fn(),
-      fetchPreviousPage: vi.fn(),
+      count: mockArticles.length,
+      currentPage: 1,
+      nextPage: vi.fn(),
+      pageSize: 25,
+      previousPage: vi.fn(),
+      setPageSize: vi.fn(),
+      totalPages: 1,
     })
     // Default mock: useQuery returns data
     mockUseQuery.mockReturnValue({
@@ -57,8 +66,7 @@ describe('useSanityTableData', () => {
         pageSize: 25,
       }),
     )
-    // Should NOT call useQuery when documentType is provided with pageSize
-    expect(mockUseQuery).not.toHaveBeenCalled()
+    expect(mockUseQuery).toHaveBeenCalled()
   })
 
   it('Behavior 2: returns data array from SDK hook response', () => {
@@ -80,8 +88,13 @@ describe('useSanityTableData', () => {
       isPending: true,
       hasNextPage: false,
       hasPreviousPage: false,
-      fetchNextPage: vi.fn(),
-      fetchPreviousPage: vi.fn(),
+      count: 0,
+      currentPage: 1,
+      nextPage: vi.fn(),
+      pageSize: 25,
+      previousPage: vi.fn(),
+      setPageSize: vi.fn(),
+      totalPages: 1,
     })
 
     const {result} = renderHook(() =>
@@ -104,7 +117,13 @@ describe('useSanityTableData', () => {
     )
 
     expect(mockUseQuery).toHaveBeenCalled()
-    expect(mockUsePaginatedDocuments).not.toHaveBeenCalled()
+    expect(mockUsePaginatedDocuments).toHaveBeenCalledWith(
+      expect.objectContaining({
+        documentType: [],
+        filter: '_id == "___never___"',
+        pageSize: 1,
+      }),
+    )
   })
 
   it('Behavior 5: uses useQuery when filter prop is provided', () => {
@@ -117,12 +136,12 @@ describe('useSanityTableData', () => {
     )
 
     expect(mockUseQuery).toHaveBeenCalled()
-    const callArgs = mockUseQuery.mock.calls[0][0]
+    const callArgs = mockUseQuery.mock.calls.at(-1)?.[0]
     expect(callArgs.query).toContain('status != "archived"')
     expect(callArgs.params).toEqual(expect.objectContaining({docType: 'article'}))
   })
 
-  it('Behavior 6: auto-generates projection from columns', () => {
+  it('Behavior 6: auto-generates projection for the paged projection query', () => {
     renderHook(() =>
       useSanityTableData({
         documentType: 'article',
@@ -131,12 +150,11 @@ describe('useSanityTableData', () => {
       }),
     )
 
-    // The projection should be passed to the SDK hook
-    const callArgs = mockUsePaginatedDocuments.mock.calls[0][0]
-    expect(callArgs.projection).toBe('{ _id, _type, title, _updatedAt }')
+    const callArgs = mockUseQuery.mock.calls[0][0]
+    expect(callArgs.query).toBe('*[_id in $documentIds]{ _id, _type, title, _updatedAt }')
   })
 
-  it('Behavior 7: projection override bypasses auto-generation', () => {
+  it('Behavior 7: projection override bypasses auto-generation in the paged projection query', () => {
     renderHook(() =>
       useSanityTableData({
         documentType: 'article',
@@ -146,8 +164,8 @@ describe('useSanityTableData', () => {
       }),
     )
 
-    const callArgs = mockUsePaginatedDocuments.mock.calls[0][0]
-    expect(callArgs.projection).toBe('{ _id, title, customField }')
+    const callArgs = mockUseQuery.mock.calls[0][0]
+    expect(callArgs.query).toBe('*[_id in $documentIds]{ _id, title, customField }')
   })
 
   it('Behavior 8: forwards pageSize to usePaginatedDocuments', () => {
@@ -166,7 +184,7 @@ describe('useSanityTableData', () => {
     )
   })
 
-  it('Behavior 9: defaults pageSize to 25 when not specified but documentType is', () => {
+  it('Behavior 9: uses query mode when pageSize is not specified', () => {
     renderHook(() =>
       useSanityTableData({
         documentType: 'article',
@@ -174,11 +192,30 @@ describe('useSanityTableData', () => {
       }),
     )
 
-    // With documentType and no explicit pageSize, should still use paginated with default 25
     expect(mockUsePaginatedDocuments).toHaveBeenCalledWith(
       expect.objectContaining({
-        pageSize: 25,
+        documentType: [],
+        filter: '_id == "___never___"',
+        pageSize: 1,
       }),
     )
+    expect(mockUseQuery).toHaveBeenCalled()
+  })
+
+  it('Behavior 10: exposes pageSize and setPageSize on pagination state', () => {
+    const onPageSizeChange = vi.fn()
+
+    const {result} = renderHook(() =>
+      useSanityTableData({
+        documentType: 'article',
+        columns: testColumns,
+        pageSize: 25,
+        onPageSizeChange,
+      }),
+    )
+
+    expect(result.current.pagination?.pageSize).toBe(25)
+    result.current.pagination?.setPageSize(10)
+    expect(onPageSizeChange).toHaveBeenCalledWith(10)
   })
 })

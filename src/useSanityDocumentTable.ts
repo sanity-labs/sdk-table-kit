@@ -1,4 +1,5 @@
 import type {ColumnDef, DocumentBase, DocumentTableProps} from '@sanetti/sanity-table-kit'
+import {useMemo} from 'react'
 
 import {getServerSortableColumnIds} from './getServerSortableColumnIds'
 import type {PaginationControlsProps} from './PaginationControls'
@@ -52,9 +53,10 @@ export function useSanityDocumentTable<T extends DocumentBase = DocumentBase>(
   config: SanityTableDataConfig & {
     /** Message displayed when no documents found. */
     emptyMessage?: string
+    pageSizeOptions?: number[]
   },
 ): SanityDocumentTableHookResult<T> {
-  const {columns, emptyMessage = 'No documents found', ...dataConfig} = config
+  const {columns, emptyMessage = 'No documents found', pageSizeOptions, ...dataConfig} = config
 
   // Resolve column aliases before data fetching and rendering
   const aliasedColumns = resolveColumnAliases(columns as ColumnDef[])
@@ -73,7 +75,7 @@ export function useSanityDocumentTable<T extends DocumentBase = DocumentBase>(
     columns: resolvedColumns,
     loading: result.loading,
     ...(result.transitionLoading &&
-      config.pageSize && {transitionLoadingRowCount: config.pageSize}),
+      result.pagination && {transitionLoadingRowCount: result.pagination.pageSize}),
     emptyMessage,
     ...(result.sorting?.current && {defaultSort: result.sorting.current}),
     ...(result.sorting && {
@@ -94,11 +96,15 @@ export function useSanityDocumentTable<T extends DocumentBase = DocumentBase>(
     totalCount: 0,
     nextPage: () => {},
     previousPage: () => {},
+    pageSize: config.pageSize ?? 25,
+    setPageSize: () => {},
+    goToPage: () => {},
   }
 
   const paginationProps: PaginationControlsProps = {
     pagination: safePagination,
     loading: result.loading,
+    pageSizeOptions,
   }
 
   return {

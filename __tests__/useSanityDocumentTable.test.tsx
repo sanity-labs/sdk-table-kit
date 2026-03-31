@@ -44,6 +44,10 @@ const mockArticles = [
   {_id: 'article-1', _type: 'article', title: 'First', _updatedAt: '2026-01-01'},
   {_id: 'article-2', _type: 'article', title: 'Second', _updatedAt: '2026-01-02'},
 ]
+const mockHandles = mockArticles.map((article) => ({
+  documentId: article._id,
+  documentType: article._type,
+}))
 
 const testColumns = [column.title(), column.updatedAt()]
 
@@ -51,15 +55,21 @@ describe('useSanityDocumentTable', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUsePaginatedDocuments.mockReturnValue({
-      data: mockArticles,
+      data: mockHandles,
       isPending: false,
       hasNextPage: true,
       hasPreviousPage: false,
-      fetchNextPage: vi.fn(),
-      fetchPreviousPage: vi.fn(),
-      totalCount: 50,
+      count: 50,
       currentPage: 1,
+      nextPage: vi.fn(),
+      pageSize: 25,
+      previousPage: vi.fn(),
+      setPageSize: vi.fn(),
       totalPages: 2,
+    })
+    mockUseQuery.mockReturnValue({
+      data: mockArticles,
+      isPending: false,
     })
   })
 
@@ -89,6 +99,7 @@ describe('useSanityDocumentTable', () => {
 
     expect(result.current.paginationProps).toBeDefined()
     expect(result.current.paginationProps.pagination.currentPage).toBe(1)
+    expect(result.current.paginationProps.pagination.pageSize).toBe(25)
     expect(result.current.paginationProps.pagination.totalPages).toBe(2)
     expect(result.current.paginationProps.loading).toBe(false)
   })
@@ -143,5 +154,18 @@ describe('useSanityDocumentTable', () => {
     expect(screen.getByText('My Custom Header')).toBeInTheDocument()
     expect(screen.getByRole('table')).toBeInTheDocument()
     expect(screen.getByText(/Page 1 of 2/)).toBeInTheDocument()
+  })
+
+  it('Behavior 6: paginationProps forwards page size options', () => {
+    const {result} = renderHook(() =>
+      useSanityDocumentTable({
+        documentType: 'article',
+        columns: testColumns,
+        pageSize: 25,
+        pageSizeOptions: [10, 25, 50],
+      }),
+    )
+
+    expect(result.current.paginationProps.pageSizeOptions).toEqual([10, 25, 50])
   })
 })

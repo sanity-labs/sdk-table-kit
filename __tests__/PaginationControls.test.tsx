@@ -7,6 +7,7 @@ import {PaginationControls} from '../src/PaginationControls'
 
 const mockNextPage = vi.fn()
 const mockPreviousPage = vi.fn()
+const mockSetPageSize = vi.fn()
 
 function makePagination(overrides = {}) {
   return {
@@ -15,6 +16,8 @@ function makePagination(overrides = {}) {
     hasNextPage: true,
     hasPreviousPage: true,
     totalCount: 125,
+    pageSize: 20,
+    setPageSize: mockSetPageSize,
     nextPage: mockNextPage,
     previousPage: mockPreviousPage,
     ...overrides,
@@ -28,7 +31,9 @@ describe('PaginationControls', () => {
 
   it('Behavior 1: shows page indicator', () => {
     render(<PaginationControls pagination={makePagination()} />)
-    expect(screen.getByText('Page 2 of 5')).toBeInTheDocument()
+    expect(screen.getByText('1')).toBeInTheDocument()
+    expect(screen.getByText('2')).toBeInTheDocument()
+    expect(screen.getByText('5')).toBeInTheDocument()
   })
 
   it('Behavior 2: Next button calls nextPage', async () => {
@@ -79,5 +84,36 @@ describe('PaginationControls', () => {
     // Should render nothing
     expect(screen.queryByText('Page')).not.toBeInTheDocument()
     expect(screen.queryByText('Next')).not.toBeInTheDocument()
+  })
+
+  it('Behavior 8: changing rows per page calls setPageSize', async () => {
+    const user = userEvent.setup()
+    render(<PaginationControls pagination={makePagination()} />)
+
+    await user.selectOptions(screen.getByRole('combobox'), '50')
+    expect(mockSetPageSize).toHaveBeenCalledWith(50)
+  })
+
+  it('Behavior 9: shows all page buttons when totalPages is 6 or less', () => {
+    render(<PaginationControls pagination={makePagination({currentPage: 3, totalPages: 6})} />)
+
+    expect(screen.getByText('1')).toBeInTheDocument()
+    expect(screen.getByText('2')).toBeInTheDocument()
+    expect(screen.getByText('3')).toBeInTheDocument()
+    expect(screen.getByText('4')).toBeInTheDocument()
+    expect(screen.getByText('5')).toBeInTheDocument()
+    expect(screen.getByText('6')).toBeInTheDocument()
+    expect(screen.queryByText('...')).not.toBeInTheDocument()
+  })
+
+  it('Behavior 10: shows condensed page buttons with ellipses when totalPages exceeds 6', () => {
+    render(<PaginationControls pagination={makePagination({currentPage: 5, totalPages: 20})} />)
+
+    expect(screen.getByText('1')).toBeInTheDocument()
+    expect(screen.getByText('4')).toBeInTheDocument()
+    expect(screen.getByText('5')).toBeInTheDocument()
+    expect(screen.getByText('6')).toBeInTheDocument()
+    expect(screen.getByText('20')).toBeInTheDocument()
+    expect(screen.getAllByText('...')).toHaveLength(2)
   })
 })

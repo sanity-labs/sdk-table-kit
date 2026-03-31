@@ -1,7 +1,7 @@
 import type {ColumnDef, SortConfig} from '@sanetti/sanity-table-kit'
 // In tests, this is mocked via vi.mock('@sanity/sdk-react').
 import {usePaginatedDocuments, useQuery} from '@sanity/sdk-react'
-import {useState, useCallback, useMemo} from 'react'
+import {useState, useCallback, useEffect, useMemo} from 'react'
 
 import {useColumnProjection} from './useColumnProjection'
 
@@ -27,6 +27,8 @@ export interface SanityTableDataConfig {
   columns: ColumnDef[]
   /** Number of rows per page. Default: 25 when using usePaginatedDocuments. */
   pageSize?: number
+  /** Optional callback when the effective page size changes. */
+  onPageSizeChange?: (pageSize: number) => void
   /** Override auto-generated GROQ projection. */
   projection?: string
   /** Default sort configuration. Applied as server-side orderings in paginated mode. */
@@ -53,6 +55,9 @@ export interface PaginationState {
   hasNextPage: boolean
   hasPreviousPage: boolean
   totalCount: number
+  pageSize: number
+  setPageSize: (pageSize: number) => void
+  goToPage: (pageNumber: number) => void
   nextPage: () => void
   previousPage: () => void
 }
@@ -122,6 +127,7 @@ export function useSanityTableData<T = Record<string, unknown>>(
     filter,
     columns,
     pageSize,
+    onPageSizeChange,
     projection: projectionOverride,
     defaultSort,
     perspective,
@@ -140,23 +146,38 @@ export function useSanityTableData<T = Record<string, unknown>>(
   }, [])
   const {query, params} = buildQuery(documentType, filter, projection, currentSort, userParams)
 
-  const resolvedPageSize = pageSize ?? 25
+  const [effectivePageSize, setEffectivePageSize] = useState(pageSize ?? 25)
   const useSdkPagination = pageSize !== undefined
   const paginatedOrderings = currentSort
     ? [{field: currentSort.field, direction: currentSort.direction}]
     : undefined
 
+  useEffect(() => {
+    if (pageSize !== undefined) {
+      setEffectivePageSize(pageSize)
+    }
+  }, [pageSize])
+
+  const setPageSize = useCallback(
+    (nextPageSize: number) => {
+      setEffectivePageSize(nextPageSize)
+      onPageSizeChange?.(nextPageSize)
+    },
+    [onPageSizeChange],
+  )
+
   const paginatedDocuments = usePaginatedDocuments({
     documentType: useSdkPagination ? documentType : [],
     filter: useSdkPagination ? filter : '_id == "___never___"',
     orderings: useSdkPagination ? paginatedOrderings : undefined,
-    pageSize: useSdkPagination ? resolvedPageSize : 1,
+    pageSize: useSdkPagination ? effectivePageSize : 1,
     params: useSdkPagination ? userParams : {},
     ...(perspective && {perspective}),
   })
 
   const pageDocumentIds = useMemo(
-    () => (useSdkPagination ? paginatedDocuments.data.map((handle) => handle.documentId) : []),
+    () =>
+      useSdkPagination ? (paginatedDocuments.data?.map((handle) => handle.documentId) ?? []) : [],
     [paginatedDocuments.data, useSdkPagination],
   )
 
@@ -234,6 +255,9 @@ export function useSanityTableData<T = Record<string, unknown>>(
           hasNextPage: paginatedDocuments.hasNextPage,
           hasPreviousPage: paginatedDocuments.hasPreviousPage,
           totalCount: paginatedDocuments.count,
+          pageSize: effectivePageSize,
+          setPageSize,
+          goToPage: paginatedDocuments.goToPage,
           nextPage: paginatedDocuments.nextPage,
           previousPage: paginatedDocuments.previousPage,
         }

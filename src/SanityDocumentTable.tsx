@@ -66,6 +66,10 @@ export interface SanityDocumentTableProps<T extends DocumentBase = DocumentBase>
   // === Pagination ===
   /** Number of rows per page. Default: 25. */
   pageSize?: number
+  /** User-selectable page size options shown in the pagination controls. */
+  pageSizeOptions?: number[]
+  /** Optional callback when the effective page size changes. */
+  onPageSizeChange?: (pageSize: number) => void
 
   // === Sorting ===
   /** Default sort configuration. */
@@ -177,6 +181,8 @@ function SanityDocumentTableInner<T extends DocumentBase = DocumentBase>(
     params,
     columns,
     pageSize,
+    pageSizeOptions,
+    onPageSizeChange,
     defaultSort,
     projection,
     emptyMessage = 'No documents found',
@@ -235,6 +241,7 @@ function SanityDocumentTableInner<T extends DocumentBase = DocumentBase>(
     filter: combinedFilter,
     columns: columns as ColumnDef[],
     pageSize,
+    onPageSizeChange,
     defaultSort,
     projection,
     perspective,
@@ -363,7 +370,7 @@ function SanityDocumentTableInner<T extends DocumentBase = DocumentBase>(
       data={data}
       columns={finalColumns}
       loading={loading}
-      transitionLoadingRowCount={pagination && transitionLoading ? pageSize : undefined}
+      transitionLoadingRowCount={pagination && transitionLoading ? pagination.pageSize : undefined}
       emptyMessage={emptyMessage}
       stripedRows={stripedRows}
       defaultSort={sorting?.current ?? defaultSort}
@@ -400,7 +407,13 @@ function SanityDocumentTableInner<T extends DocumentBase = DocumentBase>(
         ) : (
           tableElement
         )}
-        {pagination && <PaginationControls pagination={pagination} loading={loading} />}
+        {pagination && (
+          <PaginationControls
+            pagination={pagination}
+            loading={loading}
+            pageSizeOptions={pageSizeOptions}
+          />
+        )}
         {publishDialogDocs && (
           <PublishConfirmDialog
             documents={publishDialogDocs}
