@@ -86,8 +86,17 @@ export function PaginationControls({
 
   return (
     <Box paddingTop={3}>
-      <Flex align="center" justify="space-between">
-        <Flex align="center" justify="center" flex={1} gap={1}>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr auto 1fr',
+          alignItems: 'center',
+          gap: '12px',
+        }}
+      >
+        <div />
+
+        <Flex align="center" justify="center" gap={1}>
           <Button
             text="Previous"
             mode="ghost"
@@ -124,7 +133,12 @@ export function PaginationControls({
           />
         </Flex>
 
-        <Flex align="center" gap={2}>
+        <Flex
+          align="center"
+          gap={2}
+          justify="flex-end"
+          style={{justifySelf: 'end', width: 'fit-content'}}
+        >
           <Text muted size={1}>
             Rows
           </Text>
@@ -132,7 +146,7 @@ export function PaginationControls({
             value={pageSize}
             disabled={loading}
             onChange={(event) => setPageSize(Number(event.currentTarget.value))}
-            style={{minWidth: '80px'}}
+            style={{minWidth: '80px', width: '80px'}}
           >
             {pageSizeOptions.map((option) => (
               <option key={option} value={option}>
@@ -141,7 +155,7 @@ export function PaginationControls({
             ))}
           </Select>
         </Flex>
-      </Flex>
+      </div>
     </Box>
   )
 }
