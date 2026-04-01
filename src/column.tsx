@@ -3,11 +3,17 @@ import type {DocumentBase} from '@sanetti/sanity-table-kit'
 import type {PreviewConfig, PreviewValue} from '@sanity/types'
 import React from 'react'
 
+import {CommentableCell} from './CommentableCell'
 import {DocumentStatusCell, getStatusSortPriority} from './DocumentStatusCell'
 import {OpenInStudioCell} from './OpenInStudioCell'
 import {PreviewCell} from './PreviewCell'
 import {ReferenceCell} from './ReferenceCell'
-import type {SanityColumnDef} from './useColumnProjection'
+import {TaskSummaryCell} from './TaskSummaryCell'
+import {
+  parseFieldExpression,
+  type CellCommentsConfig,
+  type SanityColumnDef,
+} from './useColumnProjection'
 import {UserCell} from './UserCell'
 
 /**
@@ -54,6 +60,8 @@ interface ReferenceColumnConfig<
   edit?: boolean
   /** Placeholder text for empty reference cells (e.g. "Select Author"). Defaults to "Add…". */
   placeholder?: string
+  /** Enable in-cell field comments for this column. */
+  comments?: boolean | Partial<CellCommentsConfig>
 }
 
 /**
@@ -68,6 +76,12 @@ interface UserColumnConfig {
   showName?: boolean | 'first'
   /** Fixed column width in pixels. */
   width?: number
+  /** Enable in-cell field comments for this column. */
+  comments?: boolean | Partial<CellCommentsConfig>
+}
+
+interface CommentableConfig {
+  comments?: boolean | Partial<CellCommentsConfig>
 }
 
 /**
@@ -98,6 +112,64 @@ function withRoleProps<TConfig, TResult>(
       ...(editableBy && {editableBy}),
     }
   }
+}
+
+function resolveCellComments(
+  comments: CommentableConfig['comments'],
+  field: string | undefined,
+  header: string,
+): CellCommentsConfig | undefined {
+  if (!comments) return undefined
+
+  const fallbackFieldPath = field ? parseFieldExpression(field).editPath : undefined
+
+  if (comments === true) {
+    return fallbackFieldPath ? {fieldLabel: header, fieldPath: fallbackFieldPath} : undefined
+  }
+
+  const fieldPath = comments.fieldPath ?? fallbackFieldPath
+  if (!fieldPath) return undefined
+
+  return {
+    fieldLabel: comments.fieldLabel ?? header,
+    fieldPath,
+  }
+}
+
+function finalizeColumn<T extends SanityColumnDef>(
+  columnDef: T,
+  {comments, editableBy, visibleTo}: CommentableConfig & RoleProps = {},
+): T & CommentableConfig & RoleProps {
+  const cellComments = resolveCellComments(comments, columnDef.field, columnDef.header)
+
+  return {
+    ...columnDef,
+    ...(cellComments && {
+      comments: cellComments,
+      cellDecorator: ({
+        cellPadding,
+        content,
+        row,
+      }: {
+        cellPadding: {x: number; y: number}
+        content: React.ReactNode
+        row: DocumentBase
+      }) => (
+        <CommentableCell
+          cellPadding={cellPadding}
+          commentFieldLabel={cellComments.fieldLabel}
+          commentFieldPath={cellComments.fieldPath}
+          documentId={row._id}
+          documentTitle={typeof row.title === 'string' ? row.title : undefined}
+          documentType={row._type}
+        >
+          {content}
+        </CommentableCell>
+      ),
+    }),
+    ...(visibleTo && {visibleTo}),
+    ...(editableBy && {editableBy}),
+  } as T & CommentableConfig & RoleProps
 }
 
 /**
@@ -164,7 +236,15 @@ export const column = {
   /** {@inheritDoc} */
   select: withRoleProps(baseColumn.select),
   /** {@inheritDoc} */
-  title: withRoleProps(baseColumn.title),
+  title<T extends DocumentBase = DocumentBase>(
+    config?: Parameters<typeof baseColumn.title<T>>[0] & RoleProps & CommentableConfig,
+  ): SanityColumnDef {
+    const {comments, editableBy, visibleTo, ...baseConfig} = config ?? {}
+    const col = baseColumn.title<T>(
+      baseConfig as Parameters<typeof baseColumn.title<T>>[0],
+    ) as SanityColumnDef
+    return finalizeColumn(col, {comments, editableBy, visibleTo})
+  },
   /** {@inheritDoc} */
   type: withRoleProps(baseColumn.type),
   /** {@inheritDoc} */
@@ -184,22 +264,32 @@ export const column = {
    * ```
    */
   custom<T extends DocumentBase = DocumentBase>(
-    config: Parameters<typeof baseColumn.custom<T>>[0] & {
-      /** GROQ projection expression for this column. */
-      projection?: string
-    },
+    config: Parameters<typeof baseColumn.custom<T>>[0] &
+      CommentableConfig &
+      RoleProps & {
+        /** GROQ projection expression for this column. */
+        projection?: string
+      },
   ): SanityColumnDef {
-    const {projection, ...baseConfig} = config
+    const {comments, editableBy, projection, visibleTo, ...baseConfig} = config
     const col = baseColumn.custom<T>(baseConfig)
-    if (projection) {
-      return {...col, projection} as SanityColumnDef
-    }
-    return col as SanityColumnDef
+    const nextCol = projection
+      ? ({...col, projection} as SanityColumnDef)
+      : (col as SanityColumnDef)
+    return finalizeColumn(nextCol, {comments, editableBy, visibleTo})
   },
   /** {@inheritDoc} */
   badge: withRoleProps(baseColumn.badge),
   /** {@inheritDoc} */
-  date: withRoleProps(baseColumn.date),
+  date<T extends DocumentBase = DocumentBase>(
+    config: Parameters<typeof baseColumn.date<T>>[0] & RoleProps & CommentableConfig,
+  ): SanityColumnDef {
+    const {comments, editableBy, visibleTo, ...baseConfig} = config
+    const col = baseColumn.date<T>(
+      baseConfig as Parameters<typeof baseColumn.date<T>>[0],
+    ) as SanityColumnDef
+    return finalizeColumn(col, {comments, editableBy, visibleTo})
+  },
   /** {@inheritDoc} */
   boolean: withRoleProps(baseColumn.boolean),
 
@@ -260,6 +350,7 @@ export const column = {
     TPrepareValue extends Record<keyof TSelect, unknown> = Record<keyof TSelect, unknown>,
   >(config: ReferenceColumnConfig<TSelect, TPrepareValue>): SanityColumnDef {
     const {
+      comments,
       field,
       header,
       referenceType,
@@ -287,13 +378,13 @@ export const column = {
       )
     }
 
-    return {
+    const col: SanityColumnDef = {
       id: field,
       header,
       field,
       projection,
       cell,
-      _referencePreview: preview,
+      _referencePreview: preview as Required<Pick<PreviewConfig, 'select' | 'prepare'>>,
       _referenceType: referenceType,
       ...(sortable != null && {sortable}),
       ...(filterable != null && {filterable}),
@@ -319,11 +410,12 @@ export const column = {
           _field: field,
           _referenceType: referenceType,
           // Store preview config for the edit popover to use
-          _preview: preview,
+          _preview: preview as Required<Pick<PreviewConfig, 'select' | 'prepare'>>,
           _placeholder: placeholder,
         },
       }),
     }
+    return finalizeColumn(col, {comments})
   },
 
   /**
@@ -353,8 +445,8 @@ export const column = {
    * ```
    */
   user(config: UserColumnConfig): SanityColumnDef {
-    const {field, header, showName, width} = config
-    return {
+    const {comments, field, header, showName, width} = config
+    const col: SanityColumnDef = {
       id: field,
       header,
       field,
@@ -366,6 +458,7 @@ export const column = {
         return <UserCell userId={String(value)} showName={showName} />
       },
     }
+    return finalizeColumn(col, {comments})
   },
 
   /**
@@ -398,6 +491,19 @@ export const column = {
         const docId = (row._id || '') as string
         return getStatusSortPriority(docId)
       },
+    }
+  },
+
+  /**
+   * Task summary column — shows open/closed counts for tasks targeting the document.
+   */
+  tasks(config?: {header?: string; width?: number}): SanityColumnDef {
+    return {
+      id: '_tasks',
+      header: config?.header ?? 'Tasks',
+      sortable: false,
+      width: config?.width ?? 140,
+      cell: (_value: unknown, row: DocumentBase) => <TaskSummaryCell documentId={row._id} />,
     }
   },
 }

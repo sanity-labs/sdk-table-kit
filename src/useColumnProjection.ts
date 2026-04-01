@@ -2,6 +2,11 @@ import type {ColumnDef, DocumentBase} from '@sanetti/sanity-table-kit'
 import type {PreviewConfig, PreviewValue} from '@sanity/types'
 import type {ReactNode} from 'react'
 
+export interface CellCommentsConfig {
+  fieldPath: string
+  fieldLabel?: string
+}
+
 interface SanityColumnEditConfig<
   TDocument extends DocumentBase = DocumentBase,
   TSelect extends Record<string, string> = Record<string, string>,
@@ -38,6 +43,8 @@ export interface SanityColumnDef<TDocument extends DocumentBase = DocumentBase> 
   _referencePreview?: Required<Pick<PreviewConfig, 'select' | 'prepare'>>
   /** Internal reference target type metadata reused by reference-aware features. */
   _referenceType?: string
+  /** Optional in-cell comments metadata for field-scoped comment popovers. */
+  comments?: CellCommentsConfig
   /** SDK-specific edit metadata for reference columns. */
   edit?: SanityColumnEditConfig<TDocument>
 }

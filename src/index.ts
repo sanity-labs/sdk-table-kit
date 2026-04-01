@@ -57,7 +57,11 @@ export type {PreviewConfig, PreviewValue} from '@sanity/types'
 // SDK-specific exports
 export {useColumnProjection} from './useColumnProjection'
 export {parseFieldExpression} from './useColumnProjection'
-export type {SanityColumnDef, ParsedFieldExpression} from './useColumnProjection'
+export type {
+  CellCommentsConfig,
+  SanityColumnDef,
+  ParsedFieldExpression,
+} from './useColumnProjection'
 export {resolveColumnAliases} from './resolveColumnAliases'
 export {useSanityTableData} from './useSanityTableData'
 export type {
@@ -74,8 +78,46 @@ export {PaginationControls} from './PaginationControls'
 export type {PaginationControlsProps} from './PaginationControls'
 export {PreviewCell} from './PreviewCell'
 export type {PreviewCellProps} from './PreviewCell'
+export {CommentableCell} from './CommentableCell'
+export {CommentInput} from './CommentInput'
+export type {CommentInputHandle} from './CommentInput'
+export {CommentThreadItem, EditCommentCard} from './CommentThreadItem'
 export {useSDKEditHandler} from './useSDKEditHandler'
 export type {SDKEditHandlerResult} from './useSDKEditHandler'
+export {AddonDataProvider, useAddonData, useOptionalAddonData} from './AddonDataContext'
+export {
+  buildCommentDocument,
+  buildCommentThreads,
+  buildMessageFromPlainText,
+  buildStudioUrl,
+  COMMENTS_BY_DOC_QUERY,
+  groupUnresolvedCommentsByField,
+  toPlainText,
+} from './addonCommentUtils'
+export {
+  findUserByResourceUserId,
+  getCurrentResourceUserId,
+  getResourceUserId,
+  getUserDisplayNameByResourceUserId,
+} from './addonUserUtils'
+export {useAddonComments} from './useAddonComments'
+export {useAddonCommentMutations} from './useAddonCommentMutations'
+export {useAddonTasks} from './useAddonTasks'
+export {useAddonTaskMutations} from './useAddonTaskMutations'
+export {useCurrentResourceUserId} from './useCurrentResourceUserId'
+export type {
+  AddonDataContextValue,
+  AddonMessage,
+  AddonTarget,
+  CommentDocument,
+  CommentReaction,
+  CommentStatus,
+  CrossDatasetReference,
+  TaskContext,
+  TaskDocument,
+  TaskEditPayload,
+  TaskStatus,
+} from './addonTypes'
 
 // Dialog components
 export {CreateReleaseDialog} from './CreateReleaseDialog'
