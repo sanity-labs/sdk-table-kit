@@ -122,6 +122,7 @@ function CommentableCellFrame({
   const closePopover = useCallback(() => {
     setOpen(false)
   }, [setOpen])
+  const hasOpenComments = unresolvedCount > 0
 
   useClickOutsideEvent(open ? closePopover : undefined, () => [
     popoverRef.current,
@@ -138,6 +139,7 @@ function CommentableCellFrame({
       onMouseEnter={() => onHoverChange(true)}
       onMouseLeave={() => onHoverChange(false)}
       style={{
+        boxShadow: hasOpenComments ? 'inset 0 -3px 0 rgb(249, 233, 148)' : undefined,
         margin: `${cellPadding.y * -1}px ${cellPadding.x * -1}px`,
         minHeight: `calc(100% + ${cellPadding.y * 2}px)`,
         padding: `${cellPadding.y}px ${cellPadding.x}px`,
