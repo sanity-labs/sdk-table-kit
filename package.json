@@ -17,6 +17,7 @@
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^14.6.1",
     "@types/lodash-es": "^4.17.12",
+    "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^4.3.4",
     "jsdom": "^26.0.0",
     "nuqs": "^2.8.9",
@@ -38,6 +39,8 @@
   "dependencies": {
     "@portabletext/react": "^6.0.3",
     "lodash-es": "^4.17.23",
-    "lucide-react": "^1.7.0"
+    "lucide-react": "^1.7.0",
+    "slate": "^0.124.0",
+    "slate-react": "^0.124.0"
   }
 }

@@ -1,8 +1,10 @@
+import type {SanityUser} from '@sanity/sdk-react'
 import {useUsers} from '@sanity/sdk-react'
-import {Avatar} from '@sanity/ui'
+import {Box, Button, Card, Flex, Stack, Text} from '@sanity/ui'
 import {deburr} from 'lodash-es'
-import {SendIcon} from 'lucide-react'
+import {Send} from 'lucide-react'
 import {
+  createElement,
   forwardRef,
   useCallback,
   useEffect,
@@ -11,6 +13,19 @@ import {
   useRef,
   useState,
 } from 'react'
+import {createPortal} from 'react-dom'
+import {
+  BaseEditor,
+  createEditor,
+  Editor,
+  Element as SlateElement,
+  type Descendant,
+  type Path,
+  Range,
+  Text as SlateText,
+  Transforms,
+} from 'slate'
+import {Editable, type RenderElementProps, ReactEditor, Slate, withReact} from 'slate-react'
 
 import type {AddonMessage} from './addonTypes'
 import {findUserByResourceUserId, getResourceUserId} from './addonUserUtils'
@@ -31,101 +46,199 @@ interface CommentInputProps {
   showSendButton?: boolean
 }
 
+type CommentEditorText = {text: string}
+
+interface CommentMentionElement {
+  children: [CommentEditorText]
+  type: 'mention'
+  userId: string
+}
+
+interface CommentParagraphElement {
+  children: Array<CommentEditorText | CommentMentionElement>
+  type: 'paragraph'
+}
+
 function generateKey(): string {
   return crypto.randomUUID().replace(/-/g, '').slice(0, 12)
 }
 
-function createMentionElement(userId: string, displayName: string): HTMLSpanElement {
-  const span = document.createElement('span')
-  span.setAttribute('data-mention-user-id', userId)
-  span.setAttribute('contenteditable', 'false')
-  span.style.display = 'inline-flex'
-  span.style.alignItems = 'center'
-  span.style.borderRadius = '4px'
-  span.style.padding = '0 2px'
-  span.style.fontWeight = '600'
-  span.style.color = '#2563eb'
-  span.textContent = `@${displayName}`
-  return span
-}
-
-function deserializeFromPortableText(
-  container: HTMLElement,
-  value: AddonMessage,
-  resolveMentionName: (userId: string) => string,
-) {
-  container.innerHTML = ''
-  if (!value || value.length === 0) return
-
-  for (const block of value) {
-    for (const child of block.children) {
-      if (child._type === 'mention') {
-        container.appendChild(createMentionElement(child.userId, resolveMentionName(child.userId)))
-      } else if (child._type === 'span' && child.text) {
-        container.appendChild(document.createTextNode(child.text))
-      }
-    }
-  }
-}
-
-function serializeToPortableText(container: HTMLElement): AddonMessage {
-  const children: NonNullable<AddonMessage>[0]['children'] = []
-
-  const walkNodes = (parent: Node) => {
-    for (const node of Array.from(parent.childNodes)) {
-      if (node.nodeType === Node.TEXT_NODE) {
-        const text = node.textContent ?? ''
-        if (text) {
-          children.push({_key: generateKey(), _type: 'span', text})
-        }
-      } else if (node.nodeType === Node.ELEMENT_NODE) {
-        const element = node as HTMLElement
-        const mentionUserId = element.getAttribute('data-mention-user-id')
-        if (mentionUserId) {
-          children.push({_key: generateKey(), _type: 'mention', userId: mentionUserId})
-        } else if (element.tagName !== 'BR') {
-          walkNodes(element)
-        }
-      }
-    }
-  }
-
-  walkNodes(container)
-
-  const hasContent = children.some((child) => {
-    if (child._type === 'mention') return true
-    return !!child.text.trim()
-  })
-
-  if (!hasContent) return null
-
+function createEmptyEditorValue(): Descendant[] {
   return [
     {
+      children: [{text: ''}],
+      type: 'paragraph',
+    } as unknown as Descendant,
+  ]
+}
+
+function createMentionNode(userId: string): CommentMentionElement {
+  return {
+    children: [{text: ''}],
+    type: 'mention',
+    userId,
+  }
+}
+
+function getInitials(displayName?: string): string {
+  return (displayName ?? '?')
+    .split(/\s+/)
+    .map((part) => part.charAt(0))
+    .join('')
+    .slice(0, 2)
+    .toUpperCase()
+}
+
+function addonMessageToSlateValue(value: AddonMessage): Descendant[] {
+  if (!value || value.length === 0) {
+    return createEmptyEditorValue()
+  }
+
+  const blocks = value.map<CommentParagraphElement>((block) => {
+    const children = block.children.reduce<Array<CommentEditorText | CommentMentionElement>>(
+      (acc, child) => {
+        if (child._type === 'mention') {
+          acc.push(createMentionNode(child.userId))
+        } else {
+          acc.push({text: child.text ?? ''})
+        }
+
+        return acc
+      },
+      [],
+    )
+
+    return {
+      children: children.length > 0 ? children : [{text: ''}],
+      type: 'paragraph',
+    }
+  })
+
+  return blocks.length > 0 ? blocks : createEmptyEditorValue()
+}
+
+function slateValueToAddonMessage(value: Descendant[]): AddonMessage {
+  const blocks: NonNullable<AddonMessage> = []
+
+  for (const node of value) {
+    if (!isCommentParagraphElement(node)) continue
+
+    const children: NonNullable<AddonMessage>[0]['children'] = []
+    for (const child of node.children) {
+      if (isCommentMentionElement(child)) {
+        children.push({_key: generateKey(), _type: 'mention', userId: child.userId})
+      } else if (SlateText.isText(child) && child.text) {
+        children.push({_key: generateKey(), _type: 'span', text: child.text})
+      }
+    }
+
+    blocks.push({
       _key: generateKey(),
       _type: 'block',
-      children:
-        children.length > 0 ? children : [{_key: generateKey(), _type: 'span' as const, text: ''}],
+      children: children.length > 0 ? children : [{_key: generateKey(), _type: 'span', text: ''}],
       markDefs: [],
       style: 'normal',
-    },
-  ]
+    })
+  }
+
+  const hasContent = blocks.some((block) =>
+    block.children.some((child) => child._type === 'mention' || !!child.text.trim()),
+  )
+
+  return hasContent ? blocks : null
 }
 
 function findMentionTrigger(text: string, cursorOffset: number): number {
   const beforeCursor = text.slice(0, cursorOffset)
-  for (let index = beforeCursor.length - 1; index >= 0; index -= 1) {
-    if (beforeCursor[index] !== '@') continue
-
-    const charBefore = index > 0 ? beforeCursor[index - 1] : undefined
-    if (!charBefore || charBefore === ' ' || charBefore === '\u00A0') {
-      return index
+  for (let i = beforeCursor.length - 1; i >= 0; i--) {
+    if (beforeCursor[i] === '@') {
+      const charBefore = i > 0 ? beforeCursor[i - 1] : undefined
+      if (!charBefore || charBefore === ' ' || charBefore === '\u00A0') {
+        return i
+      }
+      return -1
     }
-
-    return -1
   }
-
   return -1
 }
+
+function isCommentMentionElement(value: unknown): value is CommentMentionElement {
+  return (
+    SlateElement.isElement(value) &&
+    'type' in value &&
+    value.type === 'mention' &&
+    'userId' in value
+  )
+}
+
+function isCommentParagraphElement(value: unknown): value is CommentParagraphElement {
+  return SlateElement.isElement(value) && 'type' in value && value.type === 'paragraph'
+}
+
+function withMentions(editor: BaseEditor & ReactEditor): BaseEditor & ReactEditor {
+  const {isInline, isVoid} = editor
+
+  editor.isInline = (element) => {
+    return isCommentMentionElement(element) ? true : isInline(element)
+  }
+
+  editor.isVoid = (element) => {
+    return isCommentMentionElement(element) ? true : isVoid(element)
+  }
+
+  return editor
+}
+
+function replaceEditorValue(editor: BaseEditor & ReactEditor, value: Descendant[]) {
+  editor.children = value
+  const end = Editor.end(editor, [])
+  editor.selection = {anchor: end, focus: end}
+  editor.onChange()
+}
+
+function getMentionSearch(editor: BaseEditor & ReactEditor): null | {
+  searchTerm: string
+  target: Range
+} {
+  const {selection} = editor
+  if (!selection || !Range.isCollapsed(selection)) return null
+
+  const [leaf, path] = Editor.leaf(editor, selection.anchor)
+  if (!SlateText.isText(leaf)) return null
+
+  const cursorOffset = selection.anchor.offset
+  const atIndex = findMentionTrigger(leaf.text, cursorOffset)
+  if (atIndex < 0) return null
+
+  const searchTerm = leaf.text.slice(atIndex + 1, cursorOffset)
+  if (searchTerm.includes(' ') || searchTerm.includes('\u00A0')) return null
+
+  return {
+    searchTerm,
+    target: {
+      anchor: {offset: atIndex, path: path as Path},
+      focus: selection.anchor,
+    },
+  }
+}
+
+function editorHasContent(value: Descendant[]): boolean {
+  return value.some((node) => {
+    if (!isCommentParagraphElement(node)) return false
+
+    return node.children.some((child) => {
+      if (isCommentMentionElement(child)) return true
+      return SlateText.isText(child) && !!child.text.trim()
+    })
+  })
+}
+
+const COMMENT_INPUT_TEXT_STYLE = {
+  fontFamily: 'inherit',
+  fontSize: 14!,
+  fontWeight: 400,
+  lineHeight: '20px',
+} as const
 
 export const CommentInput = forwardRef<CommentInputHandle, CommentInputProps>(function CommentInput(
   {autoFocus, initialValue, onCancel, onSubmit, placeholder = 'Add a comment...', showSendButton},
@@ -133,203 +246,115 @@ export const CommentInput = forwardRef<CommentInputHandle, CommentInputProps>(fu
 ) {
   const {data: users = []} = useUsers()
   const rootRef = useRef<HTMLDivElement>(null)
-  const editableRef = useRef<HTMLDivElement>(null)
-  const [hasContent, setHasContent] = useState(false)
-  const [mentionsOpen, setMentionsOpen] = useState(false)
-  const [mentionsSearchTerm, setMentionsSearchTerm] = useState('')
+  const [editor] = useState(() => {
+    const nextEditor = withMentions(withReact(createEditor()))
+    nextEditor.children = addonMessageToSlateValue(initialValue ?? null)
+    return nextEditor
+  })
+  const [editorVersion, setEditorVersion] = useState(0)
+  const [isFocused, setIsFocused] = useState(false)
+  const [mentionState, setMentionState] = useState<null | {searchTerm: string; target: Range}>(null)
   const [cursorRect, setCursorRect] = useState<DOMRect | null>(null)
 
   const resolveMentionName = useCallback(
     (userId: string) => {
-      return findUserByResourceUserId(userId, users)?.profile?.displayName ?? userId
+      const user = findUserByResourceUserId(userId, users)
+      return user?.profile?.displayName ?? userId
     },
     [users],
   )
 
   useEffect(() => {
-    if (editableRef.current && initialValue) {
-      deserializeFromPortableText(editableRef.current, initialValue, resolveMentionName)
-      setHasContent(true)
-    }
-  }, [initialValue, resolveMentionName])
+    replaceEditorValue(editor, addonMessageToSlateValue(initialValue ?? null))
+    setEditorVersion((prev) => prev + 1)
+  }, [editor, initialValue])
 
   useEffect(() => {
-    if (!autoFocus || !editableRef.current) return
+    if (!autoFocus) return
 
-    const element = editableRef.current
-    element.focus()
-    const selection = window.getSelection()
-    if (selection && element.childNodes.length > 0) {
-      selection.selectAllChildren(element)
-      selection.collapseToEnd()
+    queueMicrotask(() => {
+      ReactEditor.focus(editor)
+      Transforms.select(editor, Editor.end(editor, []))
+    })
+  }, [autoFocus, editor])
+
+  useEffect(() => {
+    if (!mentionState) {
+      setCursorRect(null)
+      return
     }
-  }, [autoFocus])
 
-  const updateHasContent = useCallback(() => {
-    if (!editableRef.current) return
+    try {
+      const domRange = ReactEditor.toDOMRange(editor, mentionState.target)
+      setCursorRect(domRange.getBoundingClientRect())
+    } catch {
+      setCursorRect(null)
+    }
+  }, [editor, editorVersion, mentionState])
 
-    const text = editableRef.current.textContent?.trim() ?? ''
-    const hasMentions = editableRef.current.querySelector('[data-mention-user-id]') !== null
-    setHasContent(text.length > 0 || hasMentions)
+  const closeMentions = useCallback(() => {
+    setMentionState(null)
   }, [])
+
+  const updateMentionSearch = useCallback(() => {
+    setMentionState(getMentionSearch(editor))
+  }, [editor])
 
   const getValue = useCallback((): AddonMessage => {
-    if (!editableRef.current) return null
-    return serializeToPortableText(editableRef.current)
-  }, [])
+    return slateValueToAddonMessage(editor.children as Descendant[])
+  }, [editor])
 
-  const isEmpty = useCallback(() => !getValue(), [getValue])
+  const isEmpty = useCallback((): boolean => !getValue(), [getValue])
 
   const clearEditor = useCallback(() => {
-    if (!editableRef.current) return
-    editableRef.current.innerHTML = ''
-    setHasContent(false)
-  }, [])
+    replaceEditorValue(editor, createEmptyEditorValue())
+    closeMentions()
+    setEditorVersion((prev) => prev + 1)
+  }, [closeMentions, editor])
 
   useImperativeHandle(
     ref,
     () => ({
       clear: clearEditor,
-      focus: () => editableRef.current?.focus(),
+      focus: () => {
+        ReactEditor.focus(editor)
+        Transforms.select(editor, Editor.end(editor, []))
+      },
       getValue,
       isEmpty,
     }),
-    [clearEditor, getValue, isEmpty],
+    [clearEditor, editor, getValue, isEmpty],
   )
-
-  const closeMentions = useCallback(() => {
-    setMentionsOpen(false)
-    setMentionsSearchTerm('')
-  }, [])
 
   const insertMention = useCallback(
     (userId: string) => {
-      const editable = editableRef.current
-      if (!editable) {
+      if (!mentionState) {
         closeMentions()
         return
       }
 
-      const selection = window.getSelection()
-      if (!selection || selection.rangeCount === 0) {
-        closeMentions()
-        return
-      }
-
-      const range = selection.getRangeAt(0)
-      const textNode = range.startContainer
-      if (textNode.nodeType !== Node.TEXT_NODE) {
-        closeMentions()
-        return
-      }
-
-      const text = textNode.textContent ?? ''
-      const cursorOffset = range.startOffset
-      const atIndex = findMentionTrigger(text, cursorOffset)
-
-      if (atIndex < 0) {
-        closeMentions()
-        return
-      }
-
-      const displayName = resolveMentionName(userId)
-      const mentionElement = createMentionElement(userId, displayName)
-      const beforeText = text.slice(0, atIndex)
-      const afterText = text.slice(cursorOffset)
-      const parent = textNode.parentNode
-      if (!parent) {
-        closeMentions()
-        return
-      }
-
-      const fragment = document.createDocumentFragment()
-      if (beforeText) fragment.appendChild(document.createTextNode(beforeText))
-      fragment.appendChild(mentionElement)
-
-      const trailingText = `\u00A0${afterText}`
-      const trailingNode = document.createTextNode(trailingText)
-      fragment.appendChild(trailingNode)
-
-      parent.replaceChild(fragment, textNode)
-
-      const newRange = document.createRange()
-      newRange.setStart(trailingNode, 1)
-      newRange.collapse(true)
-      selection.removeAllRanges()
-      selection.addRange(newRange)
-
+      ReactEditor.focus(editor)
+      Transforms.select(editor, mentionState.target)
+      Transforms.insertNodes(editor, [createMentionNode(userId), {text: ' '}])
+      Transforms.collapse(editor, {edge: 'end'})
       closeMentions()
-      updateHasContent()
-      editable.focus()
+      setEditorVersion((prev) => prev + 1)
     },
-    [closeMentions, resolveMentionName, updateHasContent],
+    [closeMentions, editor, mentionState],
   )
-
-  const handleInput = useCallback(() => {
-    updateHasContent()
-
-    const selection = window.getSelection()
-    if (!selection || selection.rangeCount === 0 || !selection.isCollapsed) {
-      if (mentionsOpen) closeMentions()
-      return
-    }
-
-    const range = selection.getRangeAt(0)
-    const textNode = range.startContainer
-    if (textNode.nodeType !== Node.TEXT_NODE) {
-      if (mentionsOpen) closeMentions()
-      return
-    }
-
-    const text = textNode.textContent ?? ''
-    const cursorOffset = range.startOffset
-    const atIndex = findMentionTrigger(text, cursorOffset)
-
-    if (atIndex < 0) {
-      if (mentionsOpen) closeMentions()
-      return
-    }
-
-    const searchTerm = text.slice(atIndex + 1, cursorOffset)
-    if (searchTerm.includes(' ') || searchTerm.includes('\u00A0')) {
-      if (mentionsOpen) closeMentions()
-      return
-    }
-
-    if (!mentionsOpen) setMentionsOpen(true)
-    setMentionsSearchTerm(searchTerm)
-  }, [closeMentions, mentionsOpen, updateHasContent])
-
-  useEffect(() => {
-    const handler = () => {
-      const selection = window.getSelection()
-      if (!selection?.isCollapsed || selection.rangeCount === 0) return
-      const range = selection.getRangeAt(0)
-      if (rootRef.current?.contains(range.commonAncestorContainer)) {
-        setCursorRect(range.getBoundingClientRect())
-      }
-    }
-
-    document.addEventListener('selectionchange', handler)
-    return () => document.removeEventListener('selectionchange', handler)
-  }, [])
 
   const handleKeyDown = useCallback(
     (event: React.KeyboardEvent) => {
-      if (mentionsOpen) {
+      if (mentionState) {
         if (event.key === 'Escape' || event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
           event.preventDefault()
           closeMentions()
           return
         }
         if (event.key === 'ArrowUp' || event.key === 'ArrowDown' || event.key === 'Enter') {
+          event.preventDefault()
           return
         }
-      }
-
-      if (event.key === 'Enter' && !event.metaKey && !event.ctrlKey) {
-        event.preventDefault()
-        return
       }
 
       if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
@@ -340,11 +365,16 @@ export const CommentInput = forwardRef<CommentInputHandle, CommentInputProps>(fu
         return
       }
 
+      if (event.key === 'Enter') {
+        event.preventDefault()
+        return
+      }
+
       if (event.key === 'Escape' && onCancel) {
         onCancel()
       }
     },
-    [closeMentions, getValue, isEmpty, mentionsOpen, onCancel, onSubmit],
+    [closeMentions, getValue, isEmpty, mentionState, onCancel, onSubmit],
   )
 
   const handleSend = useCallback(() => {
@@ -354,139 +384,189 @@ export const CommentInput = forwardRef<CommentInputHandle, CommentInputProps>(fu
   }, [getValue, isEmpty, onSubmit])
 
   const handleAtButton = useCallback(() => {
-    const editable = editableRef.current
-    if (!editable) return
-
-    editable.focus()
-    const selection = window.getSelection()
-    if (selection && selection.rangeCount > 0) {
-      const range = selection.getRangeAt(0)
-      range.deleteContents()
-      const textNode = document.createTextNode('@')
-      range.insertNode(textNode)
-      range.setStartAfter(textNode)
-      range.collapse(true)
-      selection.removeAllRanges()
-      selection.addRange(range)
+    ReactEditor.focus(editor)
+    if (!editor.selection) {
+      Transforms.select(editor, Editor.end(editor, []))
     }
 
-    setMentionsOpen(true)
-    setMentionsSearchTerm('')
-    updateHasContent()
-  }, [updateHasContent])
+    Transforms.insertText(editor, '@')
+    updateMentionSearch()
+    setEditorVersion((prev) => prev + 1)
+  }, [editor, updateMentionSearch])
 
-  const handlePaste = useCallback((event: React.ClipboardEvent) => {
-    event.preventDefault()
-    const text = event.clipboardData.getData('text/plain').replace(/[\r\n]+/g, ' ')
-    document.execCommand('insertText', false, text)
-  }, [])
+  const handlePaste = useCallback(
+    (event: React.ClipboardEvent) => {
+      event.preventDefault()
+      const text = event.clipboardData.getData('text/plain')
+      Transforms.insertText(editor, text.replace(/[\r\n]+/g, ' '))
+    },
+    [editor],
+  )
 
-  const showPlaceholder = !hasContent
+  const hasContent = editorHasContent(editor.children as Descendant[])
+  const isEditorActive = isFocused || !!mentionState
+
+  const renderElement = useCallback(
+    ({attributes, children, element}: RenderElementProps) => {
+      if (isCommentMentionElement(element)) {
+        return createElement(
+          'span',
+          {
+            ...attributes,
+            contentEditable: false,
+            'data-mention-user-id': element.userId,
+            style: {
+              alignItems: 'center',
+              borderRadius: '4px',
+              color: '#2563eb',
+              display: 'inline-flex',
+              fontWeight: 600,
+              padding: '0 2px',
+            },
+          },
+          children,
+          createElement('span', null, `@${resolveMentionName(element.userId)}`),
+        )
+      }
+
+      return (
+        <p
+          {...attributes}
+          style={{
+            display: 'block',
+            fontFamily: 'inherit',
+            fontSize: 'inherit',
+            fontWeight: 'inherit',
+            lineHeight: 'inherit',
+            margin: 0,
+            maxWidth: '100%',
+            minWidth: 0,
+            overflowWrap: 'anywhere',
+            whiteSpace: 'pre-wrap',
+            width: '100%',
+            wordBreak: 'break-word',
+          }}
+        >
+          {children}
+        </p>
+      )
+    },
+    [resolveMentionName],
+  )
 
   return (
-    <div ref={rootRef} style={{position: 'relative'}}>
-      {showPlaceholder && (
-        <div
-          aria-hidden
+    <Box style={{minWidth: 0, position: 'relative', width: '100%'}}>
+      <Box style={{minWidth: 0, position: 'relative', width: '100%'}}>
+        <Card
+          padding={0}
+          radius={2}
+          shadow={1}
           style={{
-            color: 'var(--card-muted-fg-color)',
-            inset: 0,
-            padding: '8px 12px 0',
-            pointerEvents: 'none',
-            position: 'absolute',
-            fontSize: 13,
+            boxSizing: 'border-box',
+            minWidth: 0,
+            outline: isEditorActive ? '1px solid var(--card-focus-ring-color)' : undefined,
+            overflowX: 'hidden',
+            position: 'relative',
+            width: '100%',
           }}
         >
-          {placeholder}
-        </div>
-      )}
+          <Box ref={rootRef} style={{minWidth: 0, width: '100%'}}>
+            <Slate
+              editor={editor}
+              initialValue={editor.children as Descendant[]}
+              onChange={() => {
+                setEditorVersion((prev) => prev + 1)
+                updateMentionSearch()
+              }}
+            >
+              <Editable
+                onBlur={() => {
+                  setIsFocused(false)
+                  closeMentions()
+                }}
+                onFocus={() => setIsFocused(true)}
+                onKeyDown={handleKeyDown}
+                onPaste={handlePaste}
+                placeholder={!isEditorActive && !hasContent ? placeholder : ''}
+                renderPlaceholder={({attributes, children}) => (
+                  <span
+                    {...attributes}
+                    style={{
+                      ...COMMENT_INPUT_TEXT_STYLE,
+                      color: 'var(--card-muted-fg-color)',
+                      left: 12,
+                      pointerEvents: 'none',
+                      position: 'absolute',
+                      top: 5,
+                    }}
+                  >
+                    {children}
+                  </span>
+                )}
+                renderElement={renderElement}
+                role="textbox"
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  boxSizing: 'border-box',
+                  display: 'block',
+                  ...COMMENT_INPUT_TEXT_STYLE,
+                  maxWidth: '100%',
+                  minWidth: 0,
+                  minHeight: 20,
+                  outline: 'none',
+                  overflowX: 'hidden',
+                  overflowWrap: 'anywhere',
+                  padding: showSendButton ? '5px 12px 28px' : '5px 12px 8px',
+                  position: 'relative',
+                  whiteSpace: 'pre-wrap',
+                  width: '100%',
+                  wordBreak: 'break-word',
+                }}
+              />
+            </Slate>
+          </Box>
 
-      <div
-        contentEditable
-        onInput={handleInput}
-        onKeyDown={handleKeyDown}
-        onPaste={handlePaste}
-        ref={editableRef}
-        role="textbox"
-        suppressContentEditableWarning
-        style={{
-          minHeight: 36,
-          width: '100%',
-          borderRadius: 8,
-          border: '1px solid var(--card-border-color)',
-          background: 'transparent',
-          padding: showSendButton ? '8px 12px 32px' : '8px 12px',
-          fontSize: 13,
-          lineHeight: 1.45,
-          boxSizing: 'border-box',
-        }}
-      />
+          {showSendButton && (
+            <Flex align="center" gap={1} style={{bottom: 6, position: 'absolute', right: 8}}>
+              <Button
+                fontSize={1}
+                mode="bleed"
+                onClick={handleAtButton}
+                padding={2}
+                text="@"
+                title="Mention someone"
+              />
+              <Box
+                style={{
+                  background: 'var(--card-border-color)',
+                  height: 16,
+                  width: 1,
+                }}
+              />
+              <Button
+                disabled={!hasContent}
+                fontSize={1}
+                icon={<Send size={16} />}
+                mode="bleed"
+                onClick={handleSend}
+                padding={2}
+                title="Send (⌘+Enter)"
+              />
+            </Flex>
+          )}
+        </Card>
 
-      {showSendButton && (
-        <div
-          style={{
-            alignItems: 'center',
-            display: 'flex',
-            gap: 2,
-            position: 'absolute',
-            right: 8,
-            bottom: 6,
-          }}
-        >
-          <button
-            onClick={handleAtButton}
-            tabIndex={-1}
-            title="Mention someone"
-            type="button"
-            style={{
-              alignItems: 'center',
-              background: 'transparent',
-              border: 'none',
-              color: 'var(--card-muted-fg-color)',
-              cursor: 'pointer',
-              display: 'flex',
-              height: 24,
-              justifyContent: 'center',
-              width: 24,
-            }}
-          >
-            <span style={{fontSize: 14, fontWeight: 600}}>@</span>
-          </button>
-          <span style={{background: 'var(--card-border-color)', width: 1, height: 16}} />
-          <button
-            disabled={!hasContent}
-            onClick={handleSend}
-            tabIndex={-1}
-            title="Send (Cmd/Ctrl+Enter)"
-            type="button"
-            style={{
-              alignItems: 'center',
-              background: 'transparent',
-              border: 'none',
-              color: hasContent ? 'var(--card-muted-fg-color)' : 'var(--card-muted-fg-color)',
-              cursor: hasContent ? 'pointer' : 'default',
-              display: 'flex',
-              height: 24,
-              justifyContent: 'center',
-              opacity: hasContent ? 1 : 0.4,
-              width: 24,
-            }}
-          >
-            <SendIcon size={14} />
-          </button>
-        </div>
-      )}
-
-      {mentionsOpen && cursorRect && (
-        <MentionsMenu
-          cursorRect={cursorRect}
-          onClose={closeMentions}
-          onSelect={insertMention}
-          rootRef={rootRef}
-          searchTerm={mentionsSearchTerm}
-        />
-      )}
-    </div>
+        {!!mentionState && cursorRect && (
+          <MentionsMenu
+            cursorRect={cursorRect}
+            onClose={closeMentions}
+            onSelect={insertMention}
+            searchTerm={mentionState.searchTerm}
+          />
+        )}
+      </Box>
+    </Box>
   )
 })
 
@@ -494,30 +574,29 @@ interface MentionsMenuProps {
   cursorRect: DOMRect
   onClose: () => void
   onSelect: (userId: string) => void
-  rootRef: React.RefObject<HTMLDivElement | null>
   searchTerm: string
 }
 
-function MentionsMenu({cursorRect, onClose, onSelect, rootRef, searchTerm}: MentionsMenuProps) {
+function MentionsMenu({cursorRect, onClose, onSelect, searchTerm}: MentionsMenuProps) {
   const {data: users = []} = useUsers()
   const [activeIndex, setActiveIndex] = useState(0)
 
   const filteredUsers = useMemo(() => {
     if (!searchTerm) return users
-    const term = deburr(searchTerm).toLocaleLowerCase()
 
+    const term = deburr(searchTerm).toLocaleLowerCase()
     return users
       .filter((user) => {
         const name = deburr(user.profile?.displayName ?? '').toLocaleLowerCase()
         return name.includes(term)
       })
-      .sort((userA, userB) => {
-        const nameA = deburr(userA.profile?.displayName ?? '').toLocaleLowerCase()
-        const nameB = deburr(userB.profile?.displayName ?? '').toLocaleLowerCase()
-        const startsA = nameA.startsWith(term)
-        const startsB = nameB.startsWith(term)
-        if (startsA && !startsB) return -1
-        if (!startsA && startsB) return 1
+      .sort((a, b) => {
+        const aName = deburr(a.profile?.displayName ?? '').toLocaleLowerCase()
+        const bName = deburr(b.profile?.displayName ?? '').toLocaleLowerCase()
+        const aStarts = aName.startsWith(term)
+        const bStarts = bName.startsWith(term)
+        if (aStarts && !bStarts) return -1
+        if (!aStarts && bStarts) return 1
         return 0
       })
   }, [searchTerm, users])
@@ -527,16 +606,18 @@ function MentionsMenu({cursorRect, onClose, onSelect, rootRef, searchTerm}: Ment
   }, [filteredUsers.length])
 
   const popoverStyle = useMemo(() => {
-    const rootRect = rootRef.current?.getBoundingClientRect()
-    if (!rootRect) return {}
+    const menuWidth = 224
+    const viewportPadding = 8
+    const maxLeft = Math.max(viewportPadding, window.innerWidth - menuWidth - viewportPadding)
+    const left = Math.min(Math.max(cursorRect.left, viewportPadding), maxLeft)
 
     return {
-      left: cursorRect.left - rootRect.left,
-      position: 'absolute' as const,
-      top: cursorRect.bottom - rootRect.top + 4,
-      zIndex: 50,
+      left,
+      position: 'fixed' as const,
+      top: Math.min(cursorRect.bottom + 4, window.innerHeight - 200),
+      zIndex: 2000,
     }
-  }, [cursorRect, rootRef])
+  }, [cursorRect])
 
   useEffect(() => {
     const handler = (event: KeyboardEvent) => {
@@ -549,9 +630,11 @@ function MentionsMenu({cursorRect, onClose, onSelect, rootRef, searchTerm}: Ment
       } else if (event.key === 'Enter') {
         event.preventDefault()
         event.stopPropagation()
-        const user = filteredUsers[activeIndex]
-        if (!user) return
-        onSelect(getResourceUserId(user) ?? user.sanityUserId)
+        if (filteredUsers[activeIndex]) {
+          const userId =
+            getResourceUserId(filteredUsers[activeIndex]) ?? filteredUsers[activeIndex].sanityUserId
+          onSelect(userId)
+        }
       } else if (event.key === 'Escape') {
         event.preventDefault()
         onClose()
@@ -563,79 +646,92 @@ function MentionsMenu({cursorRect, onClose, onSelect, rootRef, searchTerm}: Ment
   }, [activeIndex, filteredUsers, onClose, onSelect])
 
   if (filteredUsers.length === 0) {
-    return (
-      <div
-        style={{
-          ...popoverStyle,
-          width: 224,
-          borderRadius: 8,
-          border: '1px solid var(--card-border-color)',
-          background: 'var(--card-bg-color)',
-          padding: 8,
-          fontSize: 12,
-          color: 'var(--card-muted-fg-color)',
-          boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
-        }}
-      >
-        No users found
-      </div>
+    return createPortal(
+      <Card padding={2} radius={2} shadow={2} style={{...popoverStyle, width: 224}}>
+        <Text muted size={1}>
+          No users found
+        </Text>
+      </Card>,
+      document.body,
     )
   }
 
-  return (
-    <div
+  return createPortal(
+    <Card
+      padding={1}
+      radius={2}
+      shadow={3}
       role="listbox"
       style={{
         ...popoverStyle,
-        width: 224,
         maxHeight: 192,
         overflowY: 'auto',
-        borderRadius: 8,
-        border: '1px solid var(--card-border-color)',
-        background: 'var(--card-bg-color)',
-        boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+        width: 224,
       }}
     >
-      {filteredUsers.map((user, index) => {
-        const userId = getResourceUserId(user) ?? user.sanityUserId
-        const displayName = user.profile?.displayName ?? 'Unknown'
-        return (
-          <button
-            aria-selected={index === activeIndex}
-            key={userId}
-            onClick={() => onSelect(userId)}
-            onMouseEnter={() => setActiveIndex(index)}
-            role="option"
-            type="button"
-            style={{
-              alignItems: 'center',
-              width: '100%',
-              display: 'flex',
-              gap: 8,
-              padding: '6px 8px',
-              border: 'none',
-              background:
-                index === activeIndex
-                  ? 'var(--card-code-bg-color, var(--card-bg2-color))'
-                  : 'transparent',
-              textAlign: 'left',
-              cursor: 'pointer',
-            }}
-          >
-            <Avatar alt={displayName} size={1} src={user.profile?.imageUrl ?? ''} />
-            <span
-              style={{
-                fontSize: 13,
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {displayName}
-            </span>
-          </button>
-        )
-      })}
+      <Stack space={1}>
+        {filteredUsers.map((user, index) => {
+          const userId = getResourceUserId(user) ?? user.sanityUserId
+          const displayName = user.profile?.displayName ?? 'Unknown'
+          const isActive = index === activeIndex
+
+          return (
+            <Button
+              fontSize={1}
+              justify="flex-start"
+              key={userId}
+              mode={isActive ? 'default' : 'bleed'}
+              onClick={() => onSelect(userId)}
+              onMouseEnter={() => setActiveIndex(index)}
+              padding={2}
+              style={{transition: 'none'}}
+              text={
+                <Flex align="center" gap={2}>
+                  {renderAvatar(user, displayName)}
+                  <Text size={1} style={{maxWidth: 150}} textOverflow="ellipsis">
+                    {displayName}
+                  </Text>
+                </Flex>
+              }
+              tone={isActive ? 'primary' : 'default'}
+            />
+          )
+        })}
+      </Stack>
+    </Card>,
+    document.body,
+  )
+}
+
+function renderAvatar(user: SanityUser | undefined, displayName: string) {
+  return (
+    <div
+      style={{
+        width: 20,
+        height: 20,
+        borderRadius: '50%',
+        background: user?.profile?.imageUrl
+          ? 'transparent'
+          : 'var(--card-badge-default-bg-color, #e3e4e8)',
+        color: 'var(--card-badge-default-fg-color, #515e72)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontSize: '7px',
+        fontWeight: 600,
+        flexShrink: 0,
+        overflow: 'hidden',
+      }}
+    >
+      {user?.profile?.imageUrl ? (
+        <img
+          alt={displayName}
+          src={user.profile.imageUrl}
+          style={{width: '100%', height: '100%', objectFit: 'cover'}}
+        />
+      ) : (
+        getInitials(displayName)
+      )}
     </div>
   )
 }

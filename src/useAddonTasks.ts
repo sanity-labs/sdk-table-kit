@@ -5,7 +5,7 @@ import {useAddonData} from './AddonDataContext'
 export function useAddonTasks(documentId: string) {
   const {tasksByDocId} = useAddonData()
   const cleanId = documentId.replace('drafts.', '')
-  const tasks = useMemo(() => tasksByDocId.get(cleanId) ?? [], [tasksByDocId, cleanId])
+  const tasks = tasksByDocId.get(cleanId) ?? []
 
   const sortedTasks = useMemo(
     () =>
