@@ -60,6 +60,7 @@ interface SharedCommentsPanelProps {
 }
 
 interface AddCommentFormProps {
+  autoFocus?: boolean
   documentId: string
   documentTitle: string
   documentType: string
@@ -154,9 +155,10 @@ export function SharedCommentsPanel({
   }, [comments, fieldPath, showResolved])
 
   const unresolvedCount = allThreads.filter((thread) => thread.parent.status !== 'resolved').length
+  const hasAnyComments = allThreads.length > 0
   const summary =
     headerSubtitle ??
-    (allThreads.length > 0 && (
+    (hasAnyComments && (
       <Flex align="center" gap={2}>
         <Badge tone="caution" padding={2}>
           {unresolvedCount} Open
@@ -195,11 +197,11 @@ export function SharedCommentsPanel({
               </Text>
             )}
           </Stack>
-          {resolvedToggle}
+          {hasAnyComments && resolvedToggle}
         </Flex>
       )}
 
-      {!headerTitle && !summary && <Flex justify="flex-end">{resolvedToggle}</Flex>}
+      {!headerTitle && !summary && hasAnyComments && <Flex justify="flex-end">{resolvedToggle}</Flex>}
 
       {visibleThreads.length > 0 ? (
         <Stack space={3}>
@@ -221,7 +223,7 @@ export function SharedCommentsPanel({
             />
           ))}
         </Stack>
-      ) : (
+      ) : hasAnyComments ? (
         <Text muted size={1}>
           {emptyMessage ??
             (fieldPath
@@ -230,9 +232,10 @@ export function SharedCommentsPanel({
                 : 'No open comments on this field.'
               : 'No comments yet.')}
         </Text>
-      )}
+      ) : null}
 
       <AddCommentForm
+        autoFocus={!hasAnyComments}
         documentId={documentId}
         documentTitle={documentTitle}
         documentType={documentType}
@@ -245,6 +248,7 @@ export function SharedCommentsPanel({
 }
 
 function AddCommentForm({
+  autoFocus,
   documentId,
   documentTitle,
   documentType,
@@ -317,7 +321,7 @@ function AddCommentForm({
 
   return (
     <CommentInput
-      autoFocus={!!parentCommentId}
+      autoFocus={autoFocus ?? !!parentCommentId}
       onCancel={onCancel}
       onSubmit={handleSubmit}
       placeholder={placeholder}
@@ -501,9 +505,11 @@ function CommentItem({
 }: CommentItemProps) {
   const author = findUserByResourceUserId(comment.authorId, users)
   const [hovered, setHovered] = useState(false)
+  const [hasFocusWithin, setHasFocusWithin] = useState(false)
   const [reactionPickerOpen, setReactionPickerOpen] = useState(false)
   const reactionPopoverRef = useRef<HTMLDivElement>(null)
   const reactionTriggerRef = useRef<HTMLButtonElement>(null)
+  const controlsVisible = hovered || hasFocusWithin || reactionPickerOpen
 
   const ptComponents = useMemo(
     () => ({
@@ -552,6 +558,14 @@ function CommentItem({
 
   return (
     <div
+      onBlurCapture={(event) => {
+        const nextFocused = event.relatedTarget
+        if (nextFocused instanceof Node && event.currentTarget.contains(nextFocused)) {
+          return
+        }
+        setHasFocusWithin(false)
+      }}
+      onFocusCapture={() => setHasFocusWithin(true)}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{position: 'relative'}}
@@ -598,8 +612,8 @@ function CommentItem({
           display: 'flex',
           gap: 4,
           padding: 4,
-          opacity: hovered || reactionPickerOpen ? 1 : 0,
-          pointerEvents: hovered || reactionPickerOpen ? 'auto' : 'none',
+          opacity: controlsVisible ? 1 : 0,
+          pointerEvents: controlsVisible ? 'auto' : 'none',
           transition: 'opacity 120ms ease',
         }}
       >

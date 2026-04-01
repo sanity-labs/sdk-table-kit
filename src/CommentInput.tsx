@@ -487,7 +487,7 @@ export const CommentInput = forwardRef<CommentInputHandle, CommentInputProps>(fu
                 onFocus={() => setIsFocused(true)}
                 onKeyDown={handleKeyDown}
                 onPaste={handlePaste}
-                placeholder={!isEditorActive && !hasContent ? placeholder : ''}
+                placeholder={!hasContent ? placeholder : ''}
                 renderPlaceholder={({attributes, children}) => (
                   <span
                     {...attributes}
@@ -513,7 +513,7 @@ export const CommentInput = forwardRef<CommentInputHandle, CommentInputProps>(fu
                   ...COMMENT_INPUT_TEXT_STYLE,
                   maxWidth: '100%',
                   minWidth: 0,
-                  minHeight: 20,
+                  minHeight: 40,
                   outline: 'none',
                   overflowX: 'hidden',
                   overflowWrap: 'anywhere',

@@ -1,7 +1,16 @@
 import {CommentIcon} from '@sanity/icons'
-import {Badge, Button, Card, Heading, Popover} from '@sanity/ui'
-import React, {Suspense, useMemo, useState} from 'react'
+import {
+  Badge,
+  Button,
+  Card,
+  Heading,
+  Popover,
+  useClickOutsideEvent,
+  useGlobalKeyDown,
+} from '@sanity/ui'
+import React, {Suspense, useCallback, useMemo, useRef, useState} from 'react'
 
+import {ActionBar} from './ActionBar'
 import {getCommentThreadsForField} from './addonCommentUtils'
 import {useOptionalAddonData} from './AddonDataContext'
 import {SharedCommentsPanel} from './SharedCommentsPanel'
@@ -108,6 +117,22 @@ function CommentableCellFrame({
   totalCount: number
   unresolvedCount: number
 }) {
+  const popoverRef = useRef<HTMLDivElement>(null)
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const closePopover = useCallback(() => {
+    setOpen(false)
+  }, [setOpen])
+
+  useClickOutsideEvent(open ? closePopover : undefined, () => [
+    popoverRef.current,
+    triggerRef.current,
+  ])
+  useGlobalKeyDown((event) => {
+    if (!open || event.key !== 'Escape') return
+    event.preventDefault()
+    closePopover()
+  })
+
   return (
     <div
       onMouseEnter={() => onHoverChange(true)}
@@ -128,6 +153,7 @@ function CommentableCellFrame({
           <Card
             padding={4}
             radius={3}
+            ref={popoverRef}
             shadow={3}
             style={{
               maxHeight: 520,
@@ -157,45 +183,44 @@ function CommentableCellFrame({
         radius={3}
         shadow={3}
       >
-        <div style={{position: 'absolute', right: 10, bottom: 10, zIndex: 1}}>
-          <Button
-            onClick={(event) => {
-              event.stopPropagation()
-              setOpen((current) => !current)
-            }}
-            style={{
-              cursor: 'pointer',
-              height: 24,
-              opacity: showTrigger ? 1 : 0,
-              pointerEvents: showTrigger ? 'auto' : 'none',
-              transition: 'opacity 120ms ease',
-              width: 24,
-              position: 'absolute',
-              right: 0,
-              bottom: 0,
-              display: 'relative',
-            }}
-            icon={<CommentIcon />}
-            tone="neutral"
-          />
-          {totalCount > 0 && (
-            <Badge
-              style={{
-                border: '1px solid var(--card-border-color)',
-                opacity: showTrigger ? 1 : 0,
-                pointerEvents: showTrigger ? 'auto' : 'none',
-                position: 'relative',
-                right: -8,
-                top: -8,
-                transition: 'opacity 120ms ease',
+        <ActionBar placement={{right: 10, top: 10}} visible={showTrigger}>
+          <div style={{position: 'relative'}}>
+            <Button
+              fontSize={1}
+              mode="bleed"
+              onClick={(event) => {
+                event.stopPropagation()
+                setOpen((current) => !current)
               }}
-              tone={unresolvedCount > 0 ? 'caution' : 'default'}
-              padding={1}
-            >
-              {unresolvedCount > 0 ? unresolvedCount : totalCount}
-            </Badge>
-          )}
-        </div>
+              padding={2}
+              ref={triggerRef}
+              style={{
+                cursor: 'pointer',
+              }}
+              icon={<CommentIcon />}
+              title={`${commentFieldLabel} comments`}
+            />
+            {totalCount > 0 && (
+              <Badge
+                style={{
+                  border: '1px solid var(--card-border-color)',
+                  position: 'absolute',
+                  right: -12,
+                  top: -12,
+                  aspectRatio: 1,
+                  height: 20,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+                tone={unresolvedCount > 0 ? 'caution' : 'default'}
+                padding={1}
+              >
+                {unresolvedCount > 0 ? unresolvedCount : totalCount}
+              </Badge>
+            )}
+          </div>
+        </ActionBar>
       </Popover>
     </div>
   )
