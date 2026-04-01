@@ -3,6 +3,7 @@ import {EditIcon, LinkIcon, TrashIcon} from '@sanity/icons'
 import type {SanityUser} from '@sanity/sdk-react'
 import {useUsers} from '@sanity/sdk-react'
 import {
+  Badge,
   Box,
   Button,
   Card,
@@ -155,9 +156,16 @@ export function SharedCommentsPanel({
   const unresolvedCount = allThreads.filter((thread) => thread.parent.status !== 'resolved').length
   const summary =
     headerSubtitle ??
-    (allThreads.length === 0
-      ? 'No comments yet'
-      : `${unresolvedCount} open${showResolved ? ` · ${allThreads.length} total` : ''}`)
+    (allThreads.length > 0 && (
+      <Flex align="center" gap={2}>
+        <Badge tone="caution" padding={2}>
+          {unresolvedCount} Open
+        </Badge>
+        <Badge tone="positive" padding={2}>
+          {allThreads.length - unresolvedCount} Resolved
+        </Badge>
+      </Flex>
+    ))
 
   const resolvedToggle = (
     <Flex align="center" gap={2}>
@@ -446,7 +454,7 @@ function SharedCommentThread({
   }
 
   return (
-    <Card padding={3} radius={2} border tone={isResolved ? 'positive' : 'neutral'}>
+    <Card padding={4} radius={2} border tone={isResolved ? 'positive' : 'neutral'}>
       <Stack space={4}>
         {renderComment(parent, false)}
 
@@ -458,7 +466,7 @@ function SharedCommentThread({
               paddingLeft: 14,
             }}
           >
-            <Stack space={5}>{replies.map((reply) => renderComment(reply, true))}</Stack>
+            <Stack space={4}>{replies.map((reply) => renderComment(reply, true))}</Stack>
           </div>
         )}
 
