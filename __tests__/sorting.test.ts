@@ -1,7 +1,7 @@
-import {column} from '@sanetti/sanity-table-kit'
 import {renderHook, act} from '@testing-library/react'
 import {describe, it, expect, vi, beforeEach} from 'vitest'
 
+import {column} from '../src'
 import {useSanityTableData} from '../src/useSanityTableData'
 
 // Mock @sanity/sdk-react
@@ -132,6 +132,41 @@ describe('useSanityTableData — sorting', () => {
     expect(mockUsePaginatedDocuments).toHaveBeenLastCalledWith(
       expect.objectContaining({
         orderings: undefined,
+      }),
+    )
+  })
+
+  it('Behavior 6: reference columns can map UI sort to a server-side sort field', () => {
+    const columns = [
+      column.reference({
+        field: 'section',
+        header: 'Section',
+        referenceType: 'section',
+        preview: {
+          select: {name: 'name'},
+          prepare: ({name}) => ({title: name}),
+        },
+        sortField: 'section->name',
+        sortable: true,
+      }),
+    ]
+
+    const {result} = renderHook(() =>
+      useSanityTableData({
+        documentType: 'article',
+        columns,
+        pageSize: 25,
+      }),
+    )
+
+    act(() => {
+      result.current.sorting!.onSortChange({field: 'section', direction: 'asc'})
+    })
+
+    expect(result.current.sorting!.current).toEqual({field: 'section', direction: 'asc'})
+    expect(mockUsePaginatedDocuments).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        orderings: [{field: 'section->name', direction: 'asc'}],
       }),
     )
   })

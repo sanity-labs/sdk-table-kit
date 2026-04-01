@@ -31,6 +31,7 @@ describe('column.reference() with preview', () => {
     const table = screen.getByRole('table')
     expect(within(table).getByText('Alice Johnson')).toBeInTheDocument()
     expect(within(table).getByText('Bob Smith')).toBeInTheDocument()
+    expect(within(table).queryByTestId('reference-avatar')).not.toBeInTheDocument()
   })
 
   it('Behavior 2: prepare() with media renders avatar circle + title', () => {

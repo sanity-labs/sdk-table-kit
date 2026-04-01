@@ -137,7 +137,7 @@ export const ReferenceCell = memo(function ReferenceCell({
     displayContent = (
       <Card
         padding={1}
-        radius={0}
+        radius={2}
         tone="transparent"
         border
         style={{width: '100%'}}
@@ -218,16 +218,42 @@ function renderPrepared(prepared: PreviewValue): React.ReactNode {
   const title = prepared.title || '—'
   const initial = title.charAt(0).toUpperCase()
   const imageUrl = prepared.imageUrl ?? (typeof prepared.media === 'string' ? prepared.media : null)
+  const hasMediaSlot = 'media' in prepared || 'imageUrl' in prepared
+  const mediaSlotSize = 26
+
+  if (!hasMediaSlot) {
+    return (
+      <Card padding={1} radius={2} tone="transparent" border style={{width: '100%'}}>
+        <Button padding={2} radius={0} tone="neutral" muted mode="bleed" style={{width: '100%'}}>
+          <Flex
+            direction="column"
+            gap={2}
+            justify="center"
+            style={{minWidth: 0, minHeight: mediaSlotSize}}
+          >
+            <Text size={1} textOverflow="ellipsis">
+              {title}
+            </Text>
+            {prepared.subtitle && (
+              <Text size={1} muted textOverflow="ellipsis">
+                {prepared.subtitle}
+              </Text>
+            )}
+          </Flex>
+        </Button>
+      </Card>
+    )
+  }
 
   return (
-    <Card padding={1} radius={0} tone="transparent" border style={{width: '100%'}}>
+    <Card padding={1} radius={2} tone="transparent" border style={{width: '100%'}}>
       <Button padding={2} radius={0} tone="neutral" muted mode="bleed" style={{width: '100%'}}>
         <Flex gap={2} align="center">
           <Box
             data-testid="reference-avatar"
             style={{
-              width: 32,
-              height: 32,
+              width: mediaSlotSize,
+              height: mediaSlotSize,
               background: imageUrl ? 'transparent' : 'var(--card-badge-default-bg-color, #e3e4e8)',
               color: 'var(--card-badge-default-fg-color, #515e72)',
               display: 'flex',

@@ -50,6 +50,8 @@ interface ReferenceColumnConfig<
   preview: Required<Pick<PreviewConfig<TSelect, TPrepareValue>, 'select' | 'prepare'>>
   /** Whether this column can be sorted. */
   sortable?: boolean
+  /** Optional GROQ field/expression used for server-side sorting. */
+  sortField?: string
   /** Whether this column appears in the filter UI. */
   filterable?: boolean
   /** Whether rows can be grouped by this column's values. */
@@ -356,6 +358,7 @@ export const column = {
       referenceType,
       preview,
       sortable,
+      sortField,
       filterable,
       groupable,
       width,
@@ -386,6 +389,7 @@ export const column = {
       cell,
       _referencePreview: preview as Required<Pick<PreviewConfig, 'select' | 'prepare'>>,
       _referenceType: referenceType,
+      ...(sortField && {_serverSortField: sortField}),
       ...(sortable != null && {sortable}),
       ...(filterable != null && {filterable}),
       ...(groupable != null && {groupable}),

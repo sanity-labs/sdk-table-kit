@@ -5,6 +5,23 @@ import {useState, useCallback, useEffect, useMemo} from 'react'
 
 import {useColumnProjection} from './useColumnProjection'
 
+function resolveServerSortField(columns: ColumnDef[], sort: SortConfig | null): SortConfig | null {
+  if (!sort) return null
+
+  const column = columns.find(
+    (candidate) => candidate.id === sort.field || candidate.field === sort.field,
+  )
+  const serverSortField = (column as (ColumnDef & {_serverSortField?: string}) | undefined)
+    ?._serverSortField
+
+  if (!serverSortField) return sort
+
+  return {
+    ...sort,
+    field: serverSortField,
+  }
+}
+
 /**
  * Configuration for the core SDK data-fetching hook.
  */
@@ -144,12 +161,16 @@ export function useSanityTableData<T = Record<string, unknown>>(
   const onSortChange = useCallback((sort: SortConfig | null) => {
     setCurrentSort(sort)
   }, [])
-  const {query, params} = buildQuery(documentType, filter, projection, currentSort, userParams)
+  const serverSort = useMemo(
+    () => resolveServerSortField(columns, currentSort),
+    [columns, currentSort],
+  )
+  const {query, params} = buildQuery(documentType, filter, projection, serverSort, userParams)
 
   const [effectivePageSize, setEffectivePageSize] = useState(pageSize ?? 25)
   const useSdkPagination = pageSize !== undefined
-  const paginatedOrderings = currentSort
-    ? [{field: currentSort.field, direction: currentSort.direction}]
+  const paginatedOrderings = serverSort
+    ? [{field: serverSort.field, direction: serverSort.direction}]
     : undefined
 
   useEffect(() => {
@@ -239,6 +260,7 @@ export function useSanityTableData<T = Record<string, unknown>>(
     paginatedDocuments.data,
     paginatedDocuments.isPending,
     projectionRowsById,
+    result.data,
     useSdkPagination,
   ])
 

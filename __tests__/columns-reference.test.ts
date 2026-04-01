@@ -1,5 +1,6 @@
 import {describe, it, expect} from 'vitest'
 
+import {getServerSortableColumnIds} from '../src/getServerSortableColumnIds'
 import {column} from '../src/index'
 import {useColumnProjection} from '../src/useColumnProjection'
 
@@ -76,5 +77,22 @@ describe('columns.reference()', () => {
     })
     const projection = useColumnProjection([col])
     expect(projection).toContain('"author": author->{name, _id}')
+  })
+
+  it('Behavior 6: supports an explicit server-side sort field', () => {
+    const col = column.reference({
+      field: 'section',
+      header: 'Section',
+      referenceType: 'section',
+      preview: {
+        select: {name: 'name'},
+        prepare: ({name}) => ({title: name}),
+      },
+      sortField: 'section->name',
+      sortable: true,
+    })
+
+    expect(col._serverSortField).toBe('section->name')
+    expect(getServerSortableColumnIds([col])).toEqual(['section'])
   })
 })
