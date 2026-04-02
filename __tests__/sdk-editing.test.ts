@@ -1,32 +1,33 @@
 import {renderHook, act} from '@testing-library/react'
 import {describe, it, expect, vi, beforeEach} from 'vitest'
 
-import {useSDKEditHandler} from '../src/useSDKEditHandler'
+import {useSDKEditHandler} from '../src/hooks/useSDKEditHandler'
 
-// Mock @sanity/sdk-react
+const mockApply = vi.fn()
 const mockEditDocument = vi.fn()
-const mockUseEditDocument = vi.fn()
 
 vi.mock('@sanity/sdk-react', () => ({
-  useApplyDocumentActions: () => vi.fn().mockResolvedValue(undefined),
+  useApplyDocumentActions: () => mockApply,
   useCurrentUser: () => ({id: 'user1', name: 'Test', roles: [{name: 'editor', title: 'Editor'}]}),
-  useEditDocument: (...args: unknown[]) => mockUseEditDocument(...args),
 }))
 
 vi.mock('@sanity/sdk', () => ({
   createDocument: vi.fn(() => ({type: 'createDocument'})),
+  editDocument: (...args: unknown[]) => mockEditDocument(...args),
 }))
 
 describe('useSDKEditHandler', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockEditDocument.mockResolvedValue(undefined)
-    mockUseEditDocument.mockReturnValue({
-      edit: mockEditDocument,
-    })
+    mockApply.mockResolvedValue(undefined)
+    mockEditDocument.mockImplementation((document, patches) => ({
+      document,
+      patches,
+      type: 'document.edit',
+    }))
   })
 
-  it('Behavior 1: creates an onSave handler that calls useEditDocument', async () => {
+  it('Behavior 1: creates an onSave handler that dispatches a document edit action', async () => {
     const {result} = renderHook(() => useSDKEditHandler())
 
     const doc = {_id: 'doc-1', _type: 'article', title: 'Old Title'}
@@ -35,11 +36,14 @@ describe('useSDKEditHandler', () => {
       await result.current.handleEdit(doc, 'title', 'New Title')
     })
 
-    expect(mockUseEditDocument).toHaveBeenCalled()
-    expect(mockEditDocument).toHaveBeenCalledWith({
-      documentId: 'doc-1',
-      field: 'title',
-      value: 'New Title',
+    expect(mockEditDocument).toHaveBeenCalledWith(
+      {documentId: 'doc-1', documentType: 'article'},
+      {set: {title: 'New Title'}},
+    )
+    expect(mockApply).toHaveBeenCalledWith({
+      document: {documentId: 'doc-1', documentType: 'article'},
+      patches: {set: {title: 'New Title'}},
+      type: 'document.edit',
     })
   })
 
@@ -52,11 +56,10 @@ describe('useSDKEditHandler', () => {
       await result.current.handleEdit(doc, 'status', 'published')
     })
 
-    expect(mockEditDocument).toHaveBeenCalledWith({
-      documentId: 'doc-1',
-      field: 'status',
-      value: 'published',
-    })
+    expect(mockEditDocument).toHaveBeenCalledWith(
+      {documentId: 'doc-1', documentType: 'article'},
+      {set: {status: 'published'}},
+    )
   })
 
   it('Behavior 3: handles date mode edits', async () => {
@@ -68,15 +71,14 @@ describe('useSDKEditHandler', () => {
       await result.current.handleEdit(doc, 'publishDate', '2026-06-15')
     })
 
-    expect(mockEditDocument).toHaveBeenCalledWith({
-      documentId: 'doc-1',
-      field: 'publishDate',
-      value: '2026-06-15',
-    })
+    expect(mockEditDocument).toHaveBeenCalledWith(
+      {documentId: 'doc-1', documentType: 'article'},
+      {set: {publishDate: '2026-06-15'}},
+    )
   })
 
   it('Behavior 4: returns error state on failure', async () => {
-    mockEditDocument.mockRejectedValue(new Error('Permission denied'))
+    mockApply.mockRejectedValue(new Error('Permission denied'))
 
     const {result} = renderHook(() => useSDKEditHandler())
 
@@ -105,10 +107,9 @@ describe('useSDKEditHandler', () => {
     const doc = {_id: 'doc-1', _type: 'article', title: 'Old'}
     onSave(doc, 'New Title')
 
-    expect(mockEditDocument).toHaveBeenCalledWith({
-      documentId: 'doc-1',
-      field: 'title',
-      value: 'New Title',
-    })
+    expect(mockEditDocument).toHaveBeenCalledWith(
+      {documentId: 'doc-1', documentType: 'article'},
+      {set: {title: 'New Title'}},
+    )
   })
 })

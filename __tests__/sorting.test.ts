@@ -2,7 +2,7 @@ import {renderHook, act} from '@testing-library/react'
 import {describe, it, expect, vi, beforeEach} from 'vitest'
 
 import {column} from '../src'
-import {useSanityTableData} from '../src/useSanityTableData'
+import {useSanityTableData} from '../src/hooks/useSanityTableData'
 
 // Mock @sanity/sdk-react
 const mockUsePaginatedDocuments = vi.fn()

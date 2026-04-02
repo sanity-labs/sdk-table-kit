@@ -3,7 +3,7 @@ import {renderHook} from '@testing-library/react'
 import React from 'react'
 import {describe, it, expect, vi, beforeEach} from 'vitest'
 
-import {useResolvedColumns} from '../src/useResolvedColumns'
+import {useResolvedColumns} from '../src/hooks/useResolvedColumns'
 
 // Track editDocument calls
 const mockEditDocument = vi.fn(() => ({type: 'edit'}))
@@ -25,7 +25,7 @@ vi.mock('@sanity/sdk', () => ({
 // Mock ReleaseContext — controlled per test
 let mockSelectedReleaseId: string | null = null
 
-vi.mock('../src/ReleaseContext', () => ({
+vi.mock('../src/context/ReleaseContext', () => ({
   useReleaseContext: () => ({
     activeReleases: [],
     selectedRelease: null,

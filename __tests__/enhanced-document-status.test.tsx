@@ -5,7 +5,7 @@ import {NuqsTestingAdapter} from 'nuqs/adapters/testing'
 import React from 'react'
 import {describe, it, expect, vi, beforeEach, beforeAll} from 'vitest'
 
-import {DocumentStatusCell} from '../src/DocumentStatusCell'
+import {DocumentStatusCell} from '../src/components/status/DocumentStatusCell'
 
 const mockUseQuery = vi.fn()
 let mockActiveReleases: Array<{
@@ -49,7 +49,7 @@ const mockReleaseContext = {
   addToRelease: vi.fn(),
 }
 
-vi.mock('../src/ReleaseContext', () => ({
+vi.mock('../src/context/ReleaseContext', () => ({
   useReleaseContext: () => mockReleaseContext,
   useOptionalReleaseContext: () => mockReleaseContext,
 }))

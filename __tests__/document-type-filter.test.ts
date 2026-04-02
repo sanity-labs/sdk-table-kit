@@ -17,7 +17,7 @@ vi.mock('@sanity/sdk', () => ({
   createDocument: vi.fn(() => ({type: 'createDocument'})),
 }))
 
-import {useSanityTableData} from '../src/useSanityTableData'
+import {useSanityTableData} from '../src/hooks/useSanityTableData'
 
 const mockArticles = [
   {_id: 'article-1', _type: 'article', title: 'First', _updatedAt: '2026-01-01'},
@@ -54,7 +54,12 @@ describe('useSanityTableData — documentType[] + filter', () => {
     expect(mockUsePaginatedDocuments).toHaveBeenCalledWith(
       expect.objectContaining({documentType: 'article'}),
     )
-    expect(mockUseQuery).not.toHaveBeenCalled()
+    expect(mockUseQuery).toHaveBeenCalledWith(
+      expect.objectContaining({
+        params: {documentIds: ['article-1', 'page-1']},
+        query: '*[_id in $documentIds]{ _id, _type, title, _updatedAt }',
+      }),
+    )
   })
 
   it('Behavior 2: documentType as string[] uses useQuery with _type in $docTypes', () => {
@@ -140,6 +145,11 @@ describe('useSanityTableData — documentType[] + filter', () => {
 
     // No filter, single type → use usePaginatedDocuments for server-side pagination
     expect(mockUsePaginatedDocuments).toHaveBeenCalled()
-    expect(mockUseQuery).not.toHaveBeenCalled()
+    expect(mockUseQuery).toHaveBeenCalledWith(
+      expect.objectContaining({
+        params: {documentIds: ['article-1', 'page-1']},
+        query: '*[_id in $documentIds]{ _id, _type, title, _updatedAt }',
+      }),
+    )
   })
 })

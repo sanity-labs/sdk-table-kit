@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import React from 'react'
 import {describe, it, expect, vi, beforeEach} from 'vitest'
 
-import {AddToReleaseButton} from '../src/AddToReleaseButton'
+import {AddToReleaseButton} from '../src/components/releases/AddToReleaseButton'
 import {renderWithTheme} from './helpers'
 
 // Mock useReleaseContext
@@ -37,7 +37,7 @@ const scheduledRelease = {
   },
 }
 
-vi.mock('../src/ReleaseContext', () => ({
+vi.mock('../src/context/ReleaseContext', () => ({
   useReleaseContext: () => ({
     activeReleases: [asapRelease, scheduledRelease],
     selectedRelease: null,

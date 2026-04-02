@@ -4,8 +4,8 @@ import {userEvent} from '@testing-library/user-event'
 import React from 'react'
 import {describe, it, expect, vi, beforeEach} from 'vitest'
 
-import {column} from '../src/column'
-import {SanityDocumentTable} from '../src/SanityDocumentTable'
+import {SanityDocumentTable} from '../src/components/table/SanityDocumentTable'
+import {column} from '../src/helpers/table/column'
 import {renderWithTheme} from './helpers'
 
 // ── Mocks ────────────────────────────────────────────────────────────────────

@@ -3,8 +3,8 @@ import {userEvent} from '@testing-library/user-event'
 import React from 'react'
 import {describe, it, expect, vi, beforeEach} from 'vitest'
 
-import {column} from '../src/column'
-import {SanityDocumentTable} from '../src/SanityDocumentTable'
+import {SanityDocumentTable} from '../src/components/table/SanityDocumentTable'
+import {column} from '../src/helpers/table/column'
 import {renderWithTheme} from './helpers'
 
 // Mock @sanity/sdk-react
@@ -99,7 +99,7 @@ describe('SanityDocumentTable — _autoSave resolution', () => {
     expect(editInput).toHaveValue('First Article')
   })
 
-  it('Behavior 2: editing and saving calls useEditDocument with correct field and value', async () => {
+  it('Behavior 2: editing and saving dispatches document.edit with the correct field and value', async () => {
     const user = userEvent.setup()
 
     renderWithTheme(

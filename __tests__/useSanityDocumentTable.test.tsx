@@ -1,11 +1,11 @@
 import {column, DocumentTable} from '@sanetti/sanity-table-kit'
 import {renderHook} from '@testing-library/react'
-import {render, screen} from '@testing-library/react'
+import {screen} from '@testing-library/react'
 import React from 'react'
 import {describe, it, expect, vi, beforeEach} from 'vitest'
 
-import {PaginationControls} from '../src/PaginationControls'
-import {useSanityDocumentTable} from '../src/useSanityDocumentTable'
+import {PaginationControls} from '../src/components/table/PaginationControls'
+import {useSanityDocumentTable} from '../src/hooks/useSanityDocumentTable'
 import {renderWithTheme} from './helpers'
 
 // Mock @sanity/sdk-react
@@ -129,9 +129,11 @@ describe('useSanityDocumentTable', () => {
       }),
     )
 
-    render(<PaginationControls {...result.current.paginationProps} />)
+    renderWithTheme(<PaginationControls {...result.current.paginationProps} />)
 
-    expect(screen.getByText(/Page 1 of 2/)).toBeInTheDocument()
+    expect(screen.getByText('1')).toBeInTheDocument()
+    expect(screen.getByText('2')).toBeInTheDocument()
+    expect(screen.getByText('Next')).toBeInTheDocument()
   })
 
   it('Behavior 5: custom layout with both components', () => {
@@ -153,7 +155,8 @@ describe('useSanityDocumentTable', () => {
 
     expect(screen.getByText('My Custom Header')).toBeInTheDocument()
     expect(screen.getByRole('table')).toBeInTheDocument()
-    expect(screen.getByText(/Page 1 of 2/)).toBeInTheDocument()
+    expect(screen.getByText('1')).toBeInTheDocument()
+    expect(screen.getByText('2')).toBeInTheDocument()
   })
 
   it('Behavior 6: paginationProps forwards page size options', () => {

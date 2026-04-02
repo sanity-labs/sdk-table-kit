@@ -2,9 +2,9 @@ import {column} from '@sanetti/sanity-table-kit'
 import {renderHook} from '@testing-library/react'
 import {describe, it, expect, vi, beforeEach} from 'vitest'
 
-import type {SanityDocumentTableProps} from '../src/SanityDocumentTable'
-import type {SanityTableDataConfig} from '../src/useSanityTableData'
-import {useSanityTableData} from '../src/useSanityTableData'
+import type {SanityDocumentTableProps} from '../src/components/table/SanityDocumentTable'
+import type {SanityTableDataConfig} from '../src/hooks/useSanityTableData'
+import {useSanityTableData} from '../src/hooks/useSanityTableData'
 
 // Mock @sanity/sdk-react
 const mockUseQuery = vi.fn()

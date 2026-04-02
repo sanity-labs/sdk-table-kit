@@ -3,7 +3,7 @@ import {screen} from '@testing-library/react'
 import React from 'react'
 import {describe, it, expect, vi, beforeEach} from 'vitest'
 
-import {SanityDocumentTable} from '../src/SanityDocumentTable'
+import {SanityDocumentTable} from '../src/components/table/SanityDocumentTable'
 import {renderWithTheme} from './helpers'
 
 // Mock @sanity/sdk-react
@@ -170,13 +170,16 @@ describe('SanityDocumentTable', () => {
       <SanityDocumentTable documentType="article" columns={testColumns} pageSize={25} />,
     )
 
-    expect(screen.getByText(/Page 1 of 3/)).toBeInTheDocument()
+    expect(screen.getByText('1')).toBeInTheDocument()
+    expect(screen.getByText('2')).toBeInTheDocument()
+    expect(screen.getByText('3')).toBeInTheDocument()
+    expect(screen.getByText('Next')).toBeInTheDocument()
   })
 
   it('Behavior 7: pagination hidden when single page', () => {
     renderWithTheme(<SanityDocumentTable documentType="article" columns={testColumns} />)
 
-    expect(screen.queryByText(/Page/)).not.toBeInTheDocument()
+    expect(screen.queryByText('Next')).not.toBeInTheDocument()
   })
 
   it('Behavior 8: uses useQuery mode when documentType is an array', () => {

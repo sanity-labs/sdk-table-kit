@@ -4,8 +4,8 @@ import {userEvent} from '@testing-library/user-event'
 import React from 'react'
 import {describe, it, expect, vi} from 'vitest'
 
-import {column} from '../src/column'
-import type {SanityColumnDef} from '../src/useColumnProjection'
+import {column} from '../src/helpers/table/column'
+import type {SanityColumnDef} from '../src/hooks/useColumnProjection'
 import {renderWithTheme} from './helpers'
 
 // ── Mocks ────────────────────────────────────────────────────────────────────

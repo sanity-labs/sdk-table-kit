@@ -1,7 +1,7 @@
 import {filter} from '@sanetti/sanity-table-kit'
 import {describe, expect, it} from 'vitest'
 
-import {compileFilters} from '../src/compileFilters'
+import {compileFilters} from '../src/helpers/filters/compileFilters'
 
 describe('compileFilters', () => {
   it('compiles search filters with GROQ-aware fields', () => {

@@ -1,7 +1,7 @@
 import {column} from '@sanetti/sanity-table-kit'
 import {describe, it, expect} from 'vitest'
 
-import {useColumnProjection, parseFieldExpression} from '../src/useColumnProjection'
+import {useColumnProjection, parseFieldExpression} from '../src/hooks/useColumnProjection'
 
 describe('parseFieldExpression', () => {
   it('Behavior 1: simple field returns field as-is for alias, expression, and editPath', () => {

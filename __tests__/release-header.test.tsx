@@ -2,12 +2,12 @@ import {screen} from '@testing-library/react'
 import React from 'react'
 import {describe, it, expect, vi, beforeEach} from 'vitest'
 
-import {ReleaseHeader} from '../src/ReleaseHeader'
+import {ReleaseHeader} from '../src/components/releases/ReleaseHeader'
 import {renderWithTheme} from './helpers'
 
 const mockUseReleaseContext = vi.fn()
 
-vi.mock('../src/ReleaseContext', () => ({
+vi.mock('../src/context/ReleaseContext', () => ({
   useReleaseContext: () => mockUseReleaseContext(),
 }))
 

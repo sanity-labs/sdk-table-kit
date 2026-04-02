@@ -1,9 +1,10 @@
-import {render, screen} from '@testing-library/react'
+import {screen} from '@testing-library/react'
 import {userEvent} from '@testing-library/user-event'
 import React from 'react'
 import {describe, it, expect, vi} from 'vitest'
 
-import {PaginationControls} from '../src/PaginationControls'
+import {PaginationControls} from '../src/components/table/PaginationControls'
+import {renderWithTheme} from './helpers'
 
 const mockNextPage = vi.fn()
 const mockPreviousPage = vi.fn()
@@ -30,7 +31,7 @@ describe('PaginationControls', () => {
   })
 
   it('Behavior 1: shows page indicator', () => {
-    render(<PaginationControls pagination={makePagination()} />)
+    renderWithTheme(<PaginationControls pagination={makePagination()} />)
     expect(screen.getByText('1')).toBeInTheDocument()
     expect(screen.getByText('2')).toBeInTheDocument()
     expect(screen.getByText('5')).toBeInTheDocument()
@@ -38,44 +39,46 @@ describe('PaginationControls', () => {
 
   it('Behavior 2: Next button calls nextPage', async () => {
     const user = userEvent.setup()
-    render(<PaginationControls pagination={makePagination()} />)
+    renderWithTheme(<PaginationControls pagination={makePagination()} />)
 
-    await user.click(screen.getByText('Next'))
+    await user.click(screen.getByRole('button', {name: 'Next'}))
     expect(mockNextPage).toHaveBeenCalled()
   })
 
   it('Behavior 3: Previous button calls previousPage', async () => {
     const user = userEvent.setup()
-    render(<PaginationControls pagination={makePagination()} />)
+    renderWithTheme(<PaginationControls pagination={makePagination()} />)
 
-    await user.click(screen.getByText('Previous'))
+    await user.click(screen.getByRole('button', {name: 'Previous'}))
     expect(mockPreviousPage).toHaveBeenCalled()
   })
 
   it('Behavior 4: Previous disabled on page 1', () => {
-    render(
+    renderWithTheme(
       <PaginationControls pagination={makePagination({currentPage: 1, hasPreviousPage: false})} />,
     )
 
-    expect(screen.getByText('Previous')).toBeDisabled()
+    expect(screen.getByRole('button', {name: 'Previous'})).toBeDisabled()
   })
 
   it('Behavior 5: Next disabled on last page', () => {
-    render(<PaginationControls pagination={makePagination({currentPage: 5, hasNextPage: false})} />)
+    renderWithTheme(
+      <PaginationControls pagination={makePagination({currentPage: 5, hasNextPage: false})} />,
+    )
 
-    expect(screen.getByText('Next')).toBeDisabled()
+    expect(screen.getByRole('button', {name: 'Next'})).toBeDisabled()
   })
 
   it('Behavior 6: loading state reduces opacity', () => {
-    render(<PaginationControls pagination={makePagination()} loading />)
+    renderWithTheme(<PaginationControls pagination={makePagination()} loading />)
 
     // Buttons should be disabled during loading
-    expect(screen.getByText('Next')).toBeDisabled()
-    expect(screen.getByText('Previous')).toBeDisabled()
+    expect(screen.getByRole('button', {name: 'Next'})).toBeDisabled()
+    expect(screen.getByRole('button', {name: 'Previous'})).toBeDisabled()
   })
 
   it('Behavior 7: hidden when single page', () => {
-    render(
+    renderWithTheme(
       <PaginationControls
         pagination={makePagination({totalPages: 1, hasNextPage: false, hasPreviousPage: false})}
       />,
@@ -88,14 +91,16 @@ describe('PaginationControls', () => {
 
   it('Behavior 8: changing rows per page calls setPageSize', async () => {
     const user = userEvent.setup()
-    render(<PaginationControls pagination={makePagination()} />)
+    renderWithTheme(<PaginationControls pagination={makePagination()} />)
 
     await user.selectOptions(screen.getByRole('combobox'), '50')
     expect(mockSetPageSize).toHaveBeenCalledWith(50)
   })
 
   it('Behavior 9: shows all page buttons when totalPages is 6 or less', () => {
-    render(<PaginationControls pagination={makePagination({currentPage: 3, totalPages: 6})} />)
+    renderWithTheme(
+      <PaginationControls pagination={makePagination({currentPage: 3, totalPages: 6})} />,
+    )
 
     expect(screen.getByText('1')).toBeInTheDocument()
     expect(screen.getByText('2')).toBeInTheDocument()
@@ -107,13 +112,15 @@ describe('PaginationControls', () => {
   })
 
   it('Behavior 10: shows condensed page buttons with ellipses when totalPages exceeds 6', () => {
-    render(<PaginationControls pagination={makePagination({currentPage: 5, totalPages: 20})} />)
+    renderWithTheme(
+      <PaginationControls pagination={makePagination({currentPage: 5, totalPages: 20})} />,
+    )
 
     expect(screen.getByText('1')).toBeInTheDocument()
     expect(screen.getByText('4')).toBeInTheDocument()
     expect(screen.getByText('5')).toBeInTheDocument()
     expect(screen.getByText('6')).toBeInTheDocument()
-    expect(screen.getByText('20')).toBeInTheDocument()
+    expect(screen.getByRole('button', {name: '20'})).toBeInTheDocument()
     expect(screen.getAllByText('...')).toHaveLength(2)
   })
 })

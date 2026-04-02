@@ -3,7 +3,7 @@ import {screen, fireEvent} from '@testing-library/react'
 import React from 'react'
 import {describe, it, expect, vi, beforeAll} from 'vitest'
 
-import {column} from '../src/column'
+import {column} from '../src/helpers/table/column'
 import {renderWithTheme} from './helpers'
 
 // Mock @sanity/sdk-react

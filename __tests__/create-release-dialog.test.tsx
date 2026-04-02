@@ -3,7 +3,7 @@ import {userEvent} from '@testing-library/user-event'
 import React from 'react'
 import {describe, it, expect, vi, beforeEach} from 'vitest'
 
-import {CreateReleaseDialog} from '../src/CreateReleaseDialog'
+import {CreateReleaseDialog} from '../src/components/releases/CreateReleaseDialog'
 import {renderWithTheme} from './helpers'
 
 // Mock window.matchMedia for Sanity UI Dialog
@@ -24,7 +24,7 @@ Object.defineProperty(window, 'matchMedia', {
 const mockCreateRelease = vi.fn().mockResolvedValue(undefined)
 const mockSetSelectedReleaseId = vi.fn()
 
-vi.mock('../src/ReleaseContext', () => ({
+vi.mock('../src/context/ReleaseContext', () => ({
   useReleaseContext: () => ({
     createRelease: mockCreateRelease,
     setSelectedReleaseId: mockSetSelectedReleaseId,

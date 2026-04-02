@@ -1,7 +1,7 @@
 import {renderHook, act} from '@testing-library/react'
 import {describe, it, expect, vi, beforeEach} from 'vitest'
 
-import {useCreateDocument} from '../src/useCreateDocument'
+import {useCreateDocument} from '../src/hooks/useCreateDocument'
 
 // Mock SDK
 const mockApply = vi.fn().mockResolvedValue(undefined)
@@ -19,10 +19,10 @@ vi.mock('@sanity/sdk', () => ({
 
 // Mock internal dependencies
 const mockToastPush = vi.fn()
-vi.mock('../src/ReleaseContext', () => ({
+vi.mock('../src/context/ReleaseContext', () => ({
   useOptionalReleaseContext: () => null,
 }))
-vi.mock('../src/useSafeToast', () => ({
+vi.mock('../src/hooks/useSafeToast', () => ({
   useSafeToast: () => ({push: mockToastPush}),
 }))
 

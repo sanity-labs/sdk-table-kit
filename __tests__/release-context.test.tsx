@@ -2,7 +2,7 @@ import {renderHook, act} from '@testing-library/react'
 import React from 'react'
 import {describe, it, expect, vi, beforeEach} from 'vitest'
 
-import {ReleaseProvider, useReleaseContext} from '../src/ReleaseContext'
+import {ReleaseProvider, useReleaseContext} from '../src/context/ReleaseContext'
 
 // Mock @sanity/sdk-react
 const mockActiveReleases = vi.fn()
@@ -162,8 +162,8 @@ describe('useReleaseContext', () => {
     )
   })
 
-  it('Behavior 8: release client uses apiVersion vX', () => {
+  it('Behavior 8: release client uses the pinned apiVersion', () => {
     renderHook(() => useReleaseContext(), {wrapper})
-    expect(mockUseClient).toHaveBeenCalledWith({apiVersion: 'vX'})
+    expect(mockUseClient).toHaveBeenCalledWith({apiVersion: '2025-05-06'})
   })
 })

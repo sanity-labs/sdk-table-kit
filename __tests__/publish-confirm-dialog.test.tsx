@@ -3,7 +3,7 @@ import {userEvent} from '@testing-library/user-event'
 import React from 'react'
 import {describe, it, expect, vi, beforeEach} from 'vitest'
 
-import {PublishConfirmDialog} from '../src/PublishConfirmDialog'
+import {PublishConfirmDialog} from '../src/components/releases/PublishConfirmDialog'
 import {renderWithTheme} from './helpers'
 
 // Track the mock so we can change behavior per-test

@@ -44,9 +44,9 @@ vi.mock('@sanity/sdk', () => ({
   })),
 }))
 
-import {column} from '../src/column'
-import {SanityDocumentTable} from '../src/SanityDocumentTable'
-import type {SanityDocumentTableProps} from '../src/SanityDocumentTable'
+import {SanityDocumentTable} from '../src/components/table/SanityDocumentTable'
+import type {SanityDocumentTableProps} from '../src/components/table/SanityDocumentTable'
+import {column} from '../src/helpers/table/column'
 
 const theme = buildTheme()
 

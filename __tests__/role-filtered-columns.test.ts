@@ -15,7 +15,7 @@ vi.mock('@sanity/sdk', () => ({
 
 import {renderHook} from '@testing-library/react'
 
-import {useRoleFilteredColumns} from '../src/useRoleFilteredColumns'
+import {useRoleFilteredColumns} from '../src/hooks/useRoleFilteredColumns'
 
 describe('useRoleFilteredColumns — role-based visibility + editability', () => {
   beforeEach(() => {

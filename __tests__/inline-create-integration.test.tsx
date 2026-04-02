@@ -3,7 +3,7 @@ import {screen, fireEvent, waitFor, act} from '@testing-library/react'
 import React from 'react'
 import {describe, it, expect, vi, beforeEach} from 'vitest'
 
-import {SanityDocumentTable} from '../src/SanityDocumentTable'
+import {SanityDocumentTable} from '../src/components/table/SanityDocumentTable'
 import {renderWithTheme} from './helpers'
 
 // Mock @sanity/sdk-react

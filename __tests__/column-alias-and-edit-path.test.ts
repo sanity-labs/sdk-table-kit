@@ -2,7 +2,7 @@ import {column} from '@sanetti/sanity-table-kit'
 import type {ColumnDef} from '@sanetti/sanity-table-kit'
 import {describe, it, expect, vi, beforeEach} from 'vitest'
 
-import {resolveColumnAliases} from '../src/resolveColumnAliases'
+import {resolveColumnAliases} from '../src/helpers/table/resolveColumnAliases'
 
 describe('Cell accessor — projected alias resolution', () => {
   it('Behavior 1: simple field column keeps field unchanged', () => {
@@ -60,7 +60,7 @@ import {editDocument} from '@sanity/sdk'
 import {renderHook} from '@testing-library/react'
 
 // Import after mocks
-import {useResolvedColumns} from '../src/useResolvedColumns'
+import {useResolvedColumns} from '../src/hooks/useResolvedColumns'
 
 describe('Edit path resolution — auto-extract document path', () => {
   beforeEach(() => {
@@ -76,7 +76,10 @@ describe('Edit path resolution — auto-extract document path', () => {
     // Trigger onSave
     titleCol.edit!.onSave!({_id: 'doc1', _type: 'article'}, 'New Title')
 
-    expect(editDocument).toHaveBeenCalledWith({documentId: 'doc1'}, {set: {title: 'New Title'}})
+    expect(editDocument).toHaveBeenCalledWith(
+      {documentId: 'doc1', documentType: 'article'},
+      {set: {title: 'New Title'}},
+    )
   })
 
   it('Behavior 2: edit:true on dot-path patches the FULL dot-path', () => {
@@ -95,7 +98,7 @@ describe('Edit path resolution — auto-extract document path', () => {
     dateCol.edit!.onSave!({_id: 'doc1', _type: 'article'}, '2027-01-14')
 
     expect(editDocument).toHaveBeenCalledWith(
-      {documentId: 'doc1'},
+      {documentId: 'doc1', documentType: 'article'},
       {set: {'web.dueDate': '2027-01-14'}},
     )
   })
@@ -115,7 +118,10 @@ describe('Edit path resolution — auto-extract document path', () => {
 
     badgeCol.edit!.onSave!({_id: 'doc1', _type: 'article'}, 'published')
 
-    expect(editDocument).toHaveBeenCalledWith({documentId: 'doc1'}, {set: {status: 'published'}})
+    expect(editDocument).toHaveBeenCalledWith(
+      {documentId: 'doc1', documentType: 'article'},
+      {set: {status: 'published'}},
+    )
   })
 
   it('Behavior 4: column without edit config is unchanged', () => {

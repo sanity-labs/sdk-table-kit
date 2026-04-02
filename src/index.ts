@@ -51,42 +51,42 @@ export type {
 } from '@sanetti/sanity-table-kit'
 
 // Unified column namespace — base + SDK helpers in one object
-export {column} from './column'
+export {column} from './helpers/table/column'
 export type {PreviewConfig, PreviewValue} from '@sanity/types'
 
 // SDK-specific exports
-export {useColumnProjection} from './useColumnProjection'
-export {parseFieldExpression} from './useColumnProjection'
+export {useColumnProjection} from './hooks/useColumnProjection'
+export {parseFieldExpression} from './hooks/useColumnProjection'
 export type {
   CellCommentsConfig,
   SanityColumnDef,
   ParsedFieldExpression,
-} from './useColumnProjection'
-export {resolveColumnAliases} from './resolveColumnAliases'
-export {useSanityTableData} from './useSanityTableData'
+} from './hooks/useColumnProjection'
+export {resolveColumnAliases} from './helpers/table/resolveColumnAliases'
+export {useSanityTableData} from './hooks/useSanityTableData'
 export type {
   SanityTableDataConfig,
   SanityTableDataResult,
   PaginationState,
   SortingState,
-} from './useSanityTableData'
-export {useSanityDocumentTable} from './useSanityDocumentTable'
-export type {SanityDocumentTableHookResult} from './useSanityDocumentTable'
-export {SanityDocumentTable} from './SanityDocumentTable'
-export type {SanityDocumentTableProps} from './SanityDocumentTable'
-export {PaginationControls} from './PaginationControls'
-export type {PaginationControlsProps} from './PaginationControls'
-export {PreviewCell} from './PreviewCell'
-export type {PreviewCellProps} from './PreviewCell'
-export {CommentableCell} from './CommentableCell'
-export {ActionBar} from './ActionBar'
-export type {ActionBarProps} from './ActionBar'
-export {CommentInput} from './CommentInput'
-export type {CommentInputHandle} from './CommentInput'
-export {SharedCommentsPanel} from './SharedCommentsPanel'
-export {useSDKEditHandler} from './useSDKEditHandler'
-export type {SDKEditHandlerResult} from './useSDKEditHandler'
-export {AddonDataProvider, useAddonData, useOptionalAddonData} from './AddonDataContext'
+} from './hooks/useSanityTableData'
+export {useSanityDocumentTable} from './hooks/useSanityDocumentTable'
+export type {SanityDocumentTableHookResult} from './hooks/useSanityDocumentTable'
+export {SanityDocumentTable} from './components/table/SanityDocumentTable'
+export type {SanityDocumentTableProps} from './components/table/SanityDocumentTable'
+export {PaginationControls} from './components/table/PaginationControls'
+export type {PaginationControlsProps} from './components/table/PaginationControls'
+export {PreviewCell} from './components/table/PreviewCell'
+export type {PreviewCellProps} from './components/table/PreviewCell'
+export {CommentableCell} from './components/comments/CommentableCell'
+export {ActionBar} from './components/common/ActionBar'
+export type {ActionBarProps} from './components/common/ActionBar'
+export {CommentInput} from './components/comments/CommentInput'
+export type {CommentInputHandle} from './components/comments/CommentInput'
+export {SharedCommentsPanel} from './components/comments/SharedCommentsPanel'
+export {useSDKEditHandler} from './hooks/useSDKEditHandler'
+export type {SDKEditHandlerResult} from './hooks/useSDKEditHandler'
+export {AddonDataProvider, useAddonData, useOptionalAddonData} from './context/AddonDataContext'
 export {
   buildCommentDocument,
   buildCommentThreads,
@@ -95,18 +95,20 @@ export {
   COMMENTS_BY_DOC_QUERY,
   groupUnresolvedCommentsByField,
   toPlainText,
-} from './addonCommentUtils'
+} from './helpers/comments/addonCommentUtils'
 export {
   findUserByResourceUserId,
   getCurrentResourceUserId,
   getResourceUserId,
   getUserDisplayNameByResourceUserId,
-} from './addonUserUtils'
-export {useAddonComments} from './useAddonComments'
-export {useAddonCommentMutations} from './useAddonCommentMutations'
-export {useAddonTasks} from './useAddonTasks'
-export {useAddonTaskMutations} from './useAddonTaskMutations'
-export {useCurrentResourceUserId} from './useCurrentResourceUserId'
+} from './helpers/users/addonUserUtils'
+export {useAddonComments} from './hooks/useAddonComments'
+export {useAddonCommentMutations} from './hooks/useAddonCommentMutations'
+export {useAddonTasks} from './hooks/useAddonTasks'
+export {useAddonTaskMutations} from './hooks/useAddonTaskMutations'
+export {useCurrentResourceUserId} from './hooks/useCurrentResourceUserId'
+export {useTaskComments} from './hooks/useTaskComments'
+export {useTaskCommentMutations} from './hooks/useTaskCommentMutations'
 export type {
   AddonDataContextValue,
   AddonMessage,
@@ -119,25 +121,25 @@ export type {
   TaskDocument,
   TaskEditPayload,
   TaskStatus,
-} from './addonTypes'
+} from './types/addonTypes'
 
 // Dialog components
-export {CreateReleaseDialog} from './CreateReleaseDialog'
+export {CreateReleaseDialog} from './components/releases/CreateReleaseDialog'
 export {
   DocumentStatusBatchProvider,
   useOptionalDocumentStatusBatchContext,
-} from './DocumentStatusBatchContext'
+} from './context/DocumentStatusBatchContext'
 export type {
   ActiveReleaseSnapshot,
   DocumentStatusBatchContextValue,
   DocumentStatusMap,
   DocumentStatusSnapshot,
-} from './DocumentStatusBatchContext'
-export {useDocumentStatusBatch, normalizeBaseDocumentId} from './useDocumentStatusBatch'
+} from './context/DocumentStatusBatchContext'
+export {useDocumentStatusBatch, normalizeBaseDocumentId} from './hooks/useDocumentStatusBatch'
 
 // Composable cell components — use in column.custom() for custom columns
-export {DocumentStatusCell} from './DocumentStatusCell'
-export {ReferenceCell} from './ReferenceCell'
-export {ReferenceEditPopover} from './ReferenceEditPopover'
-export {UserCell} from './UserCell'
-export {OpenInStudioCell} from './OpenInStudioCell'
+export {DocumentStatusCell} from './components/status/DocumentStatusCell'
+export {ReferenceCell} from './components/references/ReferenceCell'
+export {ReferenceEditPopover} from './components/references/ReferenceEditPopover'
+export {UserCell} from './components/users/UserCell'
+export {OpenInStudioCell} from './components/table/OpenInStudioCell'

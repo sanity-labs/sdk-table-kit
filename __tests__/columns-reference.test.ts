@@ -1,8 +1,8 @@
 import {describe, it, expect} from 'vitest'
 
-import {getServerSortableColumnIds} from '../src/getServerSortableColumnIds'
-import {column} from '../src/index'
-import {useColumnProjection} from '../src/useColumnProjection'
+import {column} from '../src'
+import {getServerSortableColumnIds} from '../src/helpers/filters/getServerSortableColumnIds'
+import {useColumnProjection} from '../src/hooks/useColumnProjection'
 
 describe('columns.reference()', () => {
   it('Behavior 1: creates column def with GROQ dereference projection', () => {

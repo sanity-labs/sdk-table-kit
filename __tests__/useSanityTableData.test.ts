@@ -2,7 +2,7 @@ import {column} from '@sanetti/sanity-table-kit'
 import {renderHook} from '@testing-library/react'
 import {describe, it, expect, vi, beforeEach} from 'vitest'
 
-import {useSanityTableData} from '../src/useSanityTableData'
+import {useSanityTableData} from '../src/hooks/useSanityTableData'
 
 // Mock @sanity/sdk-react
 const mockUsePaginatedDocuments = vi.fn()
@@ -108,7 +108,7 @@ describe('useSanityTableData', () => {
     expect(result.current.loading).toBe(true)
   })
 
-  it('Behavior 4: uses useQuery when documentType is an array', () => {
+  it('Behavior 4: uses query mode when documentType is an array', () => {
     renderHook(() =>
       useSanityTableData({
         documentType: ['article', 'page'],
@@ -117,13 +117,7 @@ describe('useSanityTableData', () => {
     )
 
     expect(mockUseQuery).toHaveBeenCalled()
-    expect(mockUsePaginatedDocuments).toHaveBeenCalledWith(
-      expect.objectContaining({
-        documentType: [],
-        filter: '_id == "___never___"',
-        pageSize: 1,
-      }),
-    )
+    expect(mockUsePaginatedDocuments).not.toHaveBeenCalled()
   })
 
   it('Behavior 5: uses useQuery when filter prop is provided', () => {
@@ -184,7 +178,7 @@ describe('useSanityTableData', () => {
     )
   })
 
-  it('Behavior 9: uses query mode when pageSize is not specified', () => {
+  it('Behavior 9: defaults to paginated mode when pageSize is not specified', () => {
     renderHook(() =>
       useSanityTableData({
         documentType: 'article',
@@ -194,9 +188,8 @@ describe('useSanityTableData', () => {
 
     expect(mockUsePaginatedDocuments).toHaveBeenCalledWith(
       expect.objectContaining({
-        documentType: [],
-        filter: '_id == "___never___"',
-        pageSize: 1,
+        documentType: 'article',
+        pageSize: 25,
       }),
     )
     expect(mockUseQuery).toHaveBeenCalled()

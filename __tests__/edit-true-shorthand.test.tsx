@@ -2,7 +2,7 @@ import {describe, expect, it, vi} from 'vitest'
 
 // We test the SDK-native column helpers from table-kit-sanity
 // which wrap the base helpers to accept `edit: true`
-import {column} from '../src/column'
+import {column} from '../src/helpers/table/column'
 
 /**
  * edit: true shorthand on SDK-native column helpers.

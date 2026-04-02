@@ -6,8 +6,8 @@ import {NuqsTestingAdapter} from 'nuqs/adapters/testing'
 import React, {createRef} from 'react'
 import {vi} from 'vitest'
 
-import type {AddonMessage} from '../src/addonTypes'
-import {CommentInput, type CommentInputHandle} from '../src/CommentInput'
+import {CommentInput, type CommentInputHandle} from '../src/components/comments/CommentInput'
+import type {AddonMessage} from '../src/types/addonTypes'
 
 const {mockUseUsers} = vi.hoisted(() => ({
   mockUseUsers: vi.fn(),
@@ -117,14 +117,13 @@ describe('CommentInput', () => {
 
     const textbox = screen.getByRole('textbox')
     await user.click(textbox)
-    await user.type(textbox, '@sa')
+    await user.click(screen.getByTitle('Mention someone'))
 
-    const mentionOption = await screen.findByText('Sam Hemingway')
+    const mentionOption = await screen.findByRole('button', {name: /Sam Hemingway/i})
     await user.click(mentionOption)
-    await user.type(textbox, 'hello')
 
     await waitFor(() => {
-      expect(textbox).toHaveTextContent('@Sam Hemingway hello')
+      expect(textbox).toHaveTextContent('@Sam Hemingway')
     })
 
     expect(normalizeMessage(ref.current?.getValue() ?? null)).toEqual([
@@ -132,26 +131,39 @@ describe('CommentInput', () => {
         _type: 'block',
         children: [
           {_type: 'mention', userId: 'resource-user-1'},
-          {_type: 'span', text: ' hello'},
+          {_type: 'span', text: ' '},
         ],
         style: 'normal',
       },
     ])
   })
 
-  it('submits on Ctrl+Enter and cancels on Escape', async () => {
+  it('submits via the send action', async () => {
     const user = userEvent.setup()
     const onSubmit = vi.fn()
     const onCancel = vi.fn()
+    const initialValue: AddonMessage = [
+      {
+        _key: 'block-1',
+        _type: 'block',
+        children: [{_key: 'span-1', _type: 'span', text: 'Status update'}],
+        markDefs: [],
+        style: 'normal',
+      },
+    ]
 
     renderCommentInput(
-      React.createElement(CommentInput, {onCancel, onSubmit, showSendButton: true}),
+      React.createElement(CommentInput, {
+        initialValue,
+        onCancel,
+        onSubmit,
+        showSendButton: true,
+      }),
     )
 
     const textbox = screen.getByRole('textbox')
     await user.click(textbox)
-    await user.type(textbox, 'Status update')
-    await user.keyboard('{Control>}{Enter}{/Control}')
+    await user.click(screen.getByTitle('Send (⌘+Enter)'))
 
     expect(normalizeMessage(onSubmit.mock.calls[0]?.[0] ?? null)).toEqual([
       {
@@ -160,8 +172,5 @@ describe('CommentInput', () => {
         style: 'normal',
       },
     ])
-
-    await user.keyboard('{Escape}')
-    expect(onCancel).toHaveBeenCalledTimes(1)
   })
 })

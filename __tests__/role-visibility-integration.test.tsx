@@ -3,7 +3,7 @@ import {screen, within} from '@testing-library/react'
 import React from 'react'
 import {describe, it, expect, vi, beforeEach, beforeAll} from 'vitest'
 
-import {column} from '../src/column'
+import {column} from '../src/helpers/table/column'
 import {renderWithTheme} from './helpers'
 
 // Sanity UI needs window.matchMedia in jsdom
@@ -42,7 +42,7 @@ vi.mock('@sanity/sdk', () => ({
   editDocument: vi.fn(),
 }))
 
-import {SanityDocumentTable} from '../src/SanityDocumentTable'
+import {SanityDocumentTable} from '../src/components/table/SanityDocumentTable'
 
 const mockData = [
   {_id: 'doc-1', _type: 'article', title: 'Alpha', status: 'draft'},

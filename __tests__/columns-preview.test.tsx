@@ -2,9 +2,9 @@ import {render, screen} from '@testing-library/react'
 import React from 'react'
 import {describe, it, expect, vi, beforeEach} from 'vitest'
 
-import {column} from '../src/index'
-import {PreviewCell} from '../src/PreviewCell'
-import {useColumnProjection} from '../src/useColumnProjection'
+import {column} from '../src'
+import {PreviewCell} from '../src/components/table/PreviewCell'
+import {useColumnProjection} from '../src/hooks/useColumnProjection'
 
 // Mock @sanity/sdk-react
 const mockUseDocumentPreview = vi.fn()

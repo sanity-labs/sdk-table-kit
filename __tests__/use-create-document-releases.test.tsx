@@ -1,7 +1,7 @@
 import {renderHook, act} from '@testing-library/react'
 import {describe, it, expect, vi, beforeEach} from 'vitest'
 
-import {useCreateDocument} from '../src/useCreateDocument'
+import {useCreateDocument} from '../src/hooks/useCreateDocument'
 
 // Mock SDK
 const mockApply = vi.fn().mockResolvedValue(undefined)
@@ -23,10 +23,10 @@ vi.mock('@sanity/sdk', () => ({
 
 // Mock release context with active release
 const mockReleaseCtx = {selectedReleaseId: null as string | null}
-vi.mock('../src/ReleaseContext', () => ({
+vi.mock('../src/context/ReleaseContext', () => ({
   useOptionalReleaseContext: () => (mockReleaseCtx.selectedReleaseId ? mockReleaseCtx : null),
 }))
-vi.mock('../src/useSafeToast', () => ({
+vi.mock('../src/hooks/useSafeToast', () => ({
   useSafeToast: () => ({push: vi.fn()}),
 }))
 
