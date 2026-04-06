@@ -117,7 +117,13 @@ describe('useSanityTableData', () => {
     )
 
     expect(mockUseQuery).toHaveBeenCalled()
-    expect(mockUsePaginatedDocuments).not.toHaveBeenCalled()
+    expect(mockUsePaginatedDocuments).toHaveBeenCalledWith(
+      expect.objectContaining({
+        documentType: [],
+        filter: '_id == "___never___"',
+        pageSize: 1,
+      }),
+    )
   })
 
   it('Behavior 5: uses useQuery when filter prop is provided', () => {
@@ -178,8 +184,8 @@ describe('useSanityTableData', () => {
     )
   })
 
-  it('Behavior 9: defaults to paginated mode when pageSize is not specified', () => {
-    renderHook(() =>
+  it('Behavior 9: uses query mode when pageSize is not specified', () => {
+    const {result} = renderHook(() =>
       useSanityTableData({
         documentType: 'article',
         columns: testColumns,
@@ -188,14 +194,37 @@ describe('useSanityTableData', () => {
 
     expect(mockUsePaginatedDocuments).toHaveBeenCalledWith(
       expect.objectContaining({
-        documentType: 'article',
-        pageSize: 25,
+        documentType: [],
+        filter: '_id == "___never___"',
+        pageSize: 1,
       }),
     )
     expect(mockUseQuery).toHaveBeenCalled()
+    expect(result.current.pagination).toBeNull()
   })
 
-  it('Behavior 10: exposes pageSize and setPageSize on pagination state', () => {
+  it('Behavior 10: keeps filtered tables in paginated mode when pageSize is specified', () => {
+    const {result} = renderHook(() =>
+      useSanityTableData({
+        documentType: 'article',
+        columns: testColumns,
+        filter: 'status != "archived"',
+        pageSize: 10,
+      }),
+    )
+
+    expect(mockUsePaginatedDocuments).toHaveBeenCalledWith(
+      expect.objectContaining({
+        documentType: 'article',
+        filter: 'status != "archived"',
+        pageSize: 10,
+      }),
+    )
+    expect(result.current.pagination).not.toBeNull()
+    expect(result.current.sorting).not.toBeNull()
+  })
+
+  it('Behavior 11: exposes pageSize and setPageSize on pagination state', () => {
     const onPageSizeChange = vi.fn()
 
     const {result} = renderHook(() =>

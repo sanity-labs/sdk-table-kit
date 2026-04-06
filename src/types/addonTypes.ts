@@ -1,75 +1,26 @@
-export interface CrossDatasetReference {
-  _dataset: string
-  _projectId: string
-  _ref: string
-  _type: 'crossDatasetReference'
-  _weak: boolean
-}
+import type {
+  CommentDocument as PublicCommentDocument,
+  CommentMessage as PublicCommentMessage,
+  CommentReaction as PublicCommentReaction,
+  CommentStatus as PublicCommentStatus,
+  CommentTarget as PublicCommentTarget,
+  CrossDatasetReference as PublicCrossDatasetReference,
+  Reference as PublicReference,
+} from '@sanetti/comments-core'
 
-export interface Reference {
-  _ref: string
-  _type: 'reference'
-  _weak: boolean
-}
+export type CrossDatasetReference = PublicCrossDatasetReference
 
-export interface AddonTarget {
-  document: CrossDatasetReference
-  documentType: string
-}
+export type Reference = PublicReference
 
-export type AddonMessage = Array<{
-  _key: string
-  _type: 'block'
-  children: Array<
-    | {_key: string; _type: 'mention'; userId: string}
-    | {_key?: string; _type: 'span'; marks?: string[]; text: string}
-  >
-  markDefs?: Array<{_key: string; _type: string; [key: string]: unknown}>
-  style?: string
-}> | null
+export type AddonTarget = PublicCommentTarget
 
-export interface CommentReaction {
-  _key: string
-  addedAt: string
-  shortName: string
-  userId: string
-}
+export type AddonMessage = PublicCommentMessage
 
-export type CommentStatus = 'open' | 'resolved'
+export type CommentReaction = PublicCommentReaction
 
-export interface CommentDocument {
-  _createdAt: string
-  _id: string
-  _rev?: string
-  _type: 'comment'
-  _updatedAt: string
-  authorId: string
-  context?: {
-    notification?: {
-      currentThreadLength?: number
-      documentTitle?: string
-      subscribers?: string[]
-      url?: string
-      workspaceName?: string
-      workspaceTitle?: string
-    }
-    payload?: Record<string, unknown>
-    tool?: string
-  }
-  contentSnapshot?: unknown
-  lastEditedAt?: string
-  message: AddonMessage
-  parentCommentId?: string
-  reactions?: CommentReaction[] | null
-  status: CommentStatus
-  subscribers?: string[]
-  target: {
-    document: CrossDatasetReference | Reference
-    documentType: string
-    path?: {field: string}
-  }
-  threadId: string
-}
+export type CommentStatus = PublicCommentStatus
+
+export type CommentDocument = PublicCommentDocument
 
 export interface TaskContext {
   notification?: {

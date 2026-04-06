@@ -92,7 +92,6 @@ export {
   buildCommentThreads,
   buildMessageFromPlainText,
   buildStudioUrl,
-  COMMENTS_BY_DOC_QUERY,
   groupUnresolvedCommentsByField,
   toPlainText,
 } from './helpers/comments/addonCommentUtils'

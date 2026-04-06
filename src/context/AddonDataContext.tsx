@@ -1,3 +1,4 @@
+import {AddonDatasetRuntimeProvider} from '@sanetti/sdk-addon-dataset-runtime'
 import {useQuery} from '@sanity/sdk-react'
 import React, {
   createContext,
@@ -144,19 +145,27 @@ export function AddonDataProvider({
   )
 
   return (
-    <AddonDataCtx.Provider value={value}>
-      <AddonErrorBoundary fallback={null}>
-        <Suspense fallback={null}>
-          <TasksFetchBridge
-            addonDataset={addonDataset}
-            docType={docType}
-            onTasks={handleTasks}
-            projectId={projectId}
-          />
-        </Suspense>
-      </AddonErrorBoundary>
-      {children}
-    </AddonDataCtx.Provider>
+    <AddonDatasetRuntimeProvider
+      addonDataset={addonDataset}
+      contentDataset={contentDataset}
+      projectId={projectId}
+      workspaceId={workspaceId}
+      workspaceTitle={workspaceTitle}
+    >
+      <AddonDataCtx.Provider value={value}>
+        <AddonErrorBoundary fallback={null}>
+          <Suspense fallback={null}>
+            <TasksFetchBridge
+              addonDataset={addonDataset}
+              docType={docType}
+              onTasks={handleTasks}
+              projectId={projectId}
+            />
+          </Suspense>
+        </AddonErrorBoundary>
+        {children}
+      </AddonDataCtx.Provider>
+    </AddonDatasetRuntimeProvider>
   )
 }
 

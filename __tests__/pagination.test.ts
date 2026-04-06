@@ -142,11 +142,17 @@ describe('useSanityTableData — pagination', () => {
     )
 
     expect(mockUseQuery).toHaveBeenCalled()
-    expect(mockUsePaginatedDocuments).not.toHaveBeenCalled()
+    expect(mockUsePaginatedDocuments).toHaveBeenCalledWith(
+      expect.objectContaining({
+        documentType: [],
+        filter: '_id == "___never___"',
+        pageSize: 1,
+      }),
+    )
   })
 
-  it('Behavior 7: auto-detect — documentType without pageSize defaults to paginated with 25', () => {
-    renderHook(() =>
+  it('Behavior 7: documentType without pageSize stays in query mode', () => {
+    const {result} = renderHook(() =>
       useSanityTableData({
         documentType: 'article',
         columns: testColumns,
@@ -155,13 +161,16 @@ describe('useSanityTableData — pagination', () => {
 
     expect(mockUsePaginatedDocuments).toHaveBeenCalledWith(
       expect.objectContaining({
-        pageSize: 25,
+        documentType: [],
+        filter: '_id == "___never___"',
+        pageSize: 1,
       }),
     )
+    expect(result.current.pagination).toBeNull()
   })
 
-  it('Behavior 8: filter prop forces useQuery mode regardless of pageSize', () => {
-    renderHook(() =>
+  it('Behavior 8: filter prop keeps server pagination when pageSize is provided', () => {
+    const {result} = renderHook(() =>
       useSanityTableData({
         documentType: 'article',
         columns: testColumns,
@@ -170,8 +179,13 @@ describe('useSanityTableData — pagination', () => {
       }),
     )
 
-    // filter forces useQuery mode (no server-side pagination)
-    expect(mockUseQuery).toHaveBeenCalled()
-    expect(mockUsePaginatedDocuments).not.toHaveBeenCalled()
+    expect(mockUsePaginatedDocuments).toHaveBeenCalledWith(
+      expect.objectContaining({
+        documentType: 'article',
+        filter: 'status != "archived"',
+        pageSize: 10,
+      }),
+    )
+    expect(result.current.pagination).not.toBeNull()
   })
 })

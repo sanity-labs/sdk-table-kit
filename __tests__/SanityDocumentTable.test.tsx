@@ -76,16 +76,9 @@ describe('SanityDocumentTable', () => {
   })
 
   it('Behavior 2: passes loading=true to DocumentTable when SDK is pending', () => {
-    mockUsePaginatedDocuments.mockReturnValue({
+    mockUseQuery.mockReturnValue({
       data: undefined,
       isPending: true,
-      hasNextPage: false,
-      hasPreviousPage: false,
-      fetchNextPage: vi.fn(),
-      fetchPreviousPage: vi.fn(),
-      totalCount: 0,
-      currentPage: 1,
-      totalPages: 1,
     })
 
     renderWithTheme(<SanityDocumentTable documentType="article" columns={testColumns} />)
@@ -97,16 +90,9 @@ describe('SanityDocumentTable', () => {
   })
 
   it('Behavior 3: renders empty state when no documents', () => {
-    mockUsePaginatedDocuments.mockReturnValue({
+    mockUseQuery.mockReturnValue({
       data: [],
       isPending: false,
-      hasNextPage: false,
-      hasPreviousPage: false,
-      fetchNextPage: vi.fn(),
-      fetchPreviousPage: vi.fn(),
-      totalCount: 0,
-      currentPage: 1,
-      totalPages: 1,
     })
 
     renderWithTheme(<SanityDocumentTable documentType="article" columns={testColumns} />)
@@ -115,16 +101,9 @@ describe('SanityDocumentTable', () => {
   })
 
   it('Behavior 4: custom empty message', () => {
-    mockUsePaginatedDocuments.mockReturnValue({
+    mockUseQuery.mockReturnValue({
       data: [],
       isPending: false,
-      hasNextPage: false,
-      hasPreviousPage: false,
-      fetchNextPage: vi.fn(),
-      fetchPreviousPage: vi.fn(),
-      totalCount: 0,
-      currentPage: 1,
-      totalPages: 1,
     })
 
     renderWithTheme(
@@ -188,6 +167,12 @@ describe('SanityDocumentTable', () => {
     )
 
     expect(mockUseQuery).toHaveBeenCalled()
-    expect(mockUsePaginatedDocuments).not.toHaveBeenCalled()
+    expect(mockUsePaginatedDocuments).toHaveBeenCalledWith(
+      expect.objectContaining({
+        documentType: [],
+        filter: '_id == "___never___"',
+        pageSize: 1,
+      }),
+    )
   })
 })

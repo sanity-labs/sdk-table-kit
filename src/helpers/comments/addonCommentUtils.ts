@@ -1,4 +1,22 @@
-import type {AddonMessage, CommentDocument} from '../../types/addonTypes'
+import {
+  buildCommentDocument as buildPublicCommentDocument,
+  buildCommentNotificationContext,
+  buildCommentTarget,
+  buildCommentThreads,
+  buildMessageFromPlainText,
+  buildStudioCommentUrl,
+  buildTaskCommentDocument,
+  buildTaskStudioUrl as buildPublicTaskStudioUrl,
+  getCommentThreadsForField,
+  groupUnresolvedCommentsByField,
+  toPlainText,
+  type CommentDocument,
+  type CommentMessage,
+  type CommentThread,
+  type CommentThreadGroup,
+} from '@sanetti/comments-core'
+
+const DEFAULT_STUDIO_BASE_URL = 'https://www.sanity.io/@oNAgKWFqi/studio/beihhm8eq5gszxxix51uhpzo'
 
 export const COMMENTS_BY_DOC_QUERY = `*[
   _type == "comment"
@@ -39,23 +57,6 @@ export const TASK_COMMENTS_QUERY = `*[
   target
 } | order(_createdAt asc)`
 
-const STUDIO_BASE = 'https://www.sanity.io/@oNAgKWFqi/studio/beihhm8eq5gszxxix51uhpzo'
-
-export interface CommentThread {
-  parent: CommentDocument
-  replies: CommentDocument[]
-}
-
-export interface CommentThreadGroup {
-  field: string
-  threads: CommentThread[]
-}
-
-interface GetCommentThreadsForFieldOptions {
-  field: string
-  includeResolved?: boolean
-}
-
 interface BuildCommentDocumentOptions {
   authorId: string
   commentId?: string
@@ -65,7 +66,7 @@ interface BuildCommentDocumentOptions {
   documentTitle?: string
   documentType: string
   field?: string
-  message: AddonMessage
+  message: CommentMessage
   parentCommentId?: string
   projectId: string
   status?: 'open' | 'resolved'
@@ -75,31 +76,20 @@ interface BuildCommentDocumentOptions {
   contentDataset: string
 }
 
-interface BuildTaskCommentDocumentOptions {
-  authorId: string
-  commentId?: string
-  createdAt?: string
-  currentThreadLength?: number
-  message: AddonMessage
-  parentCommentId?: string
-  status?: 'open' | 'resolved'
-  subscribers?: string[]
-  taskId: string
-  taskStudioUrl?: string
-  taskTitle?: string
-  threadId?: string
-  workspaceId?: string
-  workspaceTitle?: string
-}
-
 export function buildStudioUrl(
   documentId: string,
   documentType: string,
   commentId: string,
   workspaceName: string = 'news_and_media',
 ): string {
-  const cleanId = documentId.replace('drafts.', '')
-  return `${STUDIO_BASE}/${workspaceName}/intent/edit/id=${cleanId};type=${documentType};inspect=sanity%2Fcomments;comment=${commentId}/`
+  return buildStudioCommentUrl({
+    commentId,
+    documentId,
+    documentType,
+    studioBaseUrl: DEFAULT_STUDIO_BASE_URL,
+
+    workspaceName,
+  })
 }
 
 export function buildTaskStudioUrl(
@@ -107,18 +97,7 @@ export function buildTaskStudioUrl(
   workspaceName: string = 'admin',
   commentId?: string,
 ) {
-  const params = new URLSearchParams({
-    selectedTask: taskId,
-    sidebar: 'tasks',
-    viewMode: 'edit',
-  })
-
-  if (commentId) {
-    params.set('commentId', commentId)
-  }
-
-  const workspacePath = workspaceName ? `/${workspaceName}` : ''
-  return `${workspacePath}/?${params.toString()}`
+  return buildPublicTaskStudioUrl({commentId, taskId, workspaceName})
 }
 
 export function buildCommentDocument({
@@ -155,204 +134,51 @@ export function buildCommentDocument({
   const id = commentId ?? crypto.randomUUID()
   const now = createdAt ?? new Date().toISOString()
 
-  return {
-    _createdAt: now,
-    _id: id,
-    _type: 'comment',
-    _updatedAt: now,
+  return buildPublicCommentDocument({
     authorId,
-    context: {
-      notification: {
-        currentThreadLength: currentThreadLength ?? (parentCommentId ? 2 : 1),
-        documentTitle: documentTitle ?? '',
-        url: buildStudioUrl(documentId, documentType, id, workspaceId),
-        workspaceName: workspaceId ?? '',
-        workspaceTitle: workspaceTitle ?? '',
-      },
+    commentId: id,
+    context: buildCommentNotificationContext({
+      currentThreadLength: currentThreadLength ?? (parentCommentId ? 2 : 1),
+      documentTitle: documentTitle ?? '',
       payload: {workspace: workspaceId ?? ''},
-      tool: '',
-    },
+      url: buildStudioUrl(documentId, documentType, id, workspaceId),
+      workspaceName: workspaceId ?? '',
+      workspaceTitle: workspaceTitle ?? '',
+    }),
+    createdAt: now,
     message,
-    reactions: [],
-    status: status ?? 'open',
-    subscribers: [authorId],
-    target: {
-      document: {
-        _dataset: contentDataset,
-        _projectId: projectId,
-        _ref: documentId.replace('drafts.', ''),
-        _type: 'crossDatasetReference',
-        _weak: true,
-      },
+    parentCommentId,
+    status,
+    target: buildCommentTarget({
+      contentDataset,
+      documentId,
       documentType,
-      path: {field: field ?? 'title'},
-    },
-    threadId: threadId ?? id,
-    ...(parentCommentId ? {parentCommentId} : {}),
-  }
-}
-
-export function buildTaskCommentDocument({
-  authorId,
-  commentId,
-  createdAt,
-  currentThreadLength,
-  message,
-  parentCommentId,
-  status,
-  subscribers,
-  taskId,
-  taskStudioUrl,
-  taskTitle,
-  threadId,
-  workspaceId,
-  workspaceTitle,
-}: BuildTaskCommentDocumentOptions): CommentDocument & {
-  context?: {
-    notification: {
-      currentThreadLength: number
-      documentTitle: string
-      subscribers?: string[]
-      url: string
-      workspaceName: string
-      workspaceTitle: string
-    }
-    payload: {workspace: string}
-    tool: string
-  }
-  subscribers: string[]
-} {
-  const id = commentId ?? crypto.randomUUID()
-  const now = createdAt ?? new Date().toISOString()
-  const commentSubscribers = subscribers?.length ? subscribers : [authorId]
-
-  return {
-    _createdAt: now,
-    _id: id,
-    _type: 'comment',
-    _updatedAt: now,
-    authorId,
-    context: {
+      fieldPath: field,
+      projectId,
+    }),
+    threadId,
+  }) as CommentDocument & {
+    context?: {
       notification: {
-        currentThreadLength: currentThreadLength ?? (parentCommentId ? 2 : 1),
-        documentTitle: taskTitle ?? '',
-        subscribers: commentSubscribers,
-        url: taskStudioUrl ?? buildTaskStudioUrl(taskId, workspaceId, id),
-        workspaceName: workspaceId ?? '',
-        workspaceTitle: workspaceTitle ?? '',
-      },
-      payload: {workspace: workspaceId ?? ''},
-      tool: 'structure',
-    },
-    message,
-    reactions: [],
-    status: status ?? 'open',
-    subscribers: commentSubscribers,
-    target: {
-      document: {
-        _ref: taskId,
-        _type: 'reference',
-        _weak: true,
-      },
-      documentType: 'tasks.task',
-    },
-    threadId: threadId ?? id,
-    ...(parentCommentId ? {parentCommentId} : {}),
-  }
-}
-
-export function buildMessageFromPlainText(text: string): AddonMessage {
-  return [
-    {
-      _key: crypto.randomUUID().slice(0, 8),
-      _type: 'block',
-      children: [
-        {
-          _key: crypto.randomUUID().slice(0, 8),
-          _type: 'span',
-          text,
-        },
-      ],
-      style: 'normal',
-    },
-  ]
-}
-
-export function buildCommentThreads(comments: CommentDocument[]): CommentThread[] {
-  const threadMap = new Map<string, CommentThread>()
-
-  for (const comment of comments) {
-    if (!comment.parentCommentId) {
-      threadMap.set(comment.threadId || comment._id, {parent: comment, replies: []})
+        currentThreadLength: number
+        documentTitle: string
+        url: string
+        workspaceName: string
+        workspaceTitle: string
+      }
+      payload: {workspace: string}
+      tool: string
     }
+    subscribers: string[]
   }
-
-  for (const comment of comments) {
-    if (!comment.parentCommentId) continue
-
-    const thread = threadMap.get(comment.threadId)
-    if (thread) {
-      thread.replies.push(comment)
-    }
-  }
-
-  return Array.from(threadMap.values())
 }
 
-export function getCommentThreadField(thread: CommentThread): string {
-  return thread.parent.target.path?.field || 'unknownField'
+export {
+  buildCommentThreads,
+  buildMessageFromPlainText,
+  buildTaskCommentDocument,
+  getCommentThreadsForField,
+  groupUnresolvedCommentsByField,
+  toPlainText,
 }
-
-export function getCommentThreadsForField(
-  comments: CommentDocument[],
-  {field, includeResolved = false}: GetCommentThreadsForFieldOptions,
-): CommentThread[] {
-  return buildCommentThreads(comments)
-    .filter((thread) => {
-      if (getCommentThreadField(thread) !== field) return false
-      if (!includeResolved && thread.parent.status === 'resolved') return false
-      return true
-    })
-    .sort(
-      (a, b) => new Date(b.parent._createdAt).getTime() - new Date(a.parent._createdAt).getTime(),
-    )
-}
-
-export function groupUnresolvedCommentsByField(comments: CommentDocument[]): CommentThreadGroup[] {
-  const grouped = new Map<string, CommentThread[]>()
-
-  for (const thread of buildCommentThreads(comments)) {
-    if (thread.parent.status === 'resolved') continue
-
-    const field = getCommentThreadField(thread)
-    const existing = grouped.get(field)
-    if (existing) {
-      existing.push(thread)
-    } else {
-      grouped.set(field, [thread])
-    }
-  }
-
-  return [...grouped.entries()]
-    .sort(([fieldA], [fieldB]) => fieldA.localeCompare(fieldB))
-    .map(([field, threads]) => ({
-      field,
-      threads: threads.sort(
-        (a, b) => new Date(b.parent._createdAt).getTime() - new Date(a.parent._createdAt).getTime(),
-      ),
-    }))
-}
-
-export function toPlainText(message: AddonMessage): string {
-  if (!message) return ''
-
-  return message
-    .flatMap((block) =>
-      block.children.map((child) => {
-        if (child._type === 'mention') return `@${child.userId}`
-        return child.text ?? ''
-      }),
-    )
-    .join('')
-    .trim()
-}
+export type {CommentThread, CommentThreadGroup}

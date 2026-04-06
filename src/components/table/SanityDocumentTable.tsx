@@ -51,7 +51,8 @@ export interface SanityDocumentTableProps<T extends DocumentBase = DocumentBase>
 
   /**
    * Optional GROQ filter expression appended to the base type filter.
-   * When provided with a single documentType, falls back to useQuery mode.
+   * When provided without `pageSize`, falls back to useQuery mode.
+   * When `pageSize` is set, the filter is applied to the server-paginated result.
    * @example 'status != "archived" && defined(title)'
    */
   filter?: string

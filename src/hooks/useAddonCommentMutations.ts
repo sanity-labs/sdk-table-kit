@@ -1,182 +1,76 @@
-import {useClient} from '@sanity/sdk-react'
-import {useCallback, useMemo} from 'react'
+import {useApplyCommentActions} from '@sanetti/sdk-comments'
 
 import {useAddonData} from '../context/AddonDataContext'
-import {buildCommentDocument, buildTaskCommentDocument} from '../helpers/comments/addonCommentUtils'
 import type {AddonMessage, CommentReaction, CommentStatus, TaskDocument} from '../types/addonTypes'
 import {useCurrentResourceUserId} from './useCurrentResourceUserId'
 
+const DEFAULT_STUDIO_BASE_URL = 'https://www.sanity.io/@oNAgKWFqi/studio/beihhm8eq5gszxxix51uhpzo'
+
 export function useAddonCommentMutations() {
-  const {addonDataset, contentDataset, projectId, workspaceId, workspaceTitle} = useAddonData()
+  const {workspaceId, workspaceTitle} = useAddonData()
   const currentResourceUserId = useCurrentResourceUserId()
-  const baseClient = useClient({apiVersion: '2025-05-06'})
+  const mutations = useApplyCommentActions({
+    currentUserId: currentResourceUserId,
+    studioBaseUrl: DEFAULT_STUDIO_BASE_URL,
+    workspaceId,
+    workspaceTitle,
+  })
 
-  const client = useMemo(
-    () =>
-      baseClient.withConfig({
-        dataset: addonDataset,
-        projectId,
-      }),
-    [addonDataset, baseClient, projectId],
-  )
+  const createComment = (
+    documentId: string,
+    documentType: string,
+    documentTitle: string,
+    message: AddonMessage,
+    parentCommentId?: string,
+    threadId?: string,
+    commentId?: string,
+    field?: string,
+  ) =>
+    mutations.createComment({
+      commentId,
+      documentId,
+      documentTitle,
+      documentType,
+      fieldPath: field,
+      message,
+      parentCommentId,
+      threadId,
+    })
 
-  const createComment = useCallback(
-    async (
-      documentId: string,
-      documentType: string,
-      documentTitle: string,
-      message: AddonMessage,
-      parentCommentId?: string,
-      threadId?: string,
-      commentId?: string,
-      field?: string,
-    ) => {
-      if (!contentDataset) {
-        throw new Error('Addon content dataset is not configured')
-      }
-
-      const authorId = currentResourceUserId ?? 'unknown'
-
-      const comment = buildCommentDocument({
-        authorId,
-        commentId,
-        contentDataset,
-        documentId,
-        documentTitle,
-        documentType,
-        field,
-        message,
-        parentCommentId,
-        projectId,
-        threadId,
-        workspaceId,
-        workspaceTitle,
-      })
-
-      try {
-        return await client.create(comment)
-      } catch (error) {
-        console.error('[useAddonCommentMutations] createComment failed:', error)
-        throw error
-      }
-    },
-    [client, contentDataset, currentResourceUserId, projectId, workspaceId, workspaceTitle],
-  )
-
-  const createTaskComment = useCallback(
-    async (
-      task: Pick<TaskDocument, '_id' | 'context' | 'subscribers' | 'title'>,
-      message: AddonMessage,
-      parentCommentId?: string,
-      threadId?: string,
-      commentId?: string,
-    ) => {
-      const authorId = currentResourceUserId ?? 'unknown'
-
-      const comment = buildTaskCommentDocument({
-        authorId,
-        commentId,
-        message,
-        parentCommentId,
-        subscribers: task.subscribers,
-        taskId: task._id,
-        taskStudioUrl: task.context?.notification?.url,
-        taskTitle: task.title,
-        threadId,
-        workspaceId,
-        workspaceTitle,
-      })
-
-      try {
-        return await client.create(comment)
-      } catch (error) {
-        console.error('[useAddonCommentMutations] createTaskComment failed:', error)
-        throw error
-      }
-    },
-    [client, currentResourceUserId, workspaceId, workspaceTitle],
-  )
-
-  const deleteComment = useCallback(
-    async (commentId: string) => {
-      try {
-        return await client.delete(commentId)
-      } catch (error) {
-        console.error(`[useAddonCommentMutations] deleteComment failed (${commentId}):`, error)
-        throw error
-      }
-    },
-    [client],
-  )
-
-  const editComment = useCallback(
-    async (commentId: string, message: AddonMessage) => {
-      try {
-        return await client
-          .patch(commentId)
-          .set({lastEditedAt: new Date().toISOString(), message})
-          .commit()
-      } catch (error) {
-        console.error(`[useAddonCommentMutations] editComment failed (${commentId}):`, error)
-        throw error
-      }
-    },
-    [client],
-  )
-
-  const setCommentStatus = useCallback(
-    async (commentId: string, status: CommentStatus) => {
-      try {
-        return await client.patch(commentId).set({status}).commit()
-      } catch (error) {
-        console.error(`[useAddonCommentMutations] setCommentStatus failed (${commentId}):`, error)
-        throw error
-      }
-    },
-    [client],
-  )
-
-  const toggleReaction = useCallback(
-    async (commentId: string, shortName: string, currentReactions: CommentReaction[]) => {
-      const userId = currentResourceUserId ?? 'unknown'
-      const existing = currentReactions.find(
-        (reaction) => reaction.shortName === shortName && reaction.userId === userId,
-      )
-
-      try {
-        if (existing) {
-          return await client
-            .patch(commentId)
-            .unset([`reactions[_key=="${existing._key}"]`])
-            .commit()
-        }
-
-        const reaction: CommentReaction = {
-          _key: crypto.randomUUID().replace(/-/g, '').slice(0, 12),
-          addedAt: new Date().toISOString(),
-          shortName,
-          userId,
-        }
-
-        return await client
-          .patch(commentId)
-          .setIfMissing({reactions: []})
-          .append('reactions', [reaction])
-          .commit()
-      } catch (error) {
-        console.error(`[useAddonCommentMutations] toggleReaction failed (${commentId}):`, error)
-        throw error
-      }
-    },
-    [client, currentResourceUserId],
-  )
+  const createTaskComment = (
+    task: Pick<TaskDocument, '_id' | 'context' | 'subscribers' | 'title'>,
+    message: AddonMessage,
+    parentCommentId?: string,
+    threadId?: string,
+    commentId?: string,
+  ) =>
+    mutations.createTaskComment({
+      commentId,
+      message,
+      parentCommentId,
+      subscribers: task.subscribers,
+      taskId: task._id,
+      taskStudioUrl: task.context?.notification?.url,
+      taskTitle: task.title,
+      threadId,
+    })
 
   return {
     createComment,
     createTaskComment,
-    deleteComment,
-    editComment,
-    setCommentStatus,
-    toggleReaction,
+    deleteComment: mutations.deleteComment as (commentId: string) => Promise<unknown>,
+    editComment: mutations.editComment as (
+      commentId: string,
+      message: AddonMessage,
+    ) => Promise<unknown>,
+    setCommentStatus: mutations.setCommentStatus as (
+      commentId: string,
+      status: CommentStatus,
+    ) => Promise<unknown>,
+    toggleReaction: mutations.toggleReaction as (
+      commentId: string,
+      shortName: string,
+      currentReactions: CommentReaction[],
+    ) => Promise<unknown>,
   }
 }

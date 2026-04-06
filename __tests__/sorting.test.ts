@@ -114,7 +114,30 @@ describe('useSanityTableData — sorting', () => {
     expect(result.current.sorting).toBeNull()
   })
 
-  it('Behavior 5: clearing sort sets orderings to undefined', () => {
+  it('Behavior 5: filtered paginated tables still expose server sorting', () => {
+    const {result} = renderHook(() =>
+      useSanityTableData({
+        documentType: 'article',
+        columns: testColumns,
+        filter: 'status != "archived"',
+        pageSize: 25,
+      }),
+    )
+
+    act(() => {
+      result.current.sorting!.onSortChange({field: 'title', direction: 'asc'})
+    })
+
+    expect(result.current.sorting).not.toBeNull()
+    expect(mockUsePaginatedDocuments).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        filter: 'status != "archived"',
+        orderings: [{field: 'title', direction: 'asc'}],
+      }),
+    )
+  })
+
+  it('Behavior 6: clearing sort sets orderings to undefined', () => {
     const {result} = renderHook(() =>
       useSanityTableData({
         documentType: 'article',
@@ -136,7 +159,7 @@ describe('useSanityTableData — sorting', () => {
     )
   })
 
-  it('Behavior 6: reference columns can map UI sort to a server-side sort field', () => {
+  it('Behavior 7: reference columns can map UI sort to a server-side sort field', () => {
     const columns = [
       column.reference({
         field: 'section',

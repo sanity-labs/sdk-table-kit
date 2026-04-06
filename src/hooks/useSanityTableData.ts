@@ -34,8 +34,8 @@ export interface SanityTableDataConfig {
   documentType: string | string[]
   /**
    * Optional GROQ filter expression appended to the base type filter.
-   * When provided with a single documentType, falls back to useQuery mode
-   * (no server-side pagination).
+   * When provided without `pageSize`, falls back to useQuery mode.
+   * When `pageSize` is set, the filter still runs through server pagination.
    *
    * @example 'status != "archived" && defined(title)'
    */
@@ -131,8 +131,8 @@ function buildQuery(
  * Core adapter hook that wraps SDK's `usePaginatedDocuments` / `useQuery`.
  *
  * Strategy:
- * - Single documentType + no filter → paginated locally from a GROQ query
- * - Array documentType OR filter present → `useQuery` (client-side, assembled GROQ)
+ * - Any documentType with `pageSize` → SDK pagination + projected page rows
+ * - No `pageSize` → `useQuery` (assembled GROQ, client-side table pagination)
  *
  * Projection is auto-generated from column definitions unless overridden.
  */
@@ -168,11 +168,10 @@ export function useSanityTableData<T = Record<string, unknown>>(
   const {query, params} = buildQuery(documentType, filter, projection, serverSort, userParams)
 
   const [effectivePageSize, setEffectivePageSize] = useState(pageSize ?? 25)
-  const useSdkPagination = !Array.isArray(documentType) && !filter
+  const useSdkPagination = pageSize !== undefined
   const paginatedOrderings = serverSort
     ? [{field: serverSort.field, direction: serverSort.direction}]
     : undefined
-  const paginatedDocumentType = typeof documentType === 'string' ? documentType : '__sanetti_noop__'
 
   useEffect(() => {
     if (pageSize !== undefined) {
@@ -189,10 +188,11 @@ export function useSanityTableData<T = Record<string, unknown>>(
   )
 
   const paginatedDocuments = usePaginatedDocuments({
-    documentType: paginatedDocumentType,
+    documentType: useSdkPagination ? documentType : [],
+    filter: useSdkPagination ? filter : '_id == "___never___"',
     orderings: useSdkPagination ? paginatedOrderings : undefined,
     pageSize: useSdkPagination ? effectivePageSize : 1,
-    params: useSdkPagination ? userParams : undefined,
+    params: useSdkPagination ? userParams : {},
     ...(perspective && useSdkPagination ? {perspective} : {}),
   })
 
