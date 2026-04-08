@@ -69,15 +69,30 @@ export function CommentableCellFrame({
       onMouseEnter={() => onHoverChange(true)}
       onMouseLeave={() => onHoverChange(false)}
       style={{
+        alignItems: 'center',
         boxShadow: hasOpenComments ? 'inset 0 -3px 0 rgb(249, 233, 148)' : undefined,
+        display: 'flex',
         margin: `${cellPadding.y * -1}px ${cellPadding.x * -1}px`,
         minHeight: `calc(100% + ${cellPadding.y * 2}px)`,
+        minWidth: 0,
         padding: `${cellPadding.y}px ${cellPadding.x}px`,
         position: 'relative',
         width: `calc(100% + ${cellPadding.x * 2}px)`,
       }}
     >
-      <div>{children}</div>
+      <div
+        data-testid="commentable-cell-content"
+        style={{
+          alignItems: 'center',
+          display: 'flex',
+          flex: 1,
+          minHeight: '100%',
+          minWidth: 0,
+          width: '100%',
+        }}
+      >
+        {children}
+      </div>
 
       <Popover
         animate
