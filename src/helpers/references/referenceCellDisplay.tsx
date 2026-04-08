@@ -1,6 +1,7 @@
+import {TableCellChrome} from '@sanetti/sanity-table-kit'
 import {AddIcon} from '@sanity/icons'
 import type {PreviewValue} from '@sanity/types'
-import {Box, Button, Card, Flex, Text} from '@sanity/ui'
+import {Box, Text} from '@sanity/ui'
 
 export function isEmptyRef(value: unknown): boolean {
   if (typeof value !== 'object' || value === null) return false
@@ -9,134 +10,156 @@ export function isEmptyRef(value: unknown): boolean {
   return false
 }
 
-export function renderEmptyReferenceCell(placeholderText: string): React.ReactNode {
+export function renderEmptyReferenceCell(
+  placeholderText: string,
+  onPress?: () => void,
+): React.ReactNode {
   return (
-    <Card
-      border
-      data-testid="reference-empty-state"
-      padding={1}
-      radius={2}
-      style={{width: '100%'}}
-      tone="transparent"
-    >
-      <Button mode="bleed" muted padding={2} radius={0} style={{width: '100%'}} tone="neutral">
-        <Flex align="center" gap={2}>
-          <Box
-            style={{
-              width: 24,
-              height: 24,
-              borderRadius: '50%',
-              background: 'var(--card-badge-default-bg-color, #e3e4e8)',
-              color: 'var(--card-badge-default-fg-color, #515e72)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexShrink: 0,
-            }}
-          >
-            <AddIcon />
-          </Box>
-          <Text muted size={1}>
-            {placeholderText}
-          </Text>
-        </Flex>
-      </Button>
-    </Card>
+    <TableCellChrome
+      dataTestId="reference-empty-state"
+      leading={
+        <Box
+          style={{
+            alignItems: 'center',
+            background: 'var(--card-badge-default-bg-color, #e3e4e8)',
+            borderRadius: '50%',
+            color: 'var(--card-badge-default-fg-color, #515e72)',
+            display: 'flex',
+            flexShrink: 0,
+            height: 24,
+            justifyContent: 'center',
+            width: 24,
+          }}
+        >
+          <AddIcon />
+        </Box>
+      }
+      onPress={onPress}
+      state="empty"
+      title={
+        <Text muted size={1}>
+          {placeholderText}
+        </Text>
+      }
+    />
   )
 }
 
-export function renderPreparedReference(prepared: PreviewValue): React.ReactNode {
+export function renderPreparedReference(
+  prepared: PreviewValue,
+  onPress?: () => void,
+): React.ReactNode {
   const title = prepared.title || '—'
   const initial = title.charAt(0).toUpperCase()
   const imageUrl = prepared.imageUrl ?? (typeof prepared.media === 'string' ? prepared.media : null)
   const hasMediaSlot = 'media' in prepared || 'imageUrl' in prepared
   const mediaSlotSize = 26
 
-  if (!hasMediaSlot) {
-    return (
-      <Card border padding={1} radius={2} style={{width: '100%'}} tone="transparent">
-        <Button mode="bleed" muted padding={2} radius={0} style={{width: '100%'}} tone="neutral">
-          <Flex
-            direction="column"
-            gap={2}
-            justify="center"
-            style={{minHeight: mediaSlotSize, minWidth: 0}}
-          >
-            <Text size={1} textOverflow="ellipsis">
-              {title}
-            </Text>
-            {prepared.subtitle && (
-              <Text muted size={1} textOverflow="ellipsis">
-                {prepared.subtitle}
-              </Text>
-            )}
-          </Flex>
-        </Button>
-      </Card>
-    )
-  }
-
   return (
-    <Card border padding={1} radius={2} style={{width: '100%'}} tone="transparent">
-      <Button mode="bleed" muted padding={2} radius={0} style={{width: '100%'}} tone="neutral">
-        <Flex align="center" gap={2}>
+    <TableCellChrome
+      leading={
+        hasMediaSlot ? (
           <Box
             data-testid="reference-avatar"
             style={{
-              width: mediaSlotSize,
-              height: mediaSlotSize,
+              alignItems: 'center',
               background: imageUrl ? 'transparent' : 'var(--card-badge-default-bg-color, #e3e4e8)',
               color: 'var(--card-badge-default-fg-color, #515e72)',
               display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
+              flexShrink: 0,
               fontSize: '11px',
               fontWeight: 600,
-              flexShrink: 0,
+              height: mediaSlotSize,
+              justifyContent: 'center',
               overflow: 'hidden',
+              width: mediaSlotSize,
             }}
           >
             {imageUrl ? (
               <img
                 alt={title}
                 src={imageUrl}
-                style={{width: '100%', height: '100%', objectFit: 'cover'}}
+                style={{height: '100%', objectFit: 'cover', width: '100%'}}
               />
             ) : (
               initial
             )}
           </Box>
-          <Flex direction="column" gap={2} style={{minWidth: 0}}>
-            <Text size={1} textOverflow="ellipsis">
-              {title}
-            </Text>
-            {prepared.subtitle && (
-              <Text muted size={1} textOverflow="ellipsis">
-                {prepared.subtitle}
-              </Text>
-            )}
-          </Flex>
-        </Flex>
-      </Button>
-    </Card>
+        ) : undefined
+      }
+      onPress={onPress}
+      state="filled"
+      subtitle={
+        prepared.subtitle ? (
+          <Text muted size={1} textOverflow="ellipsis">
+            {prepared.subtitle}
+          </Text>
+        ) : undefined
+      }
+      title={
+        <Text size={1} textOverflow="ellipsis">
+          {title}
+        </Text>
+      }
+    />
   )
 }
 
 export function renderReferenceDisplay(
   value: unknown,
   prepare: (data: Record<string, unknown>) => PreviewValue,
+  onPress?: () => void,
 ): React.ReactNode {
   if (typeof value === 'string') {
-    return <span>{value || '—'}</span>
+    if (!onPress) return <span>{value || '—'}</span>
+
+    return (
+      <TableCellChrome
+        onPress={onPress}
+        state="filled"
+        title={
+          <Text size={1} textOverflow="ellipsis">
+            {value || '—'}
+          </Text>
+        }
+      />
+    )
   }
 
   if (typeof value === 'object' && value !== null) {
     try {
       const prepared = prepare(value as Record<string, unknown>)
-      return renderPreparedReference(prepared)
+      return renderPreparedReference(prepared, onPress)
     } catch {
+      if (onPress) {
+        return (
+          <TableCellChrome
+            onPress={onPress}
+            state="filled"
+            title={
+              <Text muted size={1}>
+                —
+              </Text>
+            }
+          />
+        )
+      }
       return <span style={{color: 'var(--card-muted-fg-color)'}}>—</span>
     }
+  }
+
+  if (onPress) {
+    return (
+      <TableCellChrome
+        onPress={onPress}
+        state="filled"
+        title={
+          <Text muted size={1}>
+            —
+          </Text>
+        }
+      />
+    )
   }
 
   return <span style={{color: 'var(--card-muted-fg-color)'}}>—</span>

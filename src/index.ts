@@ -5,6 +5,7 @@
 export {
   DocumentTable,
   BadgeCell,
+  TableCellChrome,
   filter,
   useFilterPresets,
   useFilterUrlState,
@@ -47,6 +48,9 @@ export type {
   SearchFilterOptions,
   StringFilterDef,
   StringFilterOptions,
+  TableCellChromeBorderMode,
+  TableCellChromeProps,
+  TableCellChromeState,
   UseFilterUrlStateResult,
 } from '@sanetti/sanity-table-kit'
 

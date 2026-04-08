@@ -34,15 +34,11 @@ export const ReferenceCell = memo(function ReferenceCell({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value, row._id])
 
-  const handleClick = useCallback(
-    (e: React.MouseEvent) => {
-      e.stopPropagation()
-      if (editMeta && !isEditing) {
-        setIsEditing(true)
-      }
-    },
-    [editMeta, isEditing],
-  )
+  const handleOpenEditor = useCallback(() => {
+    if (editMeta && !isEditing) {
+      setIsEditing(true)
+    }
+  }, [editMeta, isEditing])
 
   const handleClose = useCallback(() => {
     setIsEditing(false)
@@ -88,14 +84,17 @@ export const ReferenceCell = memo(function ReferenceCell({
   let displayContent: React.ReactNode
 
   if (hasOptimistic && !isEditing) {
-    displayContent = renderPreparedReference(optimisticValue)
+    displayContent = renderPreparedReference(
+      optimisticValue,
+      editMeta ? handleOpenEditor : undefined,
+    )
   } else if (isEmpty && editMeta) {
     const placeholderText = editMeta.placeholder || 'Add…'
-    displayContent = renderEmptyReferenceCell(placeholderText)
+    displayContent = renderEmptyReferenceCell(placeholderText, handleOpenEditor)
   } else if (isEmpty) {
     displayContent = <span style={{color: 'var(--card-muted-fg-color)'}}>—</span>
   } else {
-    displayContent = renderReferenceDisplay(value, prepare)
+    displayContent = renderReferenceDisplay(value, prepare, editMeta ? handleOpenEditor : undefined)
   }
 
   // ── Wrap in Sanity UI Popover (portaled via PortalProvider in SanityDocumentTable) ──
@@ -113,14 +112,13 @@ export const ReferenceCell = memo(function ReferenceCell({
       >
         <div
           style={{
-            cursor: 'pointer',
             width: '100%',
             ...(isEditing && {
               background: 'var(--card-bg2-color, #f2f3f5)',
               borderRadius: '3px',
             }),
           }}
-          onClick={handleClick}
+          onClick={(event) => event.stopPropagation()}
         >
           {displayContent}
         </div>

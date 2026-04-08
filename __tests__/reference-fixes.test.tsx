@@ -209,6 +209,8 @@ describe('Reference field fixes', () => {
         .getByText('Select Author')
         .closest('[data-testid="reference-empty-state"]')
       expect(addButton).toBeInTheDocument()
+      expect(addButton).toHaveAttribute('data-state', 'empty')
+      expect(addButton).toHaveAttribute('data-border', 'false')
       // Should have an icon element (the plus/add icon)
       expect(addButton?.querySelector('svg')).toBeInTheDocument()
     })
@@ -243,6 +245,10 @@ describe('Reference field fixes', () => {
       renderTableNoPlaceholder(mockArticlesWithAuthor)
 
       const table = screen.getByRole('table')
+      const filledCellShell = within(table)
+        .getByText('Alice Author')
+        .closest('[data-state="filled"]')
+      expect(filledCellShell).toHaveAttribute('data-border', 'true')
       // Click on the existing reference display (Alice Author)
       await user.click(within(table).getByText('Alice Author'))
 

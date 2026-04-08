@@ -1,15 +1,7 @@
+import {TableCellChrome} from '@sanetti/sanity-table-kit'
 import {AddIcon} from '@sanity/icons'
 import {type SanityUser, useUsers} from '@sanity/sdk-react'
-import {
-  Box,
-  Card,
-  Flex,
-  Popover,
-  Stack,
-  Text,
-  useClickOutsideEvent,
-  useGlobalKeyDown,
-} from '@sanity/ui'
+import {Card, Flex, Popover, Stack, Text, useClickOutsideEvent, useGlobalKeyDown} from '@sanity/ui'
 import {Suspense, useCallback, useEffect, useMemo, useRef, useState} from 'react'
 
 import {useOptionalAddonData} from '../../context/AddonDataContext'
@@ -314,68 +306,41 @@ export function TaskSummaryCellInner({documentId, documentType}: TaskSummaryCell
       radius={2}
       shadow={3}
     >
-      <div ref={triggerRef}>
-        {showEmptyState ? (
-          <Card
-            border
-            data-testid="task-empty-state"
-            padding={1}
-            radius={2}
-            tone="transparent"
-            style={{width: '100%'}}
-          >
-            <button
-              onClick={(event) => {
-                event.stopPropagation()
-                setOpen((current) => !current)
-              }}
-              style={{
-                alignItems: 'center',
-                background: 'transparent',
-                border: 0,
-                cursor: 'pointer',
-                display: 'flex',
-                gap: 8,
-                padding: 8,
-                width: '100%',
-              }}
-              type="button"
-            >
-              <Box style={addCircleStyle}>
-                <AddIcon />
-              </Box>
-              <Text muted size={1}>
-                Add task
-              </Text>
-            </button>
-          </Card>
-        ) : (
-          <Box>
-            <button
-              onClick={(event) => {
-                event.stopPropagation()
-                setOpen((current) => !current)
-              }}
-              style={{
-                background: 'transparent',
-                border: 0,
-                color: 'inherit',
-                cursor: 'pointer',
-                padding: 8,
-              }}
-              type="button"
-            >
-              <Text
-                size={1}
-                style={{
-                  color: `var(--card-${getTaskSummaryTone({closedCount, openCount, overdueCount, unassignedCount})}-fg-color, inherit)`,
-                }}
-              >
-                {summary}
-              </Text>
-            </button>
-          </Box>
-        )}
+      <div ref={triggerRef} style={{width: '100%'}}>
+        <div
+          onClick={(event) => {
+            event.stopPropagation()
+          }}
+        >
+          <TableCellChrome
+            dataTestId={showEmptyState ? 'task-empty-state' : 'task-summary-state'}
+            leading={
+              showEmptyState ? (
+                <div style={addCircleStyle}>
+                  <AddIcon />
+                </div>
+              ) : undefined
+            }
+            onPress={() => setOpen((current) => !current)}
+            state={showEmptyState ? 'empty' : 'filled'}
+            title={
+              showEmptyState ? (
+                <Text muted size={1}>
+                  Add task
+                </Text>
+              ) : (
+                <Text
+                  size={1}
+                  style={{
+                    color: `var(--card-${getTaskSummaryTone({closedCount, openCount, overdueCount, unassignedCount})}-fg-color, inherit)`,
+                  }}
+                >
+                  {summary}
+                </Text>
+              )
+            }
+          />
+        </div>
       </div>
     </Popover>
   )
