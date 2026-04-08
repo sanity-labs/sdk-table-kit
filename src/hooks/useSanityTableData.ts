@@ -1,7 +1,7 @@
 import type {ColumnDef, SortConfig} from '@sanetti/sanity-table-kit'
 // In tests, this is mocked via vi.mock('@sanity/sdk-react').
 import {usePaginatedDocuments, useQuery} from '@sanity/sdk-react'
-import {useState, useCallback, useEffect, useMemo} from 'react'
+import {useState, useCallback, useEffect, useMemo, useRef} from 'react'
 
 import {useColumnProjection} from './useColumnProjection'
 
@@ -127,6 +127,23 @@ function buildQuery(
   }
 }
 
+function serializeForQueryKey(value: unknown): string {
+  if (value === null) return 'null'
+  if (value === undefined) return 'undefined'
+  if (Array.isArray(value)) {
+    return `[${value.map((item) => serializeForQueryKey(item)).join(',')}]`
+  }
+  if (typeof value === 'object') {
+    const entries = Object.entries(value as Record<string, unknown>).sort(([left], [right]) =>
+      left.localeCompare(right),
+    )
+    return `{${entries
+      .map(([key, entryValue]) => `${JSON.stringify(key)}:${serializeForQueryKey(entryValue)}`)
+      .join(',')}}`
+  }
+  return JSON.stringify(value)
+}
+
 /**
  * Core adapter hook that wraps SDK's `usePaginatedDocuments` / `useQuery`.
  *
@@ -169,9 +186,37 @@ export function useSanityTableData<T = Record<string, unknown>>(
 
   const [effectivePageSize, setEffectivePageSize] = useState(pageSize ?? 25)
   const useSdkPagination = pageSize !== undefined
-  const paginatedOrderings = serverSort
-    ? [{field: serverSort.field, direction: serverSort.direction}]
-    : undefined
+  const stalePagedDataRef = useRef<null | {data: T[]; page: number; queryKey: string}>(null)
+  const serverSortField = serverSort?.field
+  const serverSortDirection = serverSort?.direction
+  const paginatedOrderings = useMemo(
+    () =>
+      serverSortField && serverSortDirection
+        ? [{field: serverSortField, direction: serverSortDirection}]
+        : undefined,
+    [serverSortDirection, serverSortField],
+  )
+  const paginatedQueryKey = useMemo(
+    () =>
+      [
+        `type:${serializeForQueryKey(documentType)}`,
+        `filter:${filter ?? ''}`,
+        `orderings:${serializeForQueryKey(paginatedOrderings)}`,
+        `params:${serializeForQueryKey(userParams ?? {})}`,
+        `perspective:${serializeForQueryKey(perspective ?? null)}`,
+        `projection:${projection}`,
+        `pageSize:${effectivePageSize}`,
+      ].join('|'),
+    [
+      documentType,
+      effectivePageSize,
+      filter,
+      paginatedOrderings,
+      perspective,
+      projection,
+      userParams,
+    ],
+  )
 
   useEffect(() => {
     if (pageSize !== undefined) {
@@ -234,6 +279,32 @@ export function useSanityTableData<T = Record<string, unknown>>(
     params: {documentIds: pageDocumentIds},
     ...(perspective && useSdkPagination ? {perspective} : {}),
   })
+  const settledPaginatedQueryKeyRef = useRef(paginatedQueryKey)
+  const queryStartSnapshotRef = useRef<{
+    key: string
+    paginatedData: unknown
+    projectionData: unknown
+  } | null>(null)
+
+  if (queryStartSnapshotRef.current?.key !== paginatedQueryKey) {
+    queryStartSnapshotRef.current = {
+      key: paginatedQueryKey,
+      paginatedData: paginatedDocuments.data,
+      projectionData: pagedProjectionResult.data,
+    }
+  }
+
+  const queryChangedSinceSettled =
+    useSdkPagination && settledPaginatedQueryKeyRef.current !== paginatedQueryKey
+  const queryAdvancedSinceStart =
+    !queryChangedSinceSettled ||
+    (queryStartSnapshotRef.current !== null &&
+      (queryStartSnapshotRef.current.paginatedData !== paginatedDocuments.data ||
+        queryStartSnapshotRef.current.projectionData !== pagedProjectionResult.data))
+  const queryChangedWhilePending =
+    useSdkPagination &&
+    queryChangedSinceSettled &&
+    (!queryAdvancedSinceStart || paginatedDocuments.isPending || pagedProjectionResult.isPending)
 
   const projectionRowsById = useMemo(() => {
     const byId = new Map<string, T>()
@@ -261,6 +332,10 @@ export function useSanityTableData<T = Record<string, unknown>>(
       return false
     }
 
+    if (queryChangedWhilePending) {
+      return false
+    }
+
     if (pageDataIsProjectedRows) {
       return true
     }
@@ -272,13 +347,12 @@ export function useSanityTableData<T = Record<string, unknown>>(
     return pageDocumentIds.every((id) => projectionRowsById.has(id))
   }, [
     useSdkPagination,
+    queryChangedWhilePending,
     pageDataIsProjectedRows,
     pageDocumentIds,
     paginatedDocuments.isPending,
     projectionRowsById,
   ])
-
-  const transitionLoading = useSdkPagination && (paginatedDocuments.isPending || !pageRowsReady)
 
   const pagedData = useMemo(() => {
     if (!useSdkPagination) {
@@ -327,6 +401,39 @@ export function useSanityTableData<T = Record<string, unknown>>(
     projectionRowsById,
   ])
 
+  const currentPage = paginatedDocuments.currentPage ?? 1
+
+  useEffect(() => {
+    if (!useSdkPagination) return
+    if (!Array.isArray(pagedData)) return
+    settledPaginatedQueryKeyRef.current = paginatedQueryKey
+  }, [pagedData, paginatedQueryKey, useSdkPagination])
+
+  useEffect(() => {
+    if (!useSdkPagination) return
+    if (!Array.isArray(pagedData)) return
+    stalePagedDataRef.current = {data: pagedData, page: currentPage, queryKey: paginatedQueryKey}
+  }, [currentPage, pagedData, paginatedQueryKey, useSdkPagination])
+
+  const hasStalePageDataForCurrentPage =
+    stalePagedDataRef.current !== null &&
+    stalePagedDataRef.current.page === currentPage &&
+    stalePagedDataRef.current.queryKey === paginatedQueryKey
+
+  const effectivePagedData = useMemo(() => {
+    if (!useSdkPagination) return undefined
+    if (pagedData !== undefined) return pagedData
+    if (hasStalePageDataForCurrentPage) {
+      return stalePagedDataRef.current?.data
+    }
+    return undefined
+  }, [hasStalePageDataForCurrentPage, pagedData, useSdkPagination])
+
+  // Only surface transition placeholders when the current page is not ready
+  // and we don't already have cached rows for the same page.
+  // This keeps row DOM stable through background refetches.
+  const transitionLoading = useSdkPagination && !pageRowsReady && !hasStalePageDataForCurrentPage
+
   const result = useQuery<T[]>({
     query: useSdkPagination ? '*[_id in []]' : query,
     params: useSdkPagination ? {} : params,
@@ -335,7 +442,7 @@ export function useSanityTableData<T = Record<string, unknown>>(
 
   if (useSdkPagination) {
     return {
-      data: pagedData as T[] | undefined,
+      data: effectivePagedData as T[] | undefined,
       loading: paginatedDocuments.isPending || pagedProjectionResult.isPending,
       transitionLoading,
       pagination: {

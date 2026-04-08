@@ -50,8 +50,7 @@ export function TaskSummaryAddComposer({
 
     createTask(documentId, documentType, nextTitle, assignedTo).catch(() => {})
     resetForm()
-    onRequestClose()
-  }, [assignedTo, createTask, documentId, documentType, onRequestClose, resetForm, title])
+  }, [assignedTo, createTask, documentId, documentType, resetForm, title])
 
   if (!isOpen) {
     return (

@@ -82,13 +82,12 @@ export function useAddonTaskMutations() {
     ) => {
       const authorId = currentResourceUserId ?? 'unknown'
       const now = new Date().toISOString()
-      const docRef = documentId.replace('drafts.', '')
-      const tempId = `optimistic-${crypto.randomUUID()}`
       const target = buildTarget(documentId, documentType)
-
+      const docRef = documentId.replace('drafts.', '')
+      const optimisticTaskId = `optimistic-task-${crypto.randomUUID()}`
       const optimisticTask: TaskDocument = {
         _createdAt: now,
-        _id: tempId,
+        _id: optimisticTaskId,
         _type: 'tasks.task',
         _updatedAt: now,
         authorId,
@@ -101,10 +100,15 @@ export function useAddonTaskMutations() {
         ...(dueBy ? {dueBy} : {}),
       }
 
-      patchTasks(docRef, (tasks) => [optimisticTask, ...tasks])
+      patchTasks(docRef, (tasks) => {
+        if (tasks.some((task) => task._id === optimisticTaskId)) {
+          return tasks
+        }
+        return [optimisticTask, ...tasks]
+      })
 
       try {
-        const result = await client.create({
+        const createdTask = (await client.create({
           _type: 'tasks.task' as const,
           authorId,
           createdByUser: now,
@@ -114,15 +118,19 @@ export function useAddonTaskMutations() {
           title,
           ...(assignedTo ? {assignedTo} : {}),
           ...(dueBy ? {dueBy} : {}),
+        })) as TaskDocument
+
+        patchTasks(docRef, (tasks) => {
+          const withoutOptimistic = tasks.filter((task) => task._id !== optimisticTaskId)
+          if (withoutOptimistic.some((task) => task._id === createdTask._id)) {
+            return withoutOptimistic
+          }
+          return [createdTask, ...withoutOptimistic]
         })
 
-        patchTasks(docRef, (tasks) =>
-          tasks.map((task) => (task._id === tempId ? {...task, _id: result._id} : task)),
-        )
-
-        return result
+        return createdTask
       } catch (error) {
-        patchTasks(docRef, (tasks) => tasks.filter((task) => task._id !== tempId))
+        patchTasks(docRef, (tasks) => tasks.filter((task) => task._id !== optimisticTaskId))
         console.error('[useAddonTaskMutations] createTask failed:', error)
         throw error
       }
@@ -199,26 +207,14 @@ export function useAddonTaskMutations() {
 
   const removeTask = useCallback(
     async (taskId: string) => {
-      const docRef = findDocRefForTask(taskId)
-
-      if (!docRef) {
-        return await client.delete(taskId)
-      }
-
-      const snapshot = snapshotTask(docRef, taskId)
-      patchTasks(docRef, (tasks) => tasks.filter((task) => task._id !== taskId))
-
       try {
         return await client.delete(taskId)
       } catch (error) {
-        if (snapshot) {
-          patchTasks(docRef, (tasks) => [...tasks, snapshot])
-        }
         console.error(`[useAddonTaskMutations] removeTask failed (${taskId}):`, error)
         throw error
       }
     },
-    [client, findDocRefForTask, patchTasks, snapshotTask],
+    [client],
   )
 
   const createCommentOnTask = useCallback(

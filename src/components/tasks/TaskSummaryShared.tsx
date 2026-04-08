@@ -36,7 +36,7 @@ export function TaskActionsMenu({onDelete, studioUrl}: {onDelete: () => void; st
           <MenuItem icon={TrashIcon} onClick={onDelete} text="Delete task" tone="critical" />
         </Menu>
       }
-      popover={{portal: true}}
+      popover={{portal: false}}
     />
   )
 }

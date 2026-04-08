@@ -175,6 +175,15 @@ function finalizeColumn<T extends SanityColumnDef>(
 }
 
 /**
+ * Stable task-cell renderer reference.
+ * Keeping this function identity static prevents TaskSummaryCellView remounts
+ * when parent column arrays are regenerated with equivalent behavior.
+ */
+function renderTaskSummaryCell(_value: unknown, row: DocumentBase) {
+  return <TaskSummaryCellView documentId={row._id} documentType={row._type} />
+}
+
+/**
  * Build a GROQ projection string from preview.select.
  * Simple fields pass through; dot-paths get aliased.
  *
@@ -507,9 +516,7 @@ export const column = {
       header: config?.header ?? 'Tasks',
       sortable: false,
       width: config?.width ?? 140,
-      cell: (_value: unknown, row: DocumentBase) => (
-        <TaskSummaryCellView documentId={row._id} documentType={row._type} />
-      ),
+      cell: renderTaskSummaryCell,
     }
   },
 }

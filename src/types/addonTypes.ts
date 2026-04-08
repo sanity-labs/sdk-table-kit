@@ -7,6 +7,7 @@ import type {
   CrossDatasetReference as PublicCrossDatasetReference,
   Reference as PublicReference,
 } from '@sanetti/comments-core'
+import type {SanityUser} from '@sanity/sdk-react'
 
 export type CrossDatasetReference = PublicCrossDatasetReference
 
@@ -71,6 +72,7 @@ export interface AddonDataContextValue {
   patchTasks: (docRef: string, updater: (tasks: TaskDocument[]) => TaskDocument[]) => void
   projectId: string
   tasksByDocId: Map<string, TaskDocument[]>
+  users?: SanityUser[]
   workspaceId?: string
   workspaceTitle?: string
 }

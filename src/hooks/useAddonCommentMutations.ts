@@ -1,4 +1,4 @@
-import {useApplyCommentActions} from '@sanetti/sdk-comments'
+import {useApplyCommentActions} from '@sanity-labs/sdk-comments'
 
 import {useAddonData} from '../context/AddonDataContext'
 import type {AddonMessage, CommentReaction, CommentStatus, TaskDocument} from '../types/addonTypes'

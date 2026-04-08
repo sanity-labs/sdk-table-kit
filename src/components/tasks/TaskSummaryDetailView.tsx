@@ -1,7 +1,7 @@
 import type {SanityUser} from '@sanity/sdk-react'
 import {Box, Button, Card, Flex, Stack, Text, useClickOutsideEvent} from '@sanity/ui'
 import {Bell, BellOff, Calendar, ChevronLeft, CircleDashed, Pencil} from 'lucide-react'
-import {useCallback, useEffect, useMemo, useRef, useState} from 'react'
+import {Suspense, useCallback, useEffect, useMemo, useRef, useState} from 'react'
 
 import {useAddonData} from '../../context/AddonDataContext'
 import {buildTaskCommentDocument} from '../../helpers/comments/addonCommentUtils'
@@ -32,10 +32,16 @@ import {
 } from './TaskSummaryShared'
 
 export function TaskSummaryDetailView({
+  onDeleteOptimistic,
+  onDeleteRollback,
+  onInternalInteraction,
   onBack,
   task,
   users,
 }: {
+  onDeleteOptimistic?: (taskId: string) => void
+  onDeleteRollback?: (taskId: string) => void
+  onInternalInteraction?: (durationMs?: number) => void
   onBack: () => void
   task: TaskDocument
   users: SanityUser[]
@@ -43,8 +49,6 @@ export function TaskSummaryDetailView({
   const {workspaceId, workspaceTitle} = useAddonData()
   const currentResourceUserId = useCurrentResourceUserId()
   const {editTask, removeTask, toggleTaskStatus} = useAddonTaskMutations()
-  const taskCommentsState = useTaskComments(task._id)
-  const taskCommentMutations = useTaskCommentMutations(task)
   const [isAssignPickerOpen, setIsAssignPickerOpen] = useState(false)
   const [isDueDateEditorOpen, setIsDueDateEditorOpen] = useState(false)
   const [isEditingTitle, setIsEditingTitle] = useState(false)
@@ -83,28 +87,6 @@ export function TaskSummaryDetailView({
     () => [dueDateButtonRef.current, dueDateEditorRef.current],
   )
 
-  const commentAdapter = useMemo<SharedCommentsAdapter>(
-    () => ({
-      buildOptimisticComment: ({authorId, commentId, message, parentCommentId, threadId}) =>
-        buildTaskCommentDocument({
-          authorId,
-          commentId,
-          message,
-          parentCommentId,
-          subscribers: task.subscribers,
-          taskId: task._id,
-          taskStudioUrl: studioUrl,
-          taskTitle: task.title,
-          threadId,
-          workspaceId,
-          workspaceTitle,
-        }),
-      createComment: ({commentId, message, parentCommentId, threadId}) =>
-        taskCommentMutations.createComment(message, parentCommentId, threadId, commentId),
-    }),
-    [studioUrl, task, taskCommentMutations, workspaceId, workspaceTitle],
-  )
-
   const handleAssign = useCallback(
     (resourceUserId: string | undefined) => {
       editTask(task._id, {assignedTo: resourceUserId || ''}).catch(() => {})
@@ -113,10 +95,19 @@ export function TaskSummaryDetailView({
     [editTask, task._id],
   )
 
-  const handleDelete = useCallback(() => {
-    removeTask(task._id).catch(() => {})
-    onBack()
-  }, [onBack, removeTask, task._id])
+  const handleDelete = useCallback(async () => {
+    onInternalInteraction?.(3000)
+    onDeleteOptimistic?.(task._id)
+    if (!onDeleteOptimistic) {
+      onBack()
+    }
+    try {
+      await removeTask(task._id)
+    } catch {
+      onDeleteRollback?.(task._id)
+      // Error already logged in the mutation hook.
+    }
+  }, [onBack, onDeleteOptimistic, onDeleteRollback, onInternalInteraction, removeTask, task._id])
 
   const handleSaveTitle = useCallback(() => {
     const nextTitle = titleDraft.trim()
@@ -298,25 +289,117 @@ export function TaskSummaryDetailView({
       </Card>
 
       <Box style={{borderTop: '1px solid var(--card-border-color)', paddingTop: 16}}>
-        <SharedCommentsPanel
-          commentAdapter={commentAdapter}
-          commentsState={taskCommentsState}
-          documentId={task._id}
-          documentTitle={task.title}
-          documentType="tasks.task"
-          headerActions={
-            <Button
-              icon={isSubscribed ? <Bell size={16} /> : <BellOff size={16} />}
-              mode="bleed"
-              onClick={handleToggleSubscription}
-              padding={2}
-              text={isSubscribed ? 'Subscribed' : 'Subscribe'}
+        <Suspense
+          fallback={
+            <TaskDetailCommentsFallback
+              isSubscribed={isSubscribed}
+              onToggleSubscription={handleToggleSubscription}
             />
           }
-          headerTitle="Comments"
-          placeholder="Add a comment..."
-        />
+        >
+          <TaskDetailCommentsSection
+            currentResourceUserId={currentResourceUserId}
+            isSubscribed={isSubscribed}
+            onToggleSubscription={handleToggleSubscription}
+            task={task}
+            workspaceId={workspaceId}
+            workspaceTitle={workspaceTitle}
+          />
+        </Suspense>
       </Box>
+    </Stack>
+  )
+}
+
+function TaskDetailCommentsSection({
+  currentResourceUserId,
+  isSubscribed,
+  onToggleSubscription,
+  task,
+  workspaceId,
+  workspaceTitle,
+}: {
+  currentResourceUserId: string | undefined
+  isSubscribed: boolean
+  onToggleSubscription: () => void
+  task: TaskDocument
+  workspaceId?: string
+  workspaceTitle?: string
+}) {
+  const taskCommentsState = useTaskComments(task._id)
+  const taskCommentMutations = useTaskCommentMutations(task)
+  const studioUrl = getStudioTaskUrl(task, workspaceId)
+
+  const commentAdapter = useMemo<SharedCommentsAdapter>(
+    () => ({
+      buildOptimisticComment: ({authorId, commentId, message, parentCommentId, threadId}) =>
+        buildTaskCommentDocument({
+          authorId,
+          commentId,
+          message,
+          parentCommentId,
+          subscribers: task.subscribers,
+          taskId: task._id,
+          taskStudioUrl: studioUrl,
+          taskTitle: task.title,
+          threadId,
+          workspaceId,
+          workspaceTitle,
+        }),
+      createComment: ({commentId, message, parentCommentId, threadId}) =>
+        taskCommentMutations.createComment(message, parentCommentId, threadId, commentId),
+    }),
+    [studioUrl, task, taskCommentMutations, workspaceId, workspaceTitle],
+  )
+
+  return (
+    <SharedCommentsPanel
+      commentAdapter={commentAdapter}
+      commentsState={taskCommentsState}
+      documentId={task._id}
+      documentTitle={task.title}
+      documentType="tasks.task"
+      headerActions={
+        <Button
+          icon={isSubscribed ? <Bell size={16} /> : <BellOff size={16} />}
+          mode="bleed"
+          onClick={onToggleSubscription}
+          padding={2}
+          text={isSubscribed ? 'Subscribed' : 'Subscribe'}
+        />
+      }
+      headerTitle="Comments"
+      placeholder={currentResourceUserId ? 'Add a comment...' : 'Sign in to post comments'}
+    />
+  )
+}
+
+function TaskDetailCommentsFallback({
+  isSubscribed,
+  onToggleSubscription,
+}: {
+  isSubscribed: boolean
+  onToggleSubscription: () => void
+}) {
+  return (
+    <Stack space={3}>
+      <Flex align="center" justify="space-between">
+        <Text size={1} weight="semibold">
+          Comments
+        </Text>
+        <Button
+          icon={isSubscribed ? <Bell size={16} /> : <BellOff size={16} />}
+          mode="bleed"
+          onClick={onToggleSubscription}
+          padding={2}
+          text={isSubscribed ? 'Subscribed' : 'Subscribe'}
+        />
+      </Flex>
+      <Card border padding={3} radius={2} tone="transparent">
+        <Text muted size={1}>
+          Loading comments...
+        </Text>
+      </Card>
     </Stack>
   )
 }

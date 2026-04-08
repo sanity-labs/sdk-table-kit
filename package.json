@@ -9,11 +9,21 @@
     "test": "vitest run --config vitest.config.component.ts",
     "test:watch": "vitest --config vitest.config.component.ts"
   },
+  "dependencies": {
+    "@portabletext/react": "^6.0.3",
+    "@sanetti/comments-core": "workspace:*",
+    "@sanity-labs/sdk-addon-dataset-runtime": "file:../../../sdk-addon-dataset-runtime",
+    "@sanity-labs/sdk-comments": "file:../../../sdk-comments",
+    "lodash-es": "^4.17.23",
+    "lucide-react": "^1.7.0",
+    "slate": "^0.124.0",
+    "slate-react": "^0.124.0"
+  },
   "devDependencies": {
     "@sanetti/comments-core": "workspace:*",
-    "@sanetti/sdk-addon-dataset-runtime": "workspace:*",
-    "@sanetti/sdk-comments": "workspace:*",
     "@sanetti/sanity-table-kit": "workspace:*",
+    "@sanity-labs/sdk-addon-dataset-runtime": "file:../../../sdk-addon-dataset-runtime",
+    "@sanity-labs/sdk-comments": "file:../../../sdk-comments",
     "@sanity/ui": "^2.15.4",
     "@sanity/ui-workshop": "^2.0.16",
     "@testing-library/jest-dom": "^6.6.3",
@@ -38,15 +48,5 @@
     "@sanity/types": "^3.0.0 || ^4.0.0 || ^5.0.0",
     "@sanity/ui": "^2.0.0",
     "react": "^18.0.0 || ^19.0.0"
-  },
-  "dependencies": {
-    "@sanetti/comments-core": "workspace:*",
-    "@sanetti/sdk-addon-dataset-runtime": "workspace:*",
-    "@sanetti/sdk-comments": "workspace:*",
-    "@portabletext/react": "^6.0.3",
-    "lodash-es": "^4.17.23",
-    "lucide-react": "^1.7.0",
-    "slate": "^0.124.0",
-    "slate-react": "^0.124.0"
   }
 }

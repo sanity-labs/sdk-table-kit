@@ -3,7 +3,7 @@ import {ToggleSwitch} from '@sanetti/sanity-table-kit'
 import {editDocument} from '@sanity/sdk'
 import {useApplyDocumentActions} from '@sanity/sdk-react'
 import type {PreviewConfig, PreviewValue} from '@sanity/types'
-import React, {useMemo, useCallback} from 'react'
+import React, {useMemo, useCallback, useEffect, useRef} from 'react'
 
 import {ReferenceCell} from '../components/references/ReferenceCell'
 import {useOptionalReleaseContext} from '../context/ReleaseContext'
@@ -66,18 +66,23 @@ export function useResolvedColumns<T extends DocumentBase = DocumentBase>(
   columns: ColumnDef<T>[],
 ): ColumnDef<T>[] {
   const apply = useApplyDocumentActions()
+  const applyRef = useRef(apply)
 
   // Get release context for version-aware editing (null if no ReleaseProvider)
   const releaseCtx = useOptionalReleaseContext()
   const selectedReleaseId = releaseCtx?.selectedReleaseId ?? null
 
+  useEffect(() => {
+    applyRef.current = apply
+  }, [apply])
+
   const applyFieldPatch = useCallback(
     (document: DocumentBase, field: string, value: unknown) => {
       const targetId = resolveEditDocumentId(document._id, selectedReleaseId)
       const action = editDocument(createDocumentHandle(document, targetId), {set: {[field]: value}})
-      return apply(action)
+      return applyRef.current(action)
     },
-    [apply, selectedReleaseId],
+    [selectedReleaseId],
   )
 
   const createOnSave = useCallback(

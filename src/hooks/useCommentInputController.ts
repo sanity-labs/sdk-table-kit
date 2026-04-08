@@ -43,6 +43,15 @@ export function useCommentInputController({
   const [isFocused, setIsFocused] = useState(false)
   const [mentionState, setMentionState] = useState<null | {searchTerm: string; target: Range}>(null)
   const [cursorRect, setCursorRect] = useState<DOMRect | null>(null)
+  const focusEditorAtEnd = useCallback(() => {
+    try {
+      ReactEditor.focus(editor)
+      Transforms.select(editor, Editor.end(editor, []))
+    } catch {
+      // Slate can briefly fail to resolve DOM nodes while editors mount/unmount.
+      // Ignore and let the next interaction focus naturally.
+    }
+  }, [editor])
 
   const resolveMentionName = useCallback(
     (userId: string) => {
@@ -61,10 +70,9 @@ export function useCommentInputController({
     if (!autoFocus) return
 
     queueMicrotask(() => {
-      ReactEditor.focus(editor)
-      Transforms.select(editor, Editor.end(editor, []))
+      focusEditorAtEnd()
     })
-  }, [autoFocus, editor])
+  }, [autoFocus, focusEditorAtEnd])
 
   useEffect(() => {
     if (!mentionState) {
@@ -106,14 +114,11 @@ export function useCommentInputController({
     ref,
     () => ({
       clear: clearEditor,
-      focus: () => {
-        ReactEditor.focus(editor)
-        Transforms.select(editor, Editor.end(editor, []))
-      },
+      focus: focusEditorAtEnd,
       getValue,
       isEmpty,
     }),
-    [clearEditor, editor, getValue, isEmpty],
+    [clearEditor, focusEditorAtEnd, getValue, isEmpty],
   )
 
   const insertMention = useCallback(

@@ -1,4 +1,5 @@
-import {AddonDatasetRuntimeProvider} from '@sanetti/sdk-addon-dataset-runtime'
+import {AddonDatasetRuntimeProvider} from '@sanity-labs/sdk-addon-dataset-runtime'
+import type {SanityUser} from '@sanity/sdk-react'
 import {useQuery} from '@sanity/sdk-react'
 import React, {
   createContext,
@@ -42,6 +43,7 @@ interface AddonDataProviderProps {
   contentDataset?: string
   docType: string
   projectId: string
+  users?: SanityUser[]
   workspaceId?: string
   workspaceTitle?: string
 }
@@ -75,6 +77,7 @@ export function AddonDataProvider({
   contentDataset,
   docType,
   projectId,
+  users,
   workspaceId,
   workspaceTitle,
 }: AddonDataProviderProps) {
@@ -129,6 +132,7 @@ export function AddonDataProvider({
       patchTasks,
       projectId,
       tasksByDocId,
+      users,
       workspaceId,
       workspaceTitle,
     }),
@@ -139,6 +143,7 @@ export function AddonDataProvider({
       patchTasks,
       projectId,
       tasksByDocId,
+      users,
       workspaceId,
       workspaceTitle,
     ],

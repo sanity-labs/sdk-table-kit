@@ -6,5 +6,11 @@
     "jsx": "react-jsx",
     "types": ["vitest/globals", "@testing-library/jest-dom"]
   },
-  "include": ["src/**/*", "__tests__/**/*", "__mocks__/**/*", "vitest.config.component.ts", "vitest.setup.ts"]
+  "include": [
+    "src/**/*",
+    "__tests__/**/*",
+    "__mocks__/**/*",
+    "vitest.config.component.ts",
+    "vitest.setup.ts"
+  ]
 }

@@ -191,7 +191,7 @@ export function SharedCommentsItem({
               <MenuItem icon={LinkIcon} onClick={() => {}} text="Copy link to comment" />
             </Menu>
           }
-          popover={{portal: true}}
+          popover={{portal: false}}
         />
       </Card>
     </div>
