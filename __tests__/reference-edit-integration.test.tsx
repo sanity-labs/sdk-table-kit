@@ -72,7 +72,7 @@ const mockArticles = [
 
 function setupMocks() {
   mockApply.mockResolvedValue(undefined)
-  mockUseQuery.mockReturnValue({data: [], isPending: false})
+  mockUseQuery.mockReturnValue({data: mockArticles, isPending: false})
   mockUsePaginatedDocuments.mockReturnValue({
     data: mockArticles,
     isPending: false,

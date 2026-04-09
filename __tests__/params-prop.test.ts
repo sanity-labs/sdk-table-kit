@@ -25,6 +25,13 @@ vi.mock('@sanity/sdk-react', () => ({
 
 const testColumns = [column.title(), column.type(), column.updatedAt()]
 
+function getPrimaryQueryCall() {
+  return [...mockUseQuery.mock.calls]
+    .map((call) => call[0] as {params?: Record<string, unknown>; query: string})
+    .reverse()
+    .find((call) => !call.query.includes('_id in $documentIds'))
+}
+
 describe('useSanityTableData — params prop', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -68,7 +75,7 @@ describe('useSanityTableData — params prop', () => {
     )
 
     expect(mockUseQuery).toHaveBeenCalled()
-    const callArgs = mockUseQuery.mock.calls[0][0]
+    const callArgs = getPrimaryQueryCall()!
     expect(callArgs.params).toEqual(
       expect.objectContaining({
         userId: 'abc123',
@@ -88,7 +95,7 @@ describe('useSanityTableData — params prop', () => {
     )
 
     expect(mockUseQuery).toHaveBeenCalled()
-    const callArgs = mockUseQuery.mock.calls[0][0]
+    const callArgs = getPrimaryQueryCall()!
     expect(callArgs.params).toEqual(
       expect.objectContaining({
         userId: 'abc123',
@@ -109,7 +116,7 @@ describe('useSanityTableData — params prop', () => {
     )
 
     expect(mockUseQuery).toHaveBeenCalled()
-    const callArgs = mockUseQuery.mock.calls[0][0]
+    const callArgs = getPrimaryQueryCall()!
     // Internal docType must win over user-supplied docType
     expect(callArgs.params.docType).toBe('article')
     // User param should still be present
@@ -127,7 +134,7 @@ describe('useSanityTableData — params prop', () => {
     )
 
     expect(mockUseQuery).toHaveBeenCalled()
-    const callArgs = mockUseQuery.mock.calls[0][0]
+    const callArgs = getPrimaryQueryCall()!
     // Internal docTypes must win over user-supplied docTypes
     expect(callArgs.params.docTypes).toEqual(['article', 'page'])
     expect(callArgs.params.userId).toBe('abc123')
@@ -143,7 +150,7 @@ describe('useSanityTableData — params prop', () => {
     )
 
     expect(mockUseQuery).toHaveBeenCalled()
-    const callArgs = mockUseQuery.mock.calls[0][0]
+    const callArgs = getPrimaryQueryCall()!
     expect(callArgs.params).toEqual({docTypes: ['article', 'page']})
   })
 
@@ -158,7 +165,7 @@ describe('useSanityTableData — params prop', () => {
     )
 
     expect(mockUseQuery).toHaveBeenCalled()
-    const callArgs = mockUseQuery.mock.calls[0][0]
+    const callArgs = getPrimaryQueryCall()!
     expect(callArgs.params).toEqual({docType: 'article'})
   })
 
@@ -174,7 +181,7 @@ describe('useSanityTableData — params prop', () => {
     )
 
     expect(mockUseQuery).toHaveBeenCalled()
-    const callArgs = mockUseQuery.mock.calls[0][0]
+    const callArgs = getPrimaryQueryCall()!
     // Query should contain the filter
     expect(callArgs.query).toContain('assignee._ref == $userId')
     // Params should contain both userId and docType

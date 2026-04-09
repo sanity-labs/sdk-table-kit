@@ -62,7 +62,7 @@ describe('SanityDocumentTable — _autoSave resolution', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockApply.mockResolvedValue(undefined)
-    mockUseQuery.mockReturnValue({data: [], isPending: false})
+    mockUseQuery.mockReturnValue({data: mockArticles, isPending: false})
     mockUsePaginatedDocuments.mockReturnValue({
       data: mockArticles,
       isPending: false,

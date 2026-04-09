@@ -181,10 +181,15 @@ describe('DocumentStatusCell — SDK-native status via useDocumentProjection', (
       />,
     )
 
-    const queryConfigs = mockUseQuery.mock.calls.map((call) => call[0] as {query: string})
-    const batchedCalls = queryConfigs.filter((config) =>
-      config.query.includes('_id in $documentIds'),
+    const queryConfigs = mockUseQuery.mock.calls.map(
+      (call) => call[0] as {params?: Record<string, unknown>; query: string},
     )
+    const batchedCalls = queryConfigs.filter((config) => {
+      if (!config.query.includes('_id in $documentIds')) return false
+
+      const documentIds = config.params?.documentIds
+      return Array.isArray(documentIds) && documentIds.length > 0
+    })
     const perRowCalls = queryConfigs.filter((config) => config.query.includes('sanity::versionOf'))
 
     expect(batchedCalls).toHaveLength(1)

@@ -43,7 +43,7 @@ describe('R-T2: Perspective injection into useSanityTableData', () => {
     vi.clearAllMocks()
   })
 
-  it('Behavior 1 [TRACER]: passes perspective to usePaginatedDocuments', () => {
+  it('Behavior 1 [TRACER]: passes perspective to useQuery in query mode', () => {
     renderHook(() =>
       useSanityTableData({
         documentType: 'article',
@@ -53,6 +53,13 @@ describe('R-T2: Perspective injection into useSanityTableData', () => {
     )
 
     expect(mockUsePaginatedDocuments).toHaveBeenCalledWith(
+      expect.objectContaining({
+        documentType: [],
+        filter: '_id == "___never___"',
+        pageSize: 1,
+      }),
+    )
+    expect(mockUseQuery).toHaveBeenCalledWith(
       expect.objectContaining({
         perspective: ['spring-campaign', 'published'],
       }),
@@ -100,7 +107,10 @@ describe('R-T2: Perspective injection into useSanityTableData', () => {
       }),
     )
 
-    const callArgs = mockUsePaginatedDocuments.mock.calls[0][0]
-    expect(callArgs.perspective).toBeUndefined()
+    const paginatedCallArgs = mockUsePaginatedDocuments.mock.calls[0][0]
+    expect(paginatedCallArgs.perspective).toBeUndefined()
+
+    const queryCallArgs = mockUseQuery.mock.calls[0][0]
+    expect(queryCallArgs.perspective).toBeUndefined()
   })
 })

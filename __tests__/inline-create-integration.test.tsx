@@ -83,7 +83,7 @@ beforeEach(() => {
     hasMore: false,
     loadMore: vi.fn(),
   })
-  mockUseQuery.mockReturnValue({data: null, loading: false})
+  mockUseQuery.mockReturnValue({data: mockArticles, isPending: false})
 })
 
 describe('Inline Create Integration (IC-T6)', () => {
@@ -218,12 +218,7 @@ describe('Inline Create Integration (IC-T6)', () => {
         _updatedAt: '2026-01-04',
       },
     ]
-    mockUsePaginatedDocuments.mockReturnValue({
-      data: updatedArticles,
-      isPending: false,
-      hasMore: false,
-      loadMore: vi.fn(),
-    })
+    mockUseQuery.mockReturnValue({data: updatedArticles, isPending: false})
 
     // Re-render with new data
     rerender(

@@ -26,6 +26,13 @@ const mockArticles = [
 
 const testColumns = [column.title(), column.type(), column.updatedAt()]
 
+function getPrimaryQueryCall() {
+  return [...mockUseQuery.mock.calls]
+    .map((call) => call[0] as {params?: Record<string, unknown>; query: string})
+    .reverse()
+    .find((call) => !call.query.includes('_id in $documentIds'))
+}
+
 describe('useSanityTableData — documentType[] + filter', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -43,7 +50,7 @@ describe('useSanityTableData — documentType[] + filter', () => {
     })
   })
 
-  it('Behavior 1: documentType as string uses usePaginatedDocuments (existing)', () => {
+  it('Behavior 1: documentType as string without pageSize stays in query mode', () => {
     renderHook(() =>
       useSanityTableData({
         documentType: 'article',
@@ -52,14 +59,15 @@ describe('useSanityTableData — documentType[] + filter', () => {
     )
 
     expect(mockUsePaginatedDocuments).toHaveBeenCalledWith(
-      expect.objectContaining({documentType: 'article'}),
-    )
-    expect(mockUseQuery).toHaveBeenCalledWith(
       expect.objectContaining({
-        params: {documentIds: ['article-1', 'page-1']},
-        query: '*[_id in $documentIds]{ _id, _type, title, _updatedAt }',
+        documentType: [],
+        filter: '_id == "___never___"',
+        pageSize: 1,
       }),
     )
+    const callArgs = getPrimaryQueryCall()!
+    expect(callArgs.query).toContain('_type == $docType')
+    expect(callArgs.params).toEqual(expect.objectContaining({docType: 'article'}))
   })
 
   it('Behavior 2: documentType as string[] uses useQuery with _type in $docTypes', () => {
@@ -71,7 +79,7 @@ describe('useSanityTableData — documentType[] + filter', () => {
     )
 
     expect(mockUseQuery).toHaveBeenCalled()
-    const callArgs = mockUseQuery.mock.calls[0][0]
+    const callArgs = getPrimaryQueryCall()!
     expect(callArgs.query).toContain('_type in $docTypes')
     expect(callArgs.params).toEqual(
       expect.objectContaining({
@@ -91,7 +99,7 @@ describe('useSanityTableData — documentType[] + filter', () => {
 
     // With filter + single documentType, should use useQuery (can't add filter to usePaginatedDocuments)
     expect(mockUseQuery).toHaveBeenCalled()
-    const callArgs = mockUseQuery.mock.calls[0][0]
+    const callArgs = getPrimaryQueryCall()!
     expect(callArgs.query).toContain('_type == $docType')
     expect(callArgs.query).toContain('status != "archived"')
     expect(callArgs.params).toEqual(
@@ -111,7 +119,7 @@ describe('useSanityTableData — documentType[] + filter', () => {
     )
 
     expect(mockUseQuery).toHaveBeenCalled()
-    const callArgs = mockUseQuery.mock.calls[0][0]
+    const callArgs = getPrimaryQueryCall()!
     expect(callArgs.query).toContain('_type in $docTypes')
     expect(callArgs.query).toContain('defined(title)')
     expect(callArgs.params).toEqual(
@@ -129,7 +137,7 @@ describe('useSanityTableData — documentType[] + filter', () => {
       }),
     )
 
-    const callArgs = mockUseQuery.mock.calls[0][0]
+    const callArgs = getPrimaryQueryCall()!
     // Should include the auto-generated projection
     expect(callArgs.query).toContain('{ _id, _type, title, _updatedAt }')
   })

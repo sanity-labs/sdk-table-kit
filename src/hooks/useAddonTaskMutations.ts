@@ -147,6 +147,7 @@ export function useAddonTaskMutations() {
       applyTaskActions,
       contentDataset,
       getTaskHandle,
+      mutationRuntime,
       resolvedAuthorId,
       workspaceId,
       workspaceTitle,

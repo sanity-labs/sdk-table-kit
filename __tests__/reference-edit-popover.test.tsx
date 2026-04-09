@@ -10,6 +10,7 @@ import {renderWithTheme} from './helpers'
 // ── Mocks ────────────────────────────────────────────────────────────────────
 
 const mockUsePaginatedDocuments = vi.fn()
+const mockUseQuery = vi.fn()
 const mockApply = vi.fn()
 const mockUseDocuments = vi.fn()
 const mockUseDocumentProjection = vi.fn()
@@ -17,7 +18,7 @@ const mockUseDocumentProjection = vi.fn()
 vi.mock('@sanity/sdk-react', () => ({
   useCurrentUser: () => ({id: 'user1', name: 'Test', roles: [{name: 'editor', title: 'Editor'}]}),
   usePaginatedDocuments: (...args: unknown[]) => mockUsePaginatedDocuments(...args),
-  useQuery: vi.fn(() => ({data: null, loading: false})),
+  useQuery: (...args: unknown[]) => mockUseQuery(...args),
   useApplyDocumentActions: () => mockApply,
   useDocuments: (...args: unknown[]) => mockUseDocuments(...args),
   useDocumentProjection: (...args: unknown[]) => mockUseDocumentProjection(...args),
@@ -96,6 +97,7 @@ const personTitles: Record<string, string> = {
 
 function setupMocks() {
   mockApply.mockResolvedValue(undefined)
+  mockUseQuery.mockReturnValue({data: mockArticles, isPending: false})
   mockUsePaginatedDocuments.mockReturnValue({
     data: mockArticles,
     isPending: false,
