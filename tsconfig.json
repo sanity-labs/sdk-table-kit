@@ -1,15 +1,13 @@
 {
-  "extends": "../../tsconfig.json",
   "compilerOptions": {
+    "target": "ES2022",
     "module": "ESNext",
     "moduleResolution": "bundler",
-    "jsx": "react-jsx"
+    "jsx": "react-jsx",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "noEmit": true
   },
-  "include": [
-    "src/**/*",
-    "__tests__/**/*",
-    "__mocks__/**/*",
-    "vitest.config.component.ts",
-    "vitest.setup.ts"
-  ]
+  "include": ["src/**/*"]
 }

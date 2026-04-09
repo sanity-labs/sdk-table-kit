@@ -1,4 +1,4 @@
-import {column} from '@sanetti/sanity-table-kit'
+import {column} from '@sanity-labs/react-table-kit'
 import {screen} from '@testing-library/react'
 import React from 'react'
 import {describe, it, expect, vi, beforeEach} from 'vitest'

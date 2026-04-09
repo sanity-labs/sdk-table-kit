@@ -1,4 +1,4 @@
-import {getFilterKey, type ReferenceFilterDef} from '@sanetti/sanity-table-kit'
+import {getFilterKey, type ReferenceFilterDef} from '@sanity-labs/react-table-kit'
 import {SearchIcon} from '@sanity/icons'
 import {useQuery} from '@sanity/sdk-react'
 import {Button, Label, Stack, Text, TextInput} from '@sanity/ui'

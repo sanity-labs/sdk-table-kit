@@ -9,18 +9,37 @@ export interface PreviewCellProps {
   documentType: string
 }
 
+interface PreviewValue {
+  media?: unknown
+  subtitle?: string | null
+  title?: string | null
+}
+
+interface PreviewResultWithData {
+  data?: PreviewValue | null
+}
+
+function unwrapPreviewResult(
+  previewResult: PreviewResultWithData | PreviewValue | null | undefined,
+): PreviewValue | null | undefined {
+  if (previewResult && typeof previewResult === 'object' && 'data' in previewResult) {
+    return previewResult.data
+  }
+
+  return previewResult as PreviewValue | null | undefined
+}
+
 /**
  * Cell component that renders a document preview using the SDK's useDocumentPreview hook.
  * Shows title, optional subtitle, and optional media thumbnail.
  */
 export function PreviewCell({documentId, documentType}: PreviewCellProps) {
   const previewResult = useDocumentPreview({documentId, documentType}) as
-    | {data?: {media?: unknown; subtitle?: string | null; title?: string | null} | null}
-    | {media?: unknown; subtitle?: string | null; title?: string | null}
-  const preview =
-    previewResult && typeof previewResult === 'object' && 'data' in previewResult
-      ? previewResult.data
-      : previewResult
+    | PreviewResultWithData
+    | PreviewValue
+    | null
+    | undefined
+  const preview = unwrapPreviewResult(previewResult)
 
   const title = preview?.title ?? documentId
   const subtitle = preview?.subtitle

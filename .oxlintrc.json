@@ -1,0 +1,39 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "react"],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "warn"
+  },
+  "rules": {
+    "typescript/no-explicit-any": "error",
+    "react/rules-of-hooks": "error",
+    "react/exhaustive-deps": "warn",
+    "react/react-in-jsx-scope": "off",
+    "react/no-children-prop": "warn",
+    "no-shadow": "off",
+    "no-unused-vars": "warn",
+    "no-control-regex": "off",
+    "no-useless-escape": "warn",
+    "no-constant-binary-expression": "warn",
+    "typescript/triple-slash-reference": "warn"
+  },
+  "overrides": [
+    {
+      "files": ["**/__tests__/fixtures/**"],
+      "rules": {
+        "no-empty-pattern": "off",
+        "react/rules-of-hooks": "off"
+      }
+    }
+  ],
+  "ignorePatterns": [
+    "**/next-env.d.ts",
+    "**/sanity.types.ts",
+    "**/node_modules/**",
+    "**/.next/**",
+    "**/out/**",
+    "**/build/**",
+    "**/.sanity/**"
+  ]
+}

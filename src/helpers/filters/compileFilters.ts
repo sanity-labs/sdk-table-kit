@@ -4,8 +4,8 @@ import type {
   FilterDef,
   ReferenceFilterDef,
   SearchFieldPath,
-} from '@sanetti/sanity-table-kit'
-import {getFilterKey, isFilterActiveValue} from '@sanetti/sanity-table-kit'
+} from '@sanity-labs/react-table-kit'
+import {getFilterKey, isFilterActiveValue} from '@sanity-labs/react-table-kit'
 
 export interface CompileFiltersOptions {
   documentType: string | string[]
@@ -136,9 +136,10 @@ function compileNumberFilter(filterDef: Extract<FilterDef, {kind: 'number'}>, va
     lt: '<',
     lte: '<=',
   } as const
+  const operator = filterDef.operator === 'range' ? 'is' : (filterDef.operator ?? 'is')
 
   return {
-    groq: `${filterDef.field} ${operatorMap[filterDef.operator ?? 'is']} $${param}`,
+    groq: `${filterDef.field} ${operatorMap[operator]} $${param}`,
     params: {[param]: Number(value)},
   }
 }

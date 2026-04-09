@@ -32,6 +32,10 @@ interface StatusDot {
   label: string
 }
 
+interface VersionStatusDocument {
+  _id: string
+}
+
 const DOT_SIZE = 9
 const DOT_OVERLAP = -3 // negative margin for overlapping effect
 
@@ -201,7 +205,7 @@ function LegacyDocumentStatusCell({documentId}: {documentId: string}) {
   const baseId = normalizeBaseDocumentId(documentId)
   const activeReleases = useActiveReleases()
 
-  const {data: versionDocs} = useQuery({
+  const {data: versionDocs} = useQuery<VersionStatusDocument[]>({
     query: `*[sanity::versionOf($publishedId)]{ _id, _updatedAt }`,
     params: {publishedId: baseId},
     perspective: 'raw' as unknown as undefined,
@@ -211,9 +215,7 @@ function LegacyDocumentStatusCell({documentId}: {documentId: string}) {
     const set = new Set<string>()
     if (Array.isArray(versionDocs)) {
       for (const doc of versionDocs) {
-        if (doc && typeof doc === 'object' && '_id' in doc) {
-          set.add((doc as {_id: string})._id)
-        }
+        set.add(doc._id)
       }
     }
     return set

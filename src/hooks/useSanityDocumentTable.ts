@@ -1,4 +1,4 @@
-import type {ColumnDef, DocumentBase, DocumentTableProps} from '@sanetti/sanity-table-kit'
+import type {ColumnDef, DocumentBase, DocumentTableProps} from '@sanity-labs/react-table-kit'
 import {useMemo} from 'react'
 
 import type {PaginationControlsProps} from '../components/table/PaginationControls'

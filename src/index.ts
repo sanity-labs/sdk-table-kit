@@ -1,5 +1,5 @@
-// @sanetti/sanity-sdk-table-kit — SDK-native integration layer
-// Re-exports everything from @sanetti/sanity-table-kit + SDK additions
+// @sanity-labs/sdk-table-kit — SDK-native integration layer
+// Re-exports everything from @sanity-labs/react-table-kit + SDK additions
 
 // Re-export base table-kit
 export {
@@ -9,8 +9,8 @@ export {
   filter,
   useFilterPresets,
   useFilterUrlState,
-} from '@sanetti/sanity-table-kit'
-export type {BadgeCellProps, BadgeColorMap, BadgeColorMapEntry} from '@sanetti/sanity-table-kit'
+} from '@sanity-labs/react-table-kit'
+export type {BadgeCellProps, BadgeColorMap, BadgeColorMapEntry} from '@sanity-labs/react-table-kit'
 export type {
   BaseFilterOptions,
   BaseFilterDef,
@@ -52,7 +52,7 @@ export type {
   TableCellChromeProps,
   TableCellChromeState,
   UseFilterUrlStateResult,
-} from '@sanetti/sanity-table-kit'
+} from '@sanity-labs/react-table-kit'
 
 // Unified column namespace — base + SDK helpers in one object
 export {column} from './helpers/table/column'

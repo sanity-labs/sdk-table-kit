@@ -1,4 +1,4 @@
-import {TableCellChrome} from '@sanetti/sanity-table-kit'
+import {TableCellChrome} from '@sanity-labs/react-table-kit'
 import {AddIcon} from '@sanity/icons'
 import type {PreviewValue} from '@sanity/types'
 import {Box, Text} from '@sanity/ui'

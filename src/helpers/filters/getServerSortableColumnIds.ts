@@ -1,4 +1,4 @@
-import type {ColumnDef} from '@sanetti/sanity-table-kit'
+import type {ColumnDef} from '@sanity-labs/react-table-kit'
 
 export function getServerSortableColumnIds(columns: ColumnDef[]): string[] {
   return columns

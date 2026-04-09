@@ -1,4 +1,4 @@
-import type {ColumnDef} from '@sanetti/sanity-table-kit'
+import type {ColumnDef} from '@sanity-labs/react-table-kit'
 import {useCurrentUser} from '@sanity/sdk-react'
 import {useMemo} from 'react'
 

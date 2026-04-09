@@ -1,4 +1,4 @@
-import {column, DocumentTable} from '@sanetti/sanity-table-kit'
+import {column, DocumentTable} from '@sanity-labs/react-table-kit'
 import {renderHook} from '@testing-library/react'
 import {screen} from '@testing-library/react'
 import React from 'react'

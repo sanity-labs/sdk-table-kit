@@ -14,7 +14,7 @@ import {
   type CommentMessage,
   type CommentThread,
   type CommentThreadGroup,
-} from '@sanetti/sanity-table-kit'
+} from '@sanity-labs/react-table-kit'
 
 const DEFAULT_STUDIO_BASE_URL = 'https://www.sanity.io/@oNAgKWFqi/studio/beihhm8eq5gszxxix51uhpzo'
 

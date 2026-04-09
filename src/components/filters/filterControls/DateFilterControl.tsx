@@ -4,7 +4,7 @@ import {
   getFilterKey,
   parseDateOnlyString,
   type FilterDef,
-} from '@sanetti/sanity-table-kit'
+} from '@sanity-labs/react-table-kit'
 import {CalendarIcon} from '@sanity/icons'
 import {Button, Label, Popover, Stack, useClickOutsideEvent, useGlobalKeyDown} from '@sanity/ui'
 import type {KeyboardEvent as ReactKeyboardEvent} from 'react'

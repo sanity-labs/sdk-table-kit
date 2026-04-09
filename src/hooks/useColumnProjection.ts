@@ -1,5 +1,5 @@
-import type {ColumnDef, DocumentBase} from '@sanetti/sanity-table-kit'
-import type {PreviewConfig, PreviewValue} from '@sanity/types'
+import type {ColumnDef, DocumentBase} from '@sanity-labs/react-table-kit'
+import type {PreviewConfig} from '@sanity/types'
 import type {ReactNode} from 'react'
 
 export interface CellCommentsConfig {
@@ -10,7 +10,7 @@ export interface CellCommentsConfig {
 interface SanityColumnEditConfig<
   TDocument extends DocumentBase = DocumentBase,
   TSelect extends Record<string, string> = Record<string, string>,
-  TPrepareValue extends PreviewValue = PreviewValue,
+  TPrepareValue extends Record<keyof TSelect, unknown> = Record<keyof TSelect, unknown>,
 > {
   mode: 'select' | 'text' | 'date' | 'custom'
   options?: Array<{value: string; label: string; tone?: string}>

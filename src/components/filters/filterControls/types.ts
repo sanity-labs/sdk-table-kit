@@ -1,4 +1,4 @@
-import type {FilterDef, UseFilterUrlStateResult} from '@sanetti/sanity-table-kit'
+import type {FilterDef, UseFilterUrlStateResult} from '@sanity-labs/react-table-kit'
 
 import type {SanityColumnDef} from '../../../hooks/useColumnProjection'
 

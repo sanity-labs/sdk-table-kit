@@ -1,4 +1,4 @@
-import type {DocumentBase} from '@sanetti/sanity-table-kit'
+import type {DocumentBase} from '@sanity-labs/react-table-kit'
 import type {PreviewValue} from '@sanity/types'
 
 export interface EditMeta {

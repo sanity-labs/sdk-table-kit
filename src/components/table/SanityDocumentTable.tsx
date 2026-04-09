@@ -1,4 +1,4 @@
-import {DocumentTable} from '@sanetti/sanity-table-kit'
+import {DocumentTable} from '@sanity-labs/react-table-kit'
 import type {
   ColumnDef,
   FilterDef,
@@ -7,9 +7,9 @@ import type {
   DocumentBase,
   SelectionConfig,
   ComputedFilterConfig,
-} from '@sanetti/sanity-table-kit'
-import {column as baseColumn} from '@sanetti/sanity-table-kit'
-import {mapFilterValuesToInitialValues, useFilterUrlState} from '@sanetti/sanity-table-kit'
+} from '@sanity-labs/react-table-kit'
+import {column as baseColumn} from '@sanity-labs/react-table-kit'
+import {mapFilterValuesToInitialValues, useFilterUrlState} from '@sanity-labs/react-table-kit'
 import {PublishIcon} from '@sanity/icons'
 import {publishDocument} from '@sanity/sdk'
 import {useApplyDocumentActions, useQuery} from '@sanity/sdk-react'

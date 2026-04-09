@@ -1,4 +1,4 @@
-import {filter} from '@sanetti/sanity-table-kit'
+import {filter} from '@sanity-labs/react-table-kit'
 import {describe, expect, it} from 'vitest'
 
 import {compileFilters} from '../src/helpers/filters/compileFilters'

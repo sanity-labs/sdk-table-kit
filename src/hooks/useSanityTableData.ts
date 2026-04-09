@@ -1,4 +1,4 @@
-import type {ColumnDef, SortConfig} from '@sanetti/sanity-table-kit'
+import type {ColumnDef, SortConfig} from '@sanity-labs/react-table-kit'
 // In tests, this is mocked via vi.mock('@sanity/sdk-react').
 import {usePaginatedDocuments, useQuery} from '@sanity/sdk-react'
 import {useState, useCallback, useEffect, useMemo, useRef} from 'react'
@@ -439,6 +439,11 @@ export function useSanityTableData<T = Record<string, unknown>>(
     params: useSdkPagination ? {} : params,
     ...(perspective && !useSdkPagination ? {perspective} : {}),
   })
+  const paginatedDocumentsCompat = paginatedDocuments as typeof paginatedDocuments & {
+    fetchNextPage?: () => void
+    fetchPreviousPage?: () => void
+    totalCount?: number
+  }
 
   if (useSdkPagination) {
     return {
@@ -450,13 +455,16 @@ export function useSanityTableData<T = Record<string, unknown>>(
         totalPages: paginatedDocuments.totalPages ?? 1,
         hasNextPage: paginatedDocuments.hasNextPage ?? false,
         hasPreviousPage: paginatedDocuments.hasPreviousPage ?? false,
-        totalCount: paginatedDocuments.totalCount ?? paginatedDocuments.count ?? 0,
+        totalCount: paginatedDocumentsCompat.totalCount ?? paginatedDocuments.count ?? 0,
         pageSize: effectivePageSize,
         setPageSize,
         goToPage: paginatedDocuments.goToPage ?? (() => {}),
-        nextPage: paginatedDocuments.nextPage ?? paginatedDocuments.fetchNextPage ?? (() => {}),
+        nextPage:
+          paginatedDocuments.nextPage ?? paginatedDocumentsCompat.fetchNextPage ?? (() => {}),
         previousPage:
-          paginatedDocuments.previousPage ?? paginatedDocuments.fetchPreviousPage ?? (() => {}),
+          paginatedDocuments.previousPage ??
+          paginatedDocumentsCompat.fetchPreviousPage ??
+          (() => {}),
       },
       sorting: {
         current: currentSort,

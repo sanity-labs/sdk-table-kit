@@ -2,7 +2,7 @@ import {
   CalendarPopoverContent,
   formatDateOnlyString,
   parseDateOnlyString,
-} from '@sanetti/sanity-table-kit'
+} from '@sanity-labs/react-table-kit'
 import type {SanityUser} from '@sanity/sdk-react'
 import {Button, Card, Flex, Popover, Stack, Text, useClickOutsideEvent} from '@sanity/ui'
 import {Calendar, ChevronLeft, CircleDashed} from 'lucide-react'

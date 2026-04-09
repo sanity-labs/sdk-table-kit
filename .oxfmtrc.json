@@ -1,0 +1,23 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "semi": false,
+  "printWidth": 100,
+  "bracketSpacing": false,
+  "singleQuote": true,
+  "sortImports": {},
+  "sortTailwindcss": {},
+  "sortPackageJson": true,
+  "ignorePatterns": [
+    "**/next-env.d.ts",
+    "**/node_modules",
+    "**/.next",
+    "**/out",
+    "**/dist",
+    "**/build",
+    "**/.build",
+    "**/.sanity",
+    "**/sanity.types.ts",
+    "**/schema.json",
+    "pnpm-lock.yaml"
+  ]
+}

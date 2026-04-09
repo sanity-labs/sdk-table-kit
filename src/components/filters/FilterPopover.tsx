@@ -2,7 +2,7 @@ import {Card, Popover} from '@sanity/ui'
 
 interface FilterPopoverProps {
   animate?: boolean
-  children: React.ReactNode
+  children: React.ReactElement
   content: React.ReactNode
   minWidth?: number
   open: boolean

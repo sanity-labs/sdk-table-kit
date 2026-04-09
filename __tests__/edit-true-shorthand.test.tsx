@@ -8,7 +8,7 @@ import {column} from '../src/helpers/table/column'
  * edit: true shorthand on SDK-native column helpers.
  *
  * When `edit: true` is passed to a built-in column helper from
- * @sanetti/sanity-sdk-table-kit, it marks the column for auto-save
+ * @sanity-labs/sdk-table-kit, it marks the column for auto-save
  * via the Sanity SDK. The SanityDocumentTable component resolves
  * these markers at render time using useSDKEditHandler.
  *

@@ -1,4 +1,4 @@
-import {getFilterControl, type FilterDef} from '@sanetti/sanity-table-kit'
+import {getFilterControl, type FilterDef} from '@sanity-labs/react-table-kit'
 
 import {CustomFilterControl} from './CustomFilterControl'
 import {DateFilterControl} from './DateFilterControl'

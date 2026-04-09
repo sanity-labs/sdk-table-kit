@@ -1,5 +1,5 @@
-import {column as baseColumn} from '@sanetti/sanity-table-kit'
-import type {DocumentBase} from '@sanetti/sanity-table-kit'
+import {column as baseColumn} from '@sanity-labs/react-table-kit'
+import type {BadgeColorMap, DocumentBase, EditOption} from '@sanity-labs/react-table-kit'
 import type {PreviewConfig, PreviewValue} from '@sanity/types'
 import React from 'react'
 
@@ -86,6 +86,49 @@ interface CommentableConfig {
   comments?: boolean | Partial<CellCommentsConfig>
 }
 
+interface BaseColumnConfig {
+  header?: string
+  icon?: React.ComponentType<React.SVGProps<SVGSVGElement>>
+  filterable?: boolean
+  groupable?: boolean
+  searchable?: boolean
+  flex?: number
+  width?: number
+}
+
+interface SelectEditConfig<T extends DocumentBase = DocumentBase> {
+  onSave: (document: T, newValue: string) => void
+  options: EditOption[]
+}
+
+interface DateEditConfig<T extends DocumentBase = DocumentBase> {
+  onSave: (document: T, newValue: string) => void
+  toneByDateRange?: boolean
+}
+
+interface TypeColumnConfig<T extends DocumentBase = DocumentBase> extends BaseColumnConfig {
+  sortable?: boolean
+  edit?: true | SelectEditConfig<T>
+}
+
+interface UpdatedAtColumnConfig<T extends DocumentBase = DocumentBase> extends BaseColumnConfig {
+  sortable?: boolean
+  edit?: true | DateEditConfig<T>
+}
+
+interface BadgeColumnConfig<T extends DocumentBase = DocumentBase> extends BaseColumnConfig {
+  field: string
+  colorMap?: BadgeColorMap
+  sortable?: boolean
+  edit?: true | SelectEditConfig<T>
+}
+
+interface BooleanColumnConfig<T extends DocumentBase = DocumentBase> extends BaseColumnConfig {
+  field: string
+  sortable?: boolean
+  edit?: true | {onSave: (document: T, newValue: boolean) => void}
+}
+
 /**
  * Role-based visibility props — SDK-specific extension.
  * Added to all column helpers via withRoleProps wrapper.
@@ -95,25 +138,6 @@ interface RoleProps {
   visibleTo?: string[]
   /** Role names (slugs) that can edit this column. If unset, edit available to all. */
   editableBy?: string[]
-}
-
-/**
- * Wrap a base column helper to accept and preserve visibleTo/editableBy props.
- * These props are stripped by the base helper (unknown to it), so we re-attach them.
- */
-function withRoleProps<TConfig, TResult>(
-  baseFn: (config: TConfig) => TResult,
-): (config?: TConfig & RoleProps) => TResult & RoleProps {
-  return (config?: TConfig & RoleProps) => {
-    if (!config) return baseFn(undefined as unknown as TConfig) as TResult & RoleProps
-    const {visibleTo, editableBy, ...baseConfig} = config
-    const result = baseFn(baseConfig as TConfig)
-    return {
-      ...result,
-      ...(visibleTo && {visibleTo}),
-      ...(editableBy && {editableBy}),
-    }
-  }
 }
 
 function resolveCellComments(
@@ -225,7 +249,7 @@ function buildReferenceProjection(field: string, select: Record<string, string>)
  *
  * @example
  * ```ts
- * import { column } from '@sanetti/sanity-sdk-table-kit'
+ * import { column } from '@sanity-labs/sdk-table-kit'
  *
  * column.select({width: 24})
  * column.title({searchable: true, edit: true})
@@ -245,7 +269,18 @@ export const column = {
   // ── Base helpers (delegated directly to preserve full type signatures) ──
 
   /** {@inheritDoc} */
-  select: withRoleProps(baseColumn.select),
+  select(config?: {width?: number} & RoleProps): SanityColumnDef & RoleProps {
+    const {editableBy, visibleTo, ...baseConfig} = config ?? {}
+    const col = baseColumn.select(
+      baseConfig as Parameters<typeof baseColumn.select>[0],
+    ) as SanityColumnDef
+
+    return {
+      ...col,
+      ...(visibleTo && {visibleTo}),
+      ...(editableBy && {editableBy}),
+    } as SanityColumnDef & RoleProps
+  },
   /** {@inheritDoc} */
   title<T extends DocumentBase = DocumentBase>(
     config?: Parameters<typeof baseColumn.title<T>>[0] & RoleProps & CommentableConfig,
@@ -257,9 +292,35 @@ export const column = {
     return finalizeColumn(col, {comments, editableBy, visibleTo})
   },
   /** {@inheritDoc} */
-  type: withRoleProps(baseColumn.type),
+  type<T extends DocumentBase = DocumentBase>(
+    config?: TypeColumnConfig<T> & RoleProps,
+  ): SanityColumnDef<T> & RoleProps {
+    const {editableBy, visibleTo, ...baseConfig} = config ?? {}
+    const col = baseColumn.type<T>(
+      baseConfig as Parameters<typeof baseColumn.type<T>>[0],
+    ) as SanityColumnDef<T>
+
+    return {
+      ...col,
+      ...(visibleTo && {visibleTo}),
+      ...(editableBy && {editableBy}),
+    } as SanityColumnDef<T> & RoleProps
+  },
   /** {@inheritDoc} */
-  updatedAt: withRoleProps(baseColumn.updatedAt),
+  updatedAt<T extends DocumentBase = DocumentBase>(
+    config?: UpdatedAtColumnConfig<T> & RoleProps,
+  ): SanityColumnDef<T> & RoleProps {
+    const {editableBy, visibleTo, ...baseConfig} = config ?? {}
+    const col = baseColumn.updatedAt<T>(
+      baseConfig as Parameters<typeof baseColumn.updatedAt<T>>[0],
+    ) as SanityColumnDef<T>
+
+    return {
+      ...col,
+      ...(visibleTo && {visibleTo}),
+      ...(editableBy && {editableBy}),
+    } as SanityColumnDef<T> & RoleProps
+  },
   /**
    * Custom column with optional GROQ projection expression.
    * Extends the base custom() with a `projection` prop for computed fields.
@@ -290,7 +351,20 @@ export const column = {
     return finalizeColumn(nextCol, {comments, editableBy, visibleTo})
   },
   /** {@inheritDoc} */
-  badge: withRoleProps(baseColumn.badge),
+  badge<T extends DocumentBase = DocumentBase>(
+    config: BadgeColumnConfig<T> & RoleProps,
+  ): SanityColumnDef<T> & RoleProps {
+    const {editableBy, visibleTo, ...baseConfig} = config
+    const col = baseColumn.badge<T>(
+      baseConfig as Parameters<typeof baseColumn.badge<T>>[0],
+    ) as SanityColumnDef<T>
+
+    return {
+      ...col,
+      ...(visibleTo && {visibleTo}),
+      ...(editableBy && {editableBy}),
+    } as SanityColumnDef<T> & RoleProps
+  },
   /** {@inheritDoc} */
   date<T extends DocumentBase = DocumentBase>(
     config: Parameters<typeof baseColumn.date<T>>[0] & RoleProps & CommentableConfig,
@@ -302,7 +376,20 @@ export const column = {
     return finalizeColumn(col, {comments, editableBy, visibleTo})
   },
   /** {@inheritDoc} */
-  boolean: withRoleProps(baseColumn.boolean),
+  boolean<T extends DocumentBase = DocumentBase>(
+    config: BooleanColumnConfig<T> & RoleProps,
+  ): SanityColumnDef<T> & RoleProps {
+    const {editableBy, visibleTo, ...baseConfig} = config
+    const col = baseColumn.boolean<T>(
+      baseConfig as Parameters<typeof baseColumn.boolean<T>>[0],
+    ) as SanityColumnDef<T>
+
+    return {
+      ...col,
+      ...(visibleTo && {visibleTo}),
+      ...(editableBy && {editableBy}),
+    } as SanityColumnDef<T> & RoleProps
+  },
 
   /**
    * Open in Studio action column — renders a button that navigates to the document in Sanity Studio.

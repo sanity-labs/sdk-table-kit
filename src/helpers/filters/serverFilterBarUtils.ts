@@ -1,4 +1,4 @@
-import type {ReferenceFilterDef} from '@sanetti/sanity-table-kit'
+import type {ReferenceFilterDef} from '@sanity-labs/react-table-kit'
 
 import type {SanityColumnDef} from '../../hooks/useColumnProjection'
 

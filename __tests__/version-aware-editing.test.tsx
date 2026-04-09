@@ -1,4 +1,4 @@
-import type {ColumnDef, DocumentBase} from '@sanetti/sanity-table-kit'
+import type {ColumnDef, DocumentBase} from '@sanity-labs/react-table-kit'
 import {renderHook} from '@testing-library/react'
 import React from 'react'
 import {describe, it, expect, vi, beforeEach} from 'vitest'

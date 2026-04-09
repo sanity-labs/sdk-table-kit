@@ -1,4 +1,4 @@
-import {getFilterKey, type FilterDef} from '@sanetti/sanity-table-kit'
+import {getFilterKey, type FilterDef} from '@sanity-labs/react-table-kit'
 import {Button, Label, Stack} from '@sanity/ui'
 import {useState} from 'react'
 

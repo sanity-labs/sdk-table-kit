@@ -1,5 +1,5 @@
-import {column} from '@sanetti/sanity-table-kit'
-import type {ColumnDef} from '@sanetti/sanity-table-kit'
+import {column} from '@sanity-labs/react-table-kit'
+import type {ColumnDef} from '@sanity-labs/react-table-kit'
 import {describe, it, expect, vi, beforeEach} from 'vitest'
 
 import {resolveColumnAliases} from '../src/helpers/table/resolveColumnAliases'

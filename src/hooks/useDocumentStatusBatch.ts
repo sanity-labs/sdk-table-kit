@@ -1,4 +1,4 @@
-import type {DocumentBase} from '@sanetti/sanity-table-kit'
+import type {DocumentBase} from '@sanity-labs/react-table-kit'
 import {useActiveReleases, useQuery} from '@sanity/sdk-react'
 import {useMemo} from 'react'
 

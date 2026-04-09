@@ -1,4 +1,4 @@
-import {DocumentTable} from '@sanetti/sanity-table-kit'
+import {DocumentTable} from '@sanity-labs/react-table-kit'
 import {screen, within} from '@testing-library/react'
 import {userEvent} from '@testing-library/user-event'
 import React from 'react'

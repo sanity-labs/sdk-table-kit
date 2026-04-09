@@ -3,7 +3,7 @@ import {
   getFilterKey,
   type FilterDef,
   type UseFilterUrlStateResult,
-} from '@sanetti/sanity-table-kit'
+} from '@sanity-labs/react-table-kit'
 import {CloseIcon} from '@sanity/icons'
 import {Button, Card, Flex, Text} from '@sanity/ui'
 
