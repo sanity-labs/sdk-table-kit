@@ -1,7 +1,17 @@
 import {TableCellChrome} from '@sanetti/sanity-table-kit'
 import {AddIcon} from '@sanity/icons'
 import {type SanityUser, useUsers} from '@sanity/sdk-react'
-import {Card, Flex, Popover, Stack, Text, useClickOutsideEvent, useGlobalKeyDown} from '@sanity/ui'
+import {
+  Button,
+  Card,
+  Flex,
+  Heading,
+  Popover,
+  Stack,
+  Text,
+  useClickOutsideEvent,
+  useGlobalKeyDown,
+} from '@sanity/ui'
 import {Suspense, useCallback, useEffect, useMemo, useRef, useState} from 'react'
 
 import {useOptionalAddonData} from '../../context/AddonDataContext'
@@ -12,9 +22,9 @@ import {
   isTaskOverdue,
 } from '../../helpers/tasks/TaskSummaryUtils'
 import {useAddonTasks} from '../../hooks/useAddonTasks'
-import {TaskSummaryAddComposer} from './TaskSummaryAddComposer'
+import {TaskSummaryCreateView} from './TaskSummaryCreateView'
 import {TaskSummaryDetailView} from './TaskSummaryDetailView'
-import {TaskSummaryListView} from './TaskSummaryListView'
+import {TaskSummaryListView, type TaskListFilter} from './TaskSummaryListView'
 import {addCircleStyle} from './TaskSummaryShared'
 
 export interface TaskSummaryCellProps {
@@ -23,8 +33,8 @@ export interface TaskSummaryCellProps {
 }
 
 interface TaskPopoverState {
-  isAddFormOpen: boolean
-  isDoneExpanded: boolean
+  activeFilter: TaskListFilter
+  isCreatingTask: boolean
   open: boolean
   selectedTaskId: null | string
 }
@@ -34,8 +44,10 @@ const taskPopoverStateStore = new Map<string, TaskPopoverState>()
 export function TaskSummaryCellInner({documentId, documentType}: TaskSummaryCellProps) {
   const stateKey = documentId.replace(/^drafts\./, '')
   const persistedState = taskPopoverStateStore.get(stateKey)
-  const [isAddFormOpen, setIsAddFormOpen] = useState(persistedState?.isAddFormOpen ?? false)
-  const [isDoneExpanded, setIsDoneExpanded] = useState(persistedState?.isDoneExpanded ?? false)
+  const [activeFilter, setActiveFilter] = useState<TaskListFilter>(
+    persistedState?.activeFilter ?? 'todo',
+  )
+  const [isCreatingTask, setIsCreatingTask] = useState(persistedState?.isCreatingTask ?? false)
   const [open, setOpen] = useState(persistedState?.open ?? false)
   const [selectedTaskId, setSelectedTaskId] = useState<null | string>(
     persistedState?.selectedTaskId ?? null,
@@ -44,9 +56,10 @@ export function TaskSummaryCellInner({documentId, documentType}: TaskSummaryCell
     () => new Set(),
   )
   const popoverRef = useRef<HTMLDivElement>(null)
+  const pendingFlushRef = useRef<null | (() => Promise<boolean>)>(null)
   const triggerRef = useRef<HTMLDivElement>(null)
   const suppressCloseUntilRef = useRef(0)
-  const {tasks} = useAddonTasks(documentId)
+  const {tasks} = useAddonTasks(documentId, documentType)
 
   const visibleTasks = useMemo(
     () => tasks.filter((task) => !optimisticallyRemovedTaskIds.has(task._id)),
@@ -64,48 +77,50 @@ export function TaskSummaryCellInner({documentId, documentType}: TaskSummaryCell
   )
   const stableVisibleTasksRef = useRef<null | {signature: string; tasks: typeof visibleTasks}>(null)
   const stableVisibleTasks = useMemo(() => {
-    if (stableVisibleTasksRef.current?.signature === visibleTasksSignature) {
-      return stableVisibleTasksRef.current.tasks
+    const cachedVisibleTasks = stableVisibleTasksRef.current
+    if (cachedVisibleTasks && cachedVisibleTasks.signature === visibleTasksSignature) {
+      return cachedVisibleTasks.tasks
     }
 
     stableVisibleTasksRef.current = {signature: visibleTasksSignature, tasks: visibleTasks}
     return visibleTasks
   }, [visibleTasks, visibleTasksSignature])
 
-  const {closedCount, openCount, overdueCount, unassignedCount} = useMemo(() => {
-    const open = stableVisibleTasks.filter((task) => task.status === 'open').length
-    const closed = stableVisibleTasks.length - open
-    const overdue = stableVisibleTasks.filter((task) => isTaskOverdue(task)).length
-    const unassigned = stableVisibleTasks.filter(
-      (task) => task.status === 'open' && !task.assignedTo && !isTaskOverdue(task),
-    ).length
-    return {
-      closedCount: closed,
-      openCount: open,
-      overdueCount: overdue,
-      unassignedCount: unassigned,
-    }
-  }, [stableVisibleTasks])
-
-  const {doneTasks, openTasks, overdueTasks} = useMemo(() => {
+  const {doneTasks, overdueTasks, todoTasks, unassignedTasks} = useMemo(() => {
     const overdue = stableVisibleTasks
       .filter((task) => isTaskOverdue(task))
       .sort((left, right) => compareOpenTasks(left, right))
-    const openItems = stableVisibleTasks
+    const todo = stableVisibleTasks
       .filter((task) => task.status === 'open' && !isTaskOverdue(task))
       .sort((left, right) => compareOpenTasks(left, right))
+    const unassigned = todo.filter((task) => !task.assignedTo)
     const done = stableVisibleTasks
       .filter((task) => task.status === 'closed')
       .sort(
         (left, right) => new Date(right._updatedAt).getTime() - new Date(left._updatedAt).getTime(),
       )
 
-    return {doneTasks: done, openTasks: openItems, overdueTasks: overdue}
+    return {doneTasks: done, overdueTasks: overdue, todoTasks: todo, unassignedTasks: unassigned}
   }, [stableVisibleTasks])
+
+  const openCount = useMemo(
+    () => stableVisibleTasks.filter((task) => task.status === 'open').length,
+    [stableVisibleTasks],
+  )
+  const closedCount = doneTasks.length
+  const overdueCount = overdueTasks.length
+  const unassignedCount = unassignedTasks.length
 
   const selectedTask = selectedTaskId
     ? (stableVisibleTasks.find((task) => task._id === selectedTaskId) ?? null)
     : null
+
+  const filteredTasks = useMemo(() => {
+    if (activeFilter === 'todo') return todoTasks
+    if (activeFilter === 'unassigned') return unassignedTasks
+    if (activeFilter === 'overdue') return overdueTasks
+    return doneTasks
+  }, [activeFilter, doneTasks, overdueTasks, todoTasks, unassignedTasks])
 
   const markInternalInteraction = useCallback((durationMs = 150) => {
     // Prevent outside-click close handlers from racing against internal click handlers.
@@ -135,60 +150,119 @@ export function TaskSummaryCellInner({documentId, documentType}: TaskSummaryCell
     })
   }, [])
 
-  const closePopover = useCallback(() => {
-    if (Date.now() < suppressCloseUntilRef.current) {
-      return
-    }
+  const closePopoverWithoutGuard = useCallback(() => {
     setOpen(false)
-    setIsAddFormOpen(false)
+    setIsCreatingTask(false)
+    pendingFlushRef.current = null
     setOptimisticallyRemovedTaskIds((prev) => (prev.size === 0 ? prev : new Set()))
     setSelectedTaskId(null)
   }, [])
 
+  const registerPendingFlush = useCallback((flushFn: null | (() => Promise<boolean>)) => {
+    pendingFlushRef.current = flushFn
+  }, [])
+
+  const flushPendingWrites = useCallback(async () => {
+    const flushFn = pendingFlushRef.current
+    if (!flushFn) return true
+    try {
+      return await flushFn()
+    } catch (error) {
+      console.error('[TaskSummaryCellInner] flush failed before close:', error)
+      return false
+    }
+  }, [])
+
+  const closePopover = useCallback(async () => {
+    if (Date.now() < suppressCloseUntilRef.current) {
+      return
+    }
+    const canClose = await flushPendingWrites()
+    if (!canClose) return
+    closePopoverWithoutGuard()
+  }, [closePopoverWithoutGuard, flushPendingWrites])
+
   useEffect(() => {
-    const hasTransientState = open || isAddFormOpen || isDoneExpanded || selectedTaskId !== null
+    const hasTransientState =
+      open || isCreatingTask || selectedTaskId !== null || activeFilter !== 'todo'
     if (hasTransientState) {
-      taskPopoverStateStore.set(stateKey, {isAddFormOpen, isDoneExpanded, open, selectedTaskId})
+      taskPopoverStateStore.set(stateKey, {activeFilter, isCreatingTask, open, selectedTaskId})
       return
     }
     taskPopoverStateStore.delete(stateKey)
-  }, [isAddFormOpen, isDoneExpanded, open, selectedTaskId, stateKey])
+  }, [activeFilter, isCreatingTask, open, selectedTaskId, stateKey])
 
-  useClickOutsideEvent(open ? closePopover : undefined, () => [
-    popoverRef.current,
-    triggerRef.current,
-  ])
+  useClickOutsideEvent(
+    open
+      ? () => {
+          void closePopover()
+        }
+      : undefined,
+    () => [popoverRef.current, triggerRef.current],
+  )
 
   useGlobalKeyDown((event) => {
     if (!open || event.key !== 'Escape') return
     event.preventDefault()
 
-    if (selectedTaskId) {
-      setSelectedTaskId(null)
-      return
-    }
+    void (async () => {
+      if (selectedTaskId) {
+        markInternalInteraction()
+        const canGoBack = await flushPendingWrites()
+        if (!canGoBack) return
+        setSelectedTaskId(null)
+        return
+      }
 
-    closePopover()
+      if (isCreatingTask) {
+        markInternalInteraction()
+        const canLeaveCreate = await flushPendingWrites()
+        if (!canLeaveCreate) return
+        setIsCreatingTask(false)
+        return
+      }
+
+      await closePopover()
+    })()
   })
 
   useEffect(() => {
     if (!open) {
-      setIsAddFormOpen(false)
+      setIsCreatingTask(false)
+      pendingFlushRef.current = null
       setOptimisticallyRemovedTaskIds((prev) => (prev.size === 0 ? prev : new Set()))
       setSelectedTaskId(null)
       return
     }
-
-    if (tasks.length === 0) {
-      setIsAddFormOpen(true)
-    }
-  }, [open, tasks.length])
+  }, [open])
 
   useEffect(() => {
     if (selectedTaskId && !stableVisibleTasks.some((task) => task._id === selectedTaskId)) {
       setSelectedTaskId(null)
     }
   }, [selectedTaskId, stableVisibleTasks])
+
+  useEffect(() => {
+    if (stableVisibleTasks.length === 0) return
+    const countByFilter: Record<TaskListFilter, number> = {
+      done: doneTasks.length,
+      overdue: overdueTasks.length,
+      todo: todoTasks.length,
+      unassigned: unassignedTasks.length,
+    }
+    if (countByFilter[activeFilter] > 0) return
+    const nextFilter = (['todo', 'unassigned', 'overdue', 'done'] as const).find(
+      (filter) => countByFilter[filter] > 0,
+    )
+    if (nextFilter) setActiveFilter(nextFilter)
+  }, [
+    activeFilter,
+    doneTasks.length,
+    overdueTasks.length,
+    stableVisibleTasks.length,
+    todoTasks.length,
+    unassignedTasks.length,
+  ])
 
   const summary = getTaskSummary({
     closedCount,
@@ -197,17 +271,26 @@ export function TaskSummaryCellInner({documentId, documentType}: TaskSummaryCell
     taskCount: stableVisibleTasks.length,
     unassignedCount,
   })
-  const doneExpanded = (stableVisibleTasks.length > 0 && openCount === 0) || isDoneExpanded
-  const headerSummary = stableVisibleTasks.length === 0 ? '0 tasks' : summary
   const showEmptyState = stableVisibleTasks.length === 0
-  const handleOpenAddForm = useCallback(() => {
+
+  const handleBackFromDetail = useCallback(() => {
     markInternalInteraction()
-    setIsAddFormOpen(true)
-  }, [markInternalInteraction])
-  const handleRequestCloseAddForm = useCallback(() => {
+    void (async () => {
+      const canGoBack = await flushPendingWrites()
+      if (!canGoBack) return
+      setSelectedTaskId(null)
+    })()
+  }, [flushPendingWrites, markInternalInteraction])
+
+  const handleStopCreate = useCallback(() => {
     markInternalInteraction()
-    setIsAddFormOpen(false)
-  }, [markInternalInteraction])
+    void (async () => {
+      const canLeaveCreate = await flushPendingWrites()
+      if (!canLeaveCreate) return
+      setIsCreatingTask(false)
+    })()
+  }, [flushPendingWrites, markInternalInteraction])
+
   const handleSelectTask = useCallback(
     (taskId: null | string) => {
       markInternalInteraction()
@@ -215,15 +298,29 @@ export function TaskSummaryCellInner({documentId, documentType}: TaskSummaryCell
     },
     [markInternalInteraction],
   )
-  const handleToggleDoneExpanded = useCallback(() => {
+
+  const handleStartCreate = useCallback(() => {
     markInternalInteraction()
-    if (openCount === 0) return
-    setIsDoneExpanded((current) => !current)
-  }, [markInternalInteraction, openCount])
-  const handleBackFromDetail = useCallback(() => {
-    markInternalInteraction()
+    setIsCreatingTask(true)
     setSelectedTaskId(null)
   }, [markInternalInteraction])
+
+  const handleCreateComplete = useCallback(
+    (taskId: string) => {
+      markInternalInteraction(3000)
+      setIsCreatingTask(false)
+      setSelectedTaskId(taskId)
+    },
+    [markInternalInteraction],
+  )
+  const handleTriggerPress = useCallback(() => {
+    if (open) {
+      void closePopover()
+      return
+    }
+    markInternalInteraction()
+    setOpen(true)
+  }, [closePopover, markInternalInteraction, open])
 
   const popoverContent = useMemo(
     () => (
@@ -233,11 +330,15 @@ export function TaskSummaryCellInner({documentId, documentType}: TaskSummaryCell
         ref={popoverRef}
         shadow={2}
         style={{
-          maxWidth: selectedTask
-            ? 'min(520px, calc(100vw - 32px))'
-            : 'min(380px, calc(100vw - 32px))',
-          minWidth: selectedTask ? 420 : 300,
-          width: selectedTask ? 'min(520px, calc(100vw - 32px))' : 'min(380px, calc(100vw - 32px))',
+          maxWidth:
+            selectedTask || isCreatingTask
+              ? 'min(520px, calc(100vw - 32px))'
+              : 'min(420px, calc(100vw - 32px))',
+          minWidth: selectedTask || isCreatingTask ? 420 : 340,
+          width:
+            selectedTask || isCreatingTask
+              ? 'min(520px, calc(100vw - 32px))'
+              : 'min(420px, calc(100vw - 32px))',
         }}
       >
         <Suspense
@@ -250,49 +351,50 @@ export function TaskSummaryCellInner({documentId, documentType}: TaskSummaryCell
           }
         >
           <TaskSummaryPopoverBody
+            activeFilter={activeFilter}
             documentId={documentId}
             documentType={documentType}
-            doneExpanded={doneExpanded}
-            doneTasks={doneTasks}
-            headerSummary={headerSummary}
-            isAddFormOpen={isAddFormOpen}
-            onInternalInteraction={markInternalInteraction}
+            doneCount={doneTasks.length}
+            filteredTasks={filteredTasks}
+            isCreatingTask={isCreatingTask}
+            onBackFromDetail={handleBackFromDetail}
+            onCreateComplete={handleCreateComplete}
             onDeleteOptimistic={hideTaskLocally}
             onDeleteRollback={rollbackHiddenTask}
-            onOpenAddForm={handleOpenAddForm}
-            onRequestCloseAddForm={handleRequestCloseAddForm}
+            onFilterChange={setActiveFilter}
+            onInternalInteraction={markInternalInteraction}
+            onRegisterFlushPending={registerPendingFlush}
             onSelectTask={handleSelectTask}
-            onToggleDoneExpanded={handleToggleDoneExpanded}
-            openCount={openCount}
-            openTasks={openTasks}
-            overdueTasks={overdueTasks}
+            onStartCreate={handleStartCreate}
+            onStopCreate={handleStopCreate}
+            overdueCount={overdueTasks.length}
             selectedTask={selectedTask}
-            showEmptyState={showEmptyState}
-            onBackFromDetail={handleBackFromDetail}
+            todoCount={todoTasks.length}
+            unassignedCount={unassignedTasks.length}
           />
         </Suspense>
       </Card>
     ),
     [
+      activeFilter,
       documentId,
       documentType,
-      doneExpanded,
-      doneTasks,
+      doneTasks.length,
+      filteredTasks,
       handleBackFromDetail,
-      handleOpenAddForm,
-      handleRequestCloseAddForm,
+      handleCreateComplete,
       handleSelectTask,
-      handleToggleDoneExpanded,
-      headerSummary,
+      handleStartCreate,
+      handleStopCreate,
       hideTaskLocally,
-      isAddFormOpen,
+      isCreatingTask,
       markInternalInteraction,
-      openCount,
-      openTasks,
-      overdueTasks,
+      overdueTasks.length,
+      registerPendingFlush,
       rollbackHiddenTask,
       selectedTask,
-      showEmptyState,
+      todoTasks.length,
+      unassignedTasks.length,
     ],
   )
 
@@ -321,7 +423,7 @@ export function TaskSummaryCellInner({documentId, documentType}: TaskSummaryCell
                 </div>
               ) : undefined
             }
-            onPress={() => setOpen((current) => !current)}
+            onPress={handleTriggerPress}
             state={showEmptyState ? 'empty' : 'filled'}
             title={
               showEmptyState ? (
@@ -347,45 +449,47 @@ export function TaskSummaryCellInner({documentId, documentType}: TaskSummaryCell
 }
 
 function TaskSummaryPopoverBody({
+  activeFilter,
   documentId,
   documentType,
-  doneExpanded,
-  doneTasks,
-  headerSummary,
-  isAddFormOpen,
-  onInternalInteraction,
+  doneCount,
+  filteredTasks,
+  isCreatingTask,
+  onBackFromDetail,
+  onCreateComplete,
   onDeleteOptimistic,
   onDeleteRollback,
-  onOpenAddForm,
-  onRequestCloseAddForm,
+  onFilterChange,
+  onInternalInteraction,
+  onRegisterFlushPending,
   onSelectTask,
-  onToggleDoneExpanded,
-  openCount,
-  openTasks,
-  overdueTasks,
+  onStartCreate,
+  onStopCreate,
+  overdueCount,
   selectedTask,
-  showEmptyState,
-  onBackFromDetail,
+  todoCount,
+  unassignedCount,
 }: {
+  activeFilter: TaskListFilter
   documentId: string
   documentType: string
-  doneExpanded: boolean
-  doneTasks: ReturnType<typeof useAddonTasks>['tasks']
-  headerSummary: string
-  isAddFormOpen: boolean
-  onInternalInteraction: (durationMs?: number) => void
+  doneCount: number
+  filteredTasks: ReturnType<typeof useAddonTasks>['tasks']
+  isCreatingTask: boolean
+  onBackFromDetail: () => void
+  onCreateComplete: (taskId: string) => void
   onDeleteOptimistic: (taskId: string) => void
   onDeleteRollback: (taskId: string) => void
-  onOpenAddForm: () => void
-  onRequestCloseAddForm: () => void
+  onFilterChange: (filter: TaskListFilter) => void
+  onInternalInteraction: (durationMs?: number) => void
+  onRegisterFlushPending: (flushFn: null | (() => Promise<boolean>)) => void
   onSelectTask: (taskId: null | string) => void
-  onToggleDoneExpanded: () => void
-  openCount: number
-  openTasks: ReturnType<typeof useAddonTasks>['tasks']
-  overdueTasks: ReturnType<typeof useAddonTasks>['tasks']
+  onStartCreate: () => void
+  onStopCreate: () => void
+  overdueCount: number
   selectedTask: null | ReturnType<typeof useAddonTasks>['tasks'][number]
-  showEmptyState: boolean
-  onBackFromDetail: () => void
+  todoCount: number
+  unassignedCount: number
 }) {
   const addonData = useOptionalAddonData()
   const seededUsers = addonData?.users
@@ -393,25 +497,26 @@ function TaskSummaryPopoverBody({
   if (seededUsers) {
     return (
       <TaskSummaryPopoverBodyContent
+        activeFilter={activeFilter}
         documentId={documentId}
         documentType={documentType}
-        doneExpanded={doneExpanded}
-        doneTasks={doneTasks}
-        headerSummary={headerSummary}
-        isAddFormOpen={isAddFormOpen}
-        onInternalInteraction={onInternalInteraction}
+        doneCount={doneCount}
+        filteredTasks={filteredTasks}
+        isCreatingTask={isCreatingTask}
+        onBackFromDetail={onBackFromDetail}
+        onCreateComplete={onCreateComplete}
         onDeleteOptimistic={onDeleteOptimistic}
         onDeleteRollback={onDeleteRollback}
-        onBackFromDetail={onBackFromDetail}
-        onOpenAddForm={onOpenAddForm}
-        onRequestCloseAddForm={onRequestCloseAddForm}
+        onFilterChange={onFilterChange}
+        onInternalInteraction={onInternalInteraction}
+        onRegisterFlushPending={onRegisterFlushPending}
         onSelectTask={onSelectTask}
-        onToggleDoneExpanded={onToggleDoneExpanded}
-        openCount={openCount}
-        openTasks={openTasks}
-        overdueTasks={overdueTasks}
+        onStartCreate={onStartCreate}
+        onStopCreate={onStopCreate}
+        overdueCount={overdueCount}
         selectedTask={selectedTask}
-        showEmptyState={showEmptyState}
+        todoCount={todoCount}
+        unassignedCount={unassignedCount}
         users={seededUsers}
       />
     )
@@ -419,25 +524,26 @@ function TaskSummaryPopoverBody({
 
   return (
     <TaskSummaryPopoverBodyWithUsersQuery
+      activeFilter={activeFilter}
       documentId={documentId}
       documentType={documentType}
-      doneExpanded={doneExpanded}
-      doneTasks={doneTasks}
-      headerSummary={headerSummary}
-      isAddFormOpen={isAddFormOpen}
-      onInternalInteraction={onInternalInteraction}
+      doneCount={doneCount}
+      filteredTasks={filteredTasks}
+      isCreatingTask={isCreatingTask}
+      onBackFromDetail={onBackFromDetail}
+      onCreateComplete={onCreateComplete}
       onDeleteOptimistic={onDeleteOptimistic}
       onDeleteRollback={onDeleteRollback}
-      onBackFromDetail={onBackFromDetail}
-      onOpenAddForm={onOpenAddForm}
-      onRequestCloseAddForm={onRequestCloseAddForm}
+      onFilterChange={onFilterChange}
+      onInternalInteraction={onInternalInteraction}
+      onRegisterFlushPending={onRegisterFlushPending}
       onSelectTask={onSelectTask}
-      onToggleDoneExpanded={onToggleDoneExpanded}
-      openCount={openCount}
-      openTasks={openTasks}
-      overdueTasks={overdueTasks}
+      onStartCreate={onStartCreate}
+      onStopCreate={onStopCreate}
+      overdueCount={overdueCount}
       selectedTask={selectedTask}
-      showEmptyState={showEmptyState}
+      todoCount={todoCount}
+      unassignedCount={unassignedCount}
     />
   )
 }
@@ -451,46 +557,48 @@ function TaskSummaryPopoverBodyWithUsersQuery(
 }
 
 function TaskSummaryPopoverBodyContent({
+  activeFilter,
   documentId,
   documentType,
-  doneExpanded,
-  doneTasks,
-  headerSummary,
-  isAddFormOpen,
-  onInternalInteraction,
+  doneCount,
+  filteredTasks,
+  isCreatingTask,
+  onBackFromDetail,
+  onCreateComplete,
   onDeleteOptimistic,
   onDeleteRollback,
-  onOpenAddForm,
-  onRequestCloseAddForm,
+  onFilterChange,
+  onInternalInteraction,
+  onRegisterFlushPending,
   onSelectTask,
-  onToggleDoneExpanded,
-  openCount,
-  openTasks,
-  overdueTasks,
+  onStartCreate,
+  onStopCreate,
+  overdueCount,
   selectedTask,
-  showEmptyState,
-  onBackFromDetail,
+  todoCount,
+  unassignedCount,
   users,
 }: {
+  activeFilter: TaskListFilter
   documentId: string
   documentType: string
-  doneExpanded: boolean
-  doneTasks: ReturnType<typeof useAddonTasks>['tasks']
-  headerSummary: string
-  isAddFormOpen: boolean
-  onInternalInteraction: (durationMs?: number) => void
+  doneCount: number
+  filteredTasks: ReturnType<typeof useAddonTasks>['tasks']
+  isCreatingTask: boolean
+  onBackFromDetail: () => void
+  onCreateComplete: (taskId: string) => void
   onDeleteOptimistic: (taskId: string) => void
   onDeleteRollback: (taskId: string) => void
-  onOpenAddForm: () => void
-  onRequestCloseAddForm: () => void
+  onFilterChange: (filter: TaskListFilter) => void
+  onInternalInteraction: (durationMs?: number) => void
+  onRegisterFlushPending: (flushFn: null | (() => Promise<boolean>)) => void
   onSelectTask: (taskId: null | string) => void
-  onToggleDoneExpanded: () => void
-  openCount: number
-  openTasks: ReturnType<typeof useAddonTasks>['tasks']
-  overdueTasks: ReturnType<typeof useAddonTasks>['tasks']
+  onStartCreate: () => void
+  onStopCreate: () => void
+  overdueCount: number
   selectedTask: null | ReturnType<typeof useAddonTasks>['tasks'][number]
-  showEmptyState: boolean
-  onBackFromDetail: () => void
+  todoCount: number
+  unassignedCount: number
   users: SanityUser[]
 }) {
   if (selectedTask) {
@@ -498,6 +606,7 @@ function TaskSummaryPopoverBodyContent({
       <TaskSummaryDetailView
         onBack={onBackFromDetail}
         onInternalInteraction={onInternalInteraction}
+        onRegisterFlushPending={onRegisterFlushPending}
         onDeleteOptimistic={onDeleteOptimistic}
         onDeleteRollback={onDeleteRollback}
         task={selectedTask}
@@ -506,44 +615,46 @@ function TaskSummaryPopoverBodyContent({
     )
   }
 
-  return (
-    <Stack space={3}>
-      <Flex align="center" justify="space-between">
-        <Text size={1} weight="semibold">
-          Tasks
-        </Text>
-        <Text muted size={1}>
-          {headerSummary}
-        </Text>
-      </Flex>
-
-      <TaskSummaryAddComposer
+  if (isCreatingTask) {
+    return (
+      <TaskSummaryCreateView
         documentId={documentId}
         documentType={documentType}
-        isOpen={isAddFormOpen}
-        onOpen={onOpenAddForm}
-        onRequestClose={onRequestCloseAddForm}
+        onBack={onStopCreate}
+        onCreate={onCreateComplete}
         users={users}
       />
+    )
+  }
 
-      {showEmptyState ? (
-        <Card border padding={3} radius={2} tone="transparent">
-          <Text muted size={1}>
-            No tasks yet.
-          </Text>
-        </Card>
-      ) : (
-        <TaskSummaryListView
-          doneExpanded={doneExpanded}
-          doneTasks={doneTasks}
-          onSelectTask={onSelectTask}
-          onToggleDoneExpanded={onToggleDoneExpanded}
-          openCount={openCount}
-          openTasks={openTasks}
-          overdueTasks={overdueTasks}
-          users={users}
-        />
-      )}
+  return (
+    <Stack space={4}>
+      <Flex align="center" justify="space-between">
+        <Flex align="center" gap={2}>
+          {/* <Button
+            icon={<ChevronLeft size={16} />}
+            mode="bleed"
+            onClick={onClosePopover}
+            padding={2}
+          /> */}
+          <Heading size={2} weight="semibold">
+            Tasks
+          </Heading>
+        </Flex>
+        <Button icon={AddIcon} mode="ghost" onClick={onStartCreate} text="Add task" />
+      </Flex>
+
+      <TaskSummaryListView
+        activeFilter={activeFilter}
+        doneCount={doneCount}
+        onFilterChange={onFilterChange}
+        onSelectTask={(taskId) => onSelectTask(taskId)}
+        overdueCount={overdueCount}
+        tasks={filteredTasks}
+        todoCount={todoCount}
+        unassignedCount={unassignedCount}
+        users={users}
+      />
     </Stack>
   )
 }

@@ -32,6 +32,22 @@ export function getDateInputValue(dueBy?: string) {
   return new Date(dueBy).toISOString().slice(0, 10)
 }
 
+export function formatCompactDisplayName(name?: string): null | string {
+  if (!name) return null
+
+  const parts = name.trim().split(/\s+/).filter(Boolean)
+
+  if (parts.length === 0) return null
+  if (parts.length === 1) return parts[0] ?? null
+
+  const firstName = parts[0]
+  const lastName = parts[parts.length - 1]
+  if (!firstName || !lastName) return parts.join(' ')
+
+  const surnameInitial = lastName.charAt(0).toUpperCase()
+  return `${firstName} ${surnameInitial}`
+}
+
 export function getInitials(displayName: string) {
   return displayName
     .split(' ')
@@ -93,6 +109,16 @@ export function getTaskSummaryTone({
 export function isTaskOverdue(task: Pick<TaskDocument, 'dueBy' | 'status'>) {
   if (task.status !== 'open' || !task.dueBy) return false
   return new Date(task.dueBy).getTime() < Date.now()
+}
+
+export function isDateValueOverdue(dateValue: string | undefined, status: TaskDocument['status']) {
+  if (status !== 'open' || !dateValue) return false
+  return new Date(`${dateValue}T23:59:59`).getTime() < Date.now()
+}
+
+export function formatDateValueForDisplay(dateValue: string | undefined) {
+  if (!dateValue) return 'No date'
+  return new Date(`${dateValue}T12:00:00`).toLocaleDateString()
 }
 
 export function sectionToggleButtonStyle(isInteractive: boolean): React.CSSProperties {

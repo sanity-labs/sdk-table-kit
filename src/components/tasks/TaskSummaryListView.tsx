@@ -1,100 +1,112 @@
 import type {SanityUser} from '@sanity/sdk-react'
-import {Box, Card, Flex, Stack, Text} from '@sanity/ui'
-import {Calendar, ChevronDown, ChevronRight, CircleDashed} from 'lucide-react'
+import {Badge, Box, Button, Card, Flex, Stack, Text} from '@sanity/ui'
+import {Calendar, CircleDashed, MessageSquare} from 'lucide-react'
 
+import {toPlainText} from '../../helpers/comments/addonCommentUtils'
 import {
-  formatRelativeTime,
+  formatCompactDisplayName,
   getTaskDueDateLabel,
   isTaskOverdue,
-  sectionToggleButtonStyle,
-  taskRowButtonStyle,
 } from '../../helpers/tasks/TaskSummaryUtils'
 import {
   findUserByResourceUserId,
   getUserDisplayNameByResourceUserId,
 } from '../../helpers/users/addonUserUtils'
+import {useTaskComments} from '../../hooks/useTaskComments'
 import type {TaskDocument} from '../../types/addonTypes'
-import {TaskListMetaPill, TaskSection, TaskUserAvatar} from './TaskSummaryShared'
+import {TaskListMetaPill, TaskUserAvatar} from './TaskSummaryShared'
+
+export type TaskListFilter = 'done' | 'overdue' | 'todo' | 'unassigned'
 
 export function TaskSummaryListView({
-  doneExpanded,
-  doneTasks,
+  activeFilter,
+  doneCount,
+  onFilterChange,
   onSelectTask,
-  onToggleDoneExpanded,
-  openCount,
-  openTasks,
-  overdueTasks,
+  overdueCount,
+  tasks,
+  todoCount,
+  unassignedCount,
   users,
 }: {
-  doneExpanded: boolean
-  doneTasks: TaskDocument[]
+  activeFilter: TaskListFilter
+  doneCount: number
+  onFilterChange: (filter: TaskListFilter) => void
   onSelectTask: (taskId: string) => void
-  onToggleDoneExpanded: () => void
-  openCount: number
-  openTasks: TaskDocument[]
-  overdueTasks: TaskDocument[]
+  overdueCount: number
+  tasks: TaskDocument[]
+  todoCount: number
+  unassignedCount: number
   users: SanityUser[]
 }) {
-  const showDoneSection = doneTasks.length > 0
+  const filters: Array<{
+    count: number
+    key: TaskListFilter
+    label: string
+    tone: 'critical' | 'default' | 'positive' | 'caution' | 'primary' | 'neutral'
+  }> = [
+    {count: todoCount, key: 'todo', label: 'Todo', tone: 'neutral'},
+    {count: unassignedCount, key: 'unassigned', label: 'Unassigned', tone: 'caution'},
+    {count: overdueCount, key: 'overdue', label: 'Overdue', tone: 'critical'},
+    {count: doneCount, key: 'done', label: 'Done', tone: 'positive'},
+  ]
 
   return (
-    <Box style={{maxHeight: 420, overflowY: 'auto'}}>
-      <Stack space={3}>
-        {overdueTasks.length > 0 && (
-          <TaskSection count={overdueTasks.length} title="OVERDUE" tone="critical">
-            {overdueTasks.map((task) => (
-              <TaskSummaryListItem
-                key={task._id}
-                onSelect={() => onSelectTask(task._id)}
-                task={task}
-                users={users}
-              />
-            ))}
-          </TaskSection>
-        )}
+    <Stack space={3}>
+      <Flex align="center" gap={2} style={{flexWrap: 'wrap'}}>
+        {filters.map((filter) => {
+          const disabled = filter.count === 0
+          const isActive = activeFilter === filter.key
 
-        {openTasks.length > 0 && (
-          <TaskSection count={openTasks.length} title="OPEN">
-            {openTasks.map((task) => (
-              <TaskSummaryListItem
-                key={task._id}
-                onSelect={() => onSelectTask(task._id)}
-                task={task}
-                users={users}
-              />
-            ))}
-          </TaskSection>
-        )}
-
-        {showDoneSection && (
-          <Stack space={2}>
+          return (
             <button
-              onClick={onToggleDoneExpanded}
-              style={sectionToggleButtonStyle(openCount > 0)}
+              disabled={disabled}
+              key={filter.key}
+              onClick={() => {
+                if (disabled) return
+                onFilterChange(filter.key)
+              }}
+              style={{
+                background: 'transparent',
+                border: 0,
+                borderRadius: 999,
+                cursor: disabled ? 'default' : 'pointer',
+                opacity: disabled ? 0.55 : 1,
+                outline: isActive ? '2px solid var(--card-focus-ring-color, #556bfc)' : 'none',
+                outlineOffset: 1,
+                padding: 0,
+              }}
               type="button"
             >
-              {doneExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-              <Text size={1} weight="semibold">
-                Done ({doneTasks.length})
-              </Text>
+              <Badge padding={2} tone={filter.tone}>
+                {filter.count} {filter.label}
+              </Badge>
             </button>
+          )
+        })}
+      </Flex>
 
-            {doneExpanded && (
-              <Stack space={2}>
-                {doneTasks.map((task) => (
-                  <TaskSummaryListItem
-                    key={task._id}
-                    onSelect={() => onSelectTask(task._id)}
-                    task={task}
-                    users={users}
-                  />
-                ))}
-              </Stack>
-            )}
+      <Box style={{maxHeight: 420, overflowY: 'auto'}}>
+        {tasks.length === 0 ? (
+          <Card border padding={3} radius={2} tone="transparent">
+            <Text muted size={1}>
+              No tasks in this filter.
+            </Text>
+          </Card>
+        ) : (
+          <Stack space={2}>
+            {tasks.map((task) => (
+              <TaskSummaryListItem
+                key={task._id}
+                onSelect={() => onSelectTask(task._id)}
+                task={task}
+                users={users}
+              />
+            ))}
           </Stack>
         )}
-      </Stack>
-    </Box>
+      </Box>
+    </Stack>
   )
 }
 
@@ -109,54 +121,61 @@ function TaskSummaryListItem({
 }) {
   const assignee = task.assignedTo ? findUserByResourceUserId(task.assignedTo, users) : undefined
   const assigneeName = getUserDisplayNameByResourceUserId(task.assignedTo, users)
+  const compactAssigneeName =
+    formatCompactDisplayName(assigneeName ?? undefined) ?? assigneeName ?? 'Unassigned'
   const isClosed = task.status === 'closed'
   const isOverdue = isTaskOverdue(task)
+  const taskCommentsState = useTaskComments(task._id)
+  const commentsCount = taskCommentsState.comments?.length ?? 0
+  const description = task.description ? toPlainText(task.description).trim() : ''
+  const hasDescription = description.length > 0
 
   return (
-    <button onClick={onSelect} style={taskRowButtonStyle} type="button">
-      <Card border padding={2} radius={2} tone="transparent">
-        <Stack space={2}>
-          <Flex align="flex-start" justify="space-between" gap={2}>
-            <Text
-              size={1}
-              weight="medium"
-              style={{
-                color: isClosed ? 'var(--card-muted-fg-color)' : undefined,
-                flex: 1,
-                minWidth: 0,
-                textDecoration: isClosed ? 'line-through' : undefined,
-              }}
-            >
-              {task.title}
-            </Text>
-            <Flex
-              align="center"
-              gap={1}
-              style={{
-                color: isOverdue ? 'var(--card-critical-fg-color)' : 'var(--card-muted-fg-color)',
-              }}
-            >
-              <Calendar size={12} />
-              <Text muted={!isOverdue} size={1} style={{color: isOverdue ? 'inherit' : undefined}}>
-                {getTaskDueDateLabel(task) ?? 'No date'}
-              </Text>
-            </Flex>
-          </Flex>
+    <Button mode="ghost" onClick={onSelect} padding={3} radius={2} tone="default">
+      <Stack space={3}>
+        <Text
+          size={2}
+          weight="semibold"
+          style={{
+            color: isClosed ? 'var(--card-muted-fg-color)' : undefined,
+            minWidth: 0,
+            textDecoration: isClosed ? 'line-through' : undefined,
+          }}
+        >
+          {task.title}
+        </Text>
 
-          <Flex align="center" gap={2} style={{flexWrap: 'wrap'}}>
-            <TaskListMetaPill tone={isClosed ? 'default' : 'caution'}>
-              <Text size={1}>{isClosed ? 'Done' : 'To Do'}</Text>
+        {hasDescription && (
+          <Text
+            muted
+            size={1}
+            style={{
+              whiteSpace: 'normal',
+            }}
+          >
+            {description}
+          </Text>
+        )}
+
+        <Flex align="center" gap={2} style={{flexWrap: 'wrap'}}>
+          <TaskListMetaPill>
+            {assignee ? <TaskUserAvatar user={assignee} /> : <CircleDashed size={12} />}
+            <Text size={1}>{compactAssigneeName}</Text>
+          </TaskListMetaPill>
+          <TaskListMetaPill tone={isOverdue ? 'critical' : 'default'}>
+            <Calendar size={12} />
+            <Text size={1}>{getTaskDueDateLabel(task) ?? 'No date'}</Text>
+          </TaskListMetaPill>
+          {commentsCount > 0 && (
+            <TaskListMetaPill tone="neutral">
+              <MessageSquare size={12} />
+              <Text size={1}>
+                {commentsCount} {commentsCount === 1 ? 'comment' : 'comments'}
+              </Text>
             </TaskListMetaPill>
-            <TaskListMetaPill>
-              {assignee ? <TaskUserAvatar user={assignee} /> : <CircleDashed size={12} />}
-              <Text size={1}>{assigneeName ?? 'Unassigned'}</Text>
-            </TaskListMetaPill>
-            <Text muted size={1}>
-              {formatRelativeTime(task._createdAt)}
-            </Text>
-          </Flex>
-        </Stack>
-      </Card>
-    </button>
+          )}
+        </Flex>
+      </Stack>
+    </Button>
   )
 }

@@ -1,14 +1,9 @@
 import {SearchIcon} from '@sanity/icons'
 import type {SanityUser} from '@sanity/sdk-react'
-import {Box, Card, Flex, Stack, Text} from '@sanity/ui'
+import {Box, Button, Card, Flex, Stack, Text, TextInput} from '@sanity/ui'
 import {X} from 'lucide-react'
 import {useMemo, useState} from 'react'
 
-import {
-  assignPickerStyle,
-  searchInputStyle,
-  taskAssignOptionButtonStyle,
-} from '../../helpers/tasks/TaskSummaryUtils'
 import {getResourceUserId} from '../../helpers/users/addonUserUtils'
 import {TaskUserAvatar} from './TaskSummaryShared'
 
@@ -43,54 +38,105 @@ export function TaskSummaryAssignPicker({
   }, [search, users])
 
   return (
-    <Card border padding={2} radius={2} ref={pickerRef} shadow={2} style={assignPickerStyle}>
-      <Stack space={2}>
-        <Flex align="center" gap={2}>
-          <SearchIcon />
-          <input
+    <Card
+      border
+      radius={4}
+      ref={pickerRef}
+      shadow={2}
+      style={{left: 0, marginTop: 6, position: 'absolute', top: '100%', width: 280, zIndex: 2}}
+    >
+      <Stack space={0}>
+        <Box padding={2} style={{borderBottom: '1px solid var(--card-border-color)'}}>
+          <TextInput
             autoFocus
-            onChange={(event) => setSearch(event.target.value)}
+            fontSize={1}
+            icon={SearchIcon}
+            onChange={(event) => setSearch(event.currentTarget.value)}
             placeholder="Search people..."
-            style={searchInputStyle}
             value={search}
           />
-        </Flex>
+        </Box>
 
-        {currentAssignee && (
-          <button
-            onClick={() => onAssign(undefined)}
-            style={taskAssignOptionButtonStyle}
-            type="button"
-          >
-            <X size={14} />
-            <Text size={1}>Unassign</Text>
-          </button>
-        )}
-
-        {filteredUsers.map(({resourceUserId, user}) => (
-          <button
-            key={resourceUserId}
-            onClick={() => onAssign(resourceUserId)}
-            style={taskAssignOptionButtonStyle}
-            type="button"
-          >
-            <TaskUserAvatar user={user} />
-            <Box style={{flex: 1, minWidth: 0}}>
-              <Text size={1}>{user.profile?.displayName ?? resourceUserId}</Text>
-            </Box>
-            {currentAssignee === resourceUserId && (
-              <Text muted size={1}>
-                Assigned
-              </Text>
+        <Box padding={2} style={{maxHeight: 220, overflowY: 'auto'}}>
+          <Stack space={2}>
+            {currentAssignee && (
+              <Button
+                fontSize={1}
+                mode="ghost"
+                onClick={() => onAssign(undefined)}
+                padding={2}
+                radius={2}
+                style={{justifyContent: 'flex-start', width: '100%'}}
+                tone="critical"
+              >
+                <Flex align="center" gap={2}>
+                  <X size={14} />
+                  <Text size={1}>Unassign</Text>
+                </Flex>
+              </Button>
             )}
-          </button>
-        ))}
 
-        {filteredUsers.length === 0 && (
-          <Text muted size={1}>
-            No users found
-          </Text>
-        )}
+            {filteredUsers.map(({resourceUserId, user}) => {
+              const isCurrentAssignee = currentAssignee === resourceUserId
+              const displayName = user.profile?.displayName ?? resourceUserId
+              const email = user.profile?.email
+
+              return (
+                <Button
+                  key={resourceUserId}
+                  mode="ghost"
+                  onClick={() => onAssign(resourceUserId)}
+                  padding={2}
+                  radius={2}
+                  tone={isCurrentAssignee ? 'primary' : 'default'}
+                >
+                  <Flex align="center" gap={2} style={{width: '100%'}}>
+                    <TaskUserAvatar user={user} />
+                    <Box
+                      style={{
+                        display: 'flex',
+                        flex: 1,
+                        flexDirection: 'column',
+                        gap: 4,
+                        minWidth: 0,
+                      }}
+                    >
+                      <Text
+                        size={1}
+                        style={{display: 'block', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}
+                        weight={isCurrentAssignee ? 'semibold' : 'regular'}
+                      >
+                        {displayName}
+                      </Text>
+                      {email && (
+                        <Text
+                          muted
+                          size={0}
+                          style={{display: 'block', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}
+                        >
+                          {email}
+                        </Text>
+                      )}
+                    </Box>
+                    {isCurrentAssignee && (
+                      <Text muted size={1}>
+                        Assigned
+                      </Text>
+                    )}
+                  </Flex>
+                </Button>
+              )
+            })}
+
+            {filteredUsers.length === 0 && (
+              <Box padding={3}>
+                <Text align="center" muted size={1}>
+                  No users found
+                </Text>
+              </Box>
+            )}
+          </Stack>
+        </Box>
       </Stack>
     </Card>
   )

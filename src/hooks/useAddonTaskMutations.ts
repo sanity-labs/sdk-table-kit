@@ -1,75 +1,82 @@
-import {useClient} from '@sanity/sdk-react'
+import {
+  createCommentHandle,
+  createTaskComment as createTaskCommentAction,
+  useApplyCommentActions,
+} from '@sanity-labs/sdk-comments'
+import {
+  createTask as createTaskAction,
+  createTaskHandle,
+  deleteTask as deleteTaskAction,
+  editTask as editTaskAction,
+  setTaskStatus as setTaskStatusAction,
+  useApplyTaskActions,
+} from '@sanity-labs/sdk-tasks'
 import {useCallback, useMemo} from 'react'
 
 import {useAddonData} from '../context/AddonDataContext'
-import {buildTaskCommentDocument, buildTaskStudioUrl} from '../helpers/comments/addonCommentUtils'
-import type {
-  AddonMessage,
-  AddonTarget,
-  TaskDocument,
-  TaskEditPayload,
-  TaskStatus,
-} from '../types/addonTypes'
+import type {AddonMessage, TaskEditPayload, TaskStatus} from '../types/addonTypes'
 import {useCurrentResourceUserId} from './useCurrentResourceUserId'
 
 export function useAddonTaskMutations() {
-  const {
+  const {addonDataset, contentDataset, projectId, workspaceId, workspaceTitle} = useAddonData()
+  const currentResourceUserId = useCurrentResourceUserId()
+  const resolvedAuthorId = currentResourceUserId ?? 'unknown'
+  const mutationRuntime = useMemo(
+    () => ({
+      addonDataset,
+      contentDataset,
+      currentResourceUserId,
+      projectId,
+      resolvedAuthorId,
+      workspaceId,
+      workspaceTitle,
+    }),
+    [
+      addonDataset,
+      contentDataset,
+      currentResourceUserId,
+      projectId,
+      resolvedAuthorId,
+      workspaceId,
+      workspaceTitle,
+    ],
+  )
+
+  const applyTaskActions = useApplyTaskActions({
     addonDataset,
     contentDataset,
-    patchTasks,
+    currentUserId: currentResourceUserId,
     projectId,
-    tasksByDocId,
     workspaceId,
     workspaceTitle,
-  } = useAddonData()
-  const currentResourceUserId = useCurrentResourceUserId()
-  const baseClient = useClient({apiVersion: '2025-05-06'})
+  })
+  const applyCommentActions = useApplyCommentActions({
+    addonDataset,
+    contentDataset,
+    currentUserId: currentResourceUserId,
+    projectId,
+    workspaceId,
+    workspaceTitle,
+  })
 
-  const client = useMemo(
-    () =>
-      baseClient.withConfig({
-        dataset: addonDataset,
+  const getTaskHandle = useCallback(
+    (taskId: string) =>
+      createTaskHandle({
+        addonDataset,
+        projectId,
+        taskId,
+      }),
+    [addonDataset, projectId],
+  )
+
+  const getCommentHandle = useCallback(
+    (commentId: string) =>
+      createCommentHandle({
+        addonDataset,
+        commentId,
         projectId,
       }),
-    [addonDataset, baseClient, projectId],
-  )
-
-  const buildTarget = useCallback(
-    (documentId: string, documentType: string): AddonTarget => {
-      if (!contentDataset) {
-        throw new Error('Addon content dataset is not configured')
-      }
-
-      return {
-        document: {
-          _dataset: contentDataset,
-          _projectId: projectId,
-          _ref: documentId.replace('drafts.', ''),
-          _type: 'crossDatasetReference',
-          _weak: true,
-        },
-        documentType,
-      }
-    },
-    [contentDataset, projectId],
-  )
-
-  const findDocRefForTask = useCallback(
-    (taskId: string): string | undefined => {
-      for (const [docRef, tasks] of tasksByDocId) {
-        if (tasks.some((task) => task._id === taskId)) return docRef
-      }
-
-      return undefined
-    },
-    [tasksByDocId],
-  )
-
-  const snapshotTask = useCallback(
-    (docRef: string, taskId: string): TaskDocument | undefined => {
-      return tasksByDocId.get(docRef)?.find((task) => task._id === taskId)
-    },
-    [tasksByDocId],
+    [addonDataset, projectId],
   )
 
   const createTask = useCallback(
@@ -79,142 +86,183 @@ export function useAddonTaskMutations() {
       title: string,
       assignedTo?: string,
       dueBy?: string,
+      description?: AddonMessage,
     ) => {
-      const authorId = currentResourceUserId ?? 'unknown'
-      const now = new Date().toISOString()
-      const target = buildTarget(documentId, documentType)
-      const docRef = documentId.replace('drafts.', '')
-      const optimisticTaskId = `optimistic-task-${crypto.randomUUID()}`
-      const optimisticTask: TaskDocument = {
-        _createdAt: now,
-        _id: optimisticTaskId,
-        _type: 'tasks.task',
-        _updatedAt: now,
-        authorId,
-        createdByUser: now,
-        status: 'open',
-        subscribers: assignedTo ? [authorId, assignedTo] : [authorId],
-        target,
-        title,
-        ...(assignedTo ? {assignedTo} : {}),
-        ...(dueBy ? {dueBy} : {}),
+      if (!contentDataset) {
+        throw new Error('Content dataset is not configured')
       }
 
-      patchTasks(docRef, (tasks) => {
-        if (tasks.some((task) => task._id === optimisticTaskId)) {
-          return tasks
-        }
-        return [optimisticTask, ...tasks]
+      const handle = getTaskHandle(crypto.randomUUID())
+      const action = createTaskAction(handle, {
+        assignedTo,
+        authorId: resolvedAuthorId,
+        contentDataset,
+        description,
+        documentId,
+        documentType,
+        dueBy,
+        title,
+        workspaceId,
+        workspaceTitle,
+      })
+
+      console.debug('[useAddonTaskMutations] createTask:start', {
+        action,
+        assignedTo,
+        description,
+        documentId,
+        documentType,
+        dueBy,
+        handle,
+        runtime: mutationRuntime,
+        title,
       })
 
       try {
-        const createdTask = (await client.create({
-          _type: 'tasks.task' as const,
-          authorId,
-          createdByUser: now,
-          status: 'open',
-          subscribers: assignedTo ? [authorId, assignedTo] : [authorId],
-          target,
-          title,
-          ...(assignedTo ? {assignedTo} : {}),
-          ...(dueBy ? {dueBy} : {}),
-        })) as TaskDocument
-
-        patchTasks(docRef, (tasks) => {
-          const withoutOptimistic = tasks.filter((task) => task._id !== optimisticTaskId)
-          if (withoutOptimistic.some((task) => task._id === createdTask._id)) {
-            return withoutOptimistic
-          }
-          return [createdTask, ...withoutOptimistic]
+        const result = await applyTaskActions(action)
+        console.debug('[useAddonTaskMutations] createTask:success', {
+          result,
+          runtime: mutationRuntime,
+          taskId: handle.documentId,
         })
-
-        return createdTask
       } catch (error) {
-        patchTasks(docRef, (tasks) => tasks.filter((task) => task._id !== optimisticTaskId))
-        console.error('[useAddonTaskMutations] createTask failed:', error)
+        console.error('[useAddonTaskMutations] createTask:failed', {
+          action,
+          assignedTo,
+          description,
+          documentId,
+          documentType,
+          dueBy,
+          error,
+          handle,
+          runtime: mutationRuntime,
+          title,
+        })
         throw error
       }
+
+      return {_id: handle.documentId}
     },
-    [buildTarget, client, currentResourceUserId, patchTasks],
+    [
+      applyTaskActions,
+      contentDataset,
+      getTaskHandle,
+      resolvedAuthorId,
+      workspaceId,
+      workspaceTitle,
+    ],
   )
 
   const editTask = useCallback(
     async (taskId: string, payload: TaskEditPayload) => {
-      const docRef = findDocRefForTask(taskId)
-      const now = new Date().toISOString()
-      const patchPayload = {...payload, lastEditedAt: now}
+      const handle = getTaskHandle(taskId)
+      const action = editTaskAction(handle, payload)
 
-      if (!docRef) {
-        return await client.patch(taskId).set(patchPayload).commit()
-      }
-
-      const snapshot = snapshotTask(docRef, taskId)
-
-      patchTasks(docRef, (tasks) =>
-        tasks.map((task) =>
-          task._id === taskId ? {...task, ...patchPayload, _updatedAt: now} : task,
-        ),
-      )
+      console.debug('[useAddonTaskMutations] editTask:start', {
+        action,
+        handle,
+        payload,
+        runtime: mutationRuntime,
+        taskId,
+      })
 
       try {
-        return await client.patch(taskId).set(patchPayload).commit()
+        const result = await applyTaskActions(action)
+        console.debug('[useAddonTaskMutations] editTask:success', {
+          payload,
+          result,
+          runtime: mutationRuntime,
+          taskId,
+        })
+        return result
       } catch (error) {
-        if (snapshot) {
-          patchTasks(docRef, (tasks) =>
-            tasks.map((task) => (task._id === taskId ? snapshot : task)),
-          )
-        }
-        console.error(`[useAddonTaskMutations] editTask failed (${taskId}):`, error)
+        console.error('[useAddonTaskMutations] editTask:failed', {
+          action,
+          error,
+          handle,
+          payload,
+          runtime: mutationRuntime,
+          taskId,
+        })
         throw error
       }
     },
-    [client, findDocRefForTask, patchTasks, snapshotTask],
+    [applyTaskActions, getTaskHandle, mutationRuntime],
   )
 
   const toggleTaskStatus = useCallback(
     async (taskId: string, currentStatus: TaskStatus) => {
       const newStatus: TaskStatus = currentStatus === 'open' ? 'closed' : 'open'
-      const docRef = findDocRefForTask(taskId)
-      const now = new Date().toISOString()
-      const patchPayload = {lastEditedAt: now, status: newStatus}
+      const handle = getTaskHandle(taskId)
+      const action = setTaskStatusAction(handle, newStatus)
 
-      if (!docRef) {
-        return await client.patch(taskId).set(patchPayload).commit()
-      }
-
-      const snapshot = snapshotTask(docRef, taskId)
-
-      patchTasks(docRef, (tasks) =>
-        tasks.map((task) =>
-          task._id === taskId ? {...task, ...patchPayload, _updatedAt: now} : task,
-        ),
-      )
+      console.debug('[useAddonTaskMutations] toggleTaskStatus:start', {
+        action,
+        currentStatus,
+        handle,
+        newStatus,
+        runtime: mutationRuntime,
+        taskId,
+      })
 
       try {
-        return await client.patch(taskId).set(patchPayload).commit()
+        const result = await applyTaskActions(action)
+        console.debug('[useAddonTaskMutations] toggleTaskStatus:success', {
+          currentStatus,
+          newStatus,
+          result,
+          runtime: mutationRuntime,
+          taskId,
+        })
+        return result
       } catch (error) {
-        if (snapshot) {
-          patchTasks(docRef, (tasks) =>
-            tasks.map((task) => (task._id === taskId ? snapshot : task)),
-          )
-        }
-        console.error(`[useAddonTaskMutations] toggleTaskStatus failed (${taskId}):`, error)
+        console.error('[useAddonTaskMutations] toggleTaskStatus:failed', {
+          action,
+          currentStatus,
+          error,
+          handle,
+          newStatus,
+          runtime: mutationRuntime,
+          taskId,
+        })
         throw error
       }
     },
-    [client, findDocRefForTask, patchTasks, snapshotTask],
+    [applyTaskActions, getTaskHandle, mutationRuntime],
   )
 
   const removeTask = useCallback(
     async (taskId: string) => {
+      const handle = getTaskHandle(taskId)
+      const action = deleteTaskAction(handle)
+
+      console.debug('[useAddonTaskMutations] removeTask:start', {
+        action,
+        handle,
+        runtime: mutationRuntime,
+        taskId,
+      })
+
       try {
-        return await client.delete(taskId)
+        const result = await applyTaskActions(action)
+        console.debug('[useAddonTaskMutations] removeTask:success', {
+          result,
+          runtime: mutationRuntime,
+          taskId,
+        })
+        return result
       } catch (error) {
-        console.error(`[useAddonTaskMutations] removeTask failed (${taskId}):`, error)
+        console.error('[useAddonTaskMutations] removeTask:failed', {
+          action,
+          error,
+          handle,
+          runtime: mutationRuntime,
+          taskId,
+        })
         throw error
       }
     },
-    [client],
+    [applyTaskActions, getTaskHandle, mutationRuntime],
   )
 
   const createCommentOnTask = useCallback(
@@ -260,26 +308,59 @@ export function useAddonTaskMutations() {
       ]
 
       const commentId = crypto.randomUUID()
-      const docRef = findDocRefForTask(taskId)
-      const taskSnapshot = docRef ? snapshotTask(docRef, taskId) : undefined
+      const handle = getCommentHandle(commentId)
+      const action = createTaskCommentAction(handle, {
+        authorId: resolvedAuthorId,
+        message,
+        parentCommentId: undefined,
+        subscribers: undefined,
+        taskId,
+        taskTitle: documentTitle ?? '',
+        threadId: undefined,
+        workspaceId,
+        workspaceTitle,
+      })
 
-      await client.create(
-        buildTaskCommentDocument({
-          authorId: currentResourceUserId ?? 'unknown',
+      console.debug('[useAddonTaskMutations] createCommentOnTask:start', {
+        action,
+        assignedTo,
+        commentId,
+        handle,
+        noteText,
+        runtime: mutationRuntime,
+        taskId,
+      })
+
+      try {
+        const result = await applyCommentActions(action)
+        console.debug('[useAddonTaskMutations] createCommentOnTask:success', {
           commentId,
-          message,
-          subscribers: taskSnapshot?.subscribers,
+          result,
+          runtime: mutationRuntime,
           taskId,
-          taskStudioUrl:
-            taskSnapshot?.context?.notification?.url ??
-            buildTaskStudioUrl(taskId, workspaceId, commentId),
-          taskTitle: taskSnapshot?.title ?? documentTitle ?? '',
-          workspaceId,
-          workspaceTitle,
-        }),
-      )
+        })
+      } catch (error) {
+        console.error('[useAddonTaskMutations] createCommentOnTask:failed', {
+          action,
+          assignedTo,
+          commentId,
+          error,
+          handle,
+          noteText,
+          runtime: mutationRuntime,
+          taskId,
+        })
+        throw error
+      }
     },
-    [client, currentResourceUserId, findDocRefForTask, snapshotTask, workspaceId, workspaceTitle],
+    [
+      applyCommentActions,
+      getCommentHandle,
+      mutationRuntime,
+      resolvedAuthorId,
+      workspaceId,
+      workspaceTitle,
+    ],
   )
 
   return {createCommentOnTask, createTask, editTask, removeTask, toggleTaskStatus}

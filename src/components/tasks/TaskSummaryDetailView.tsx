@@ -1,41 +1,48 @@
+import {
+  CalendarPopoverContent,
+  formatDateOnlyString,
+  parseDateOnlyString,
+} from '@sanetti/sanity-table-kit'
 import type {SanityUser} from '@sanity/sdk-react'
-import {Box, Button, Card, Flex, Stack, Text, useClickOutsideEvent} from '@sanity/ui'
-import {Bell, BellOff, Calendar, ChevronLeft, CircleDashed, Pencil} from 'lucide-react'
+import {Box, Button, Card, Flex, Popover, Stack, Text, useClickOutsideEvent} from '@sanity/ui'
+import {Bell, BellOff, Calendar, ChevronLeft, CircleDashed} from 'lucide-react'
 import {Suspense, useCallback, useEffect, useMemo, useRef, useState} from 'react'
+import {DayPicker} from 'react-day-picker'
 
 import {useAddonData} from '../../context/AddonDataContext'
-import {buildTaskCommentDocument} from '../../helpers/comments/addonCommentUtils'
 import {
-  dateInputStyle,
-  dueDateEditorStyle,
+  buildMessageFromPlainText,
+  buildTaskCommentDocument,
+  toPlainText,
+} from '../../helpers/comments/addonCommentUtils'
+import {
+  formatCompactDisplayName,
+  formatDateValueForDisplay,
   getDateInputValue,
   getStudioTaskUrl,
-  getTaskDueDateLabel,
-  inlineInputStyle,
-  isTaskOverdue,
+  isDateValueOverdue,
+  fullWidthInputStyle,
   toDueDateIsoString,
 } from '../../helpers/tasks/TaskSummaryUtils'
 import {findUserByResourceUserId} from '../../helpers/users/addonUserUtils'
 import {useAddonTaskMutations} from '../../hooks/useAddonTaskMutations'
 import {useCurrentResourceUserId} from '../../hooks/useCurrentResourceUserId'
+import {useSafeToast} from '../../hooks/useSafeToast'
 import {useTaskCommentMutations} from '../../hooks/useTaskCommentMutations'
 import {useTaskComments} from '../../hooks/useTaskComments'
 import type {TaskDocument} from '../../types/addonTypes'
-import {CommentInput} from '../comments/CommentInput'
 import {SharedCommentsPanel, type SharedCommentsAdapter} from '../comments/SharedCommentsPanel'
 import {TaskSummaryAssignPicker} from './TaskSummaryAssignPicker'
-import {
-  InlineIconButton,
-  TaskActionsMenu,
-  TaskMetadataChip,
-  TaskUserAvatar,
-} from './TaskSummaryShared'
+import {TaskActionsMenu, TaskMetadataChip, TaskUserAvatar} from './TaskSummaryShared'
+
+const TEXT_AUTOSAVE_DEBOUNCE_MS = 350
 
 export function TaskSummaryDetailView({
   onDeleteOptimistic,
   onDeleteRollback,
   onInternalInteraction,
   onBack,
+  onRegisterFlushPending,
   task,
   users,
 }: {
@@ -43,40 +50,277 @@ export function TaskSummaryDetailView({
   onDeleteRollback?: (taskId: string) => void
   onInternalInteraction?: (durationMs?: number) => void
   onBack: () => void
+  onRegisterFlushPending?: (flushFn: null | (() => Promise<boolean>)) => void
   task: TaskDocument
   users: SanityUser[]
 }) {
   const {workspaceId, workspaceTitle} = useAddonData()
   const currentResourceUserId = useCurrentResourceUserId()
   const {editTask, removeTask, toggleTaskStatus} = useAddonTaskMutations()
+  const toast = useSafeToast()
+
+  const [assignedToDraft, setAssignedToDraft] = useState<string | undefined>(task.assignedTo)
+  const [descriptionDraft, setDescriptionDraft] = useState(() =>
+    toPlainText(task.description ?? []).trim(),
+  )
   const [isAssignPickerOpen, setIsAssignPickerOpen] = useState(false)
   const [isDueDateEditorOpen, setIsDueDateEditorOpen] = useState(false)
-  const [isEditingTitle, setIsEditingTitle] = useState(false)
+  const [isSavingDescription, setIsSavingDescription] = useState(false)
+  const [isSavingTitle, setIsSavingTitle] = useState(false)
+  const [titleValidationMessage, setTitleValidationMessage] = useState<null | string>(null)
   const [titleDraft, setTitleDraft] = useState(task.title)
   const [dueDateValue, setDueDateValue] = useState(() => getDateInputValue(task.dueBy))
+
   const assignButtonRef = useRef<HTMLButtonElement>(null)
   const assignPickerRef = useRef<HTMLDivElement>(null)
   const dueDateButtonRef = useRef<HTMLButtonElement>(null)
   const dueDateEditorRef = useRef<HTMLDivElement>(null)
-  const assignee = task.assignedTo ? findUserByResourceUserId(task.assignedTo, users) : undefined
+  const titleAutosaveTimerRef = useRef<null | ReturnType<typeof setTimeout>>(null)
+  const descriptionAutosaveTimerRef = useRef<null | ReturnType<typeof setTimeout>>(null)
+  const inFlightSavesRef = useRef<{
+    description: null | Promise<boolean>
+    title: null | Promise<boolean>
+  }>({
+    description: null,
+    title: null,
+  })
+  const latestDraftRef = useRef({
+    description: toPlainText(task.description ?? []).trim(),
+    title: task.title,
+  })
+  const lastSavedRef = useRef({
+    description: toPlainText(task.description ?? []).trim(),
+    title: task.title,
+  })
+  const titleInputRef = useRef<HTMLInputElement>(null)
+  const descriptionTextareaRef = useRef<HTMLTextAreaElement>(null)
+  const lastResetTaskIdRef = useRef(task._id)
+
+  const assignee = assignedToDraft ? findUserByResourceUserId(assignedToDraft, users) : undefined
+  const compactAssigneeName =
+    formatCompactDisplayName(assignee?.profile?.displayName) ??
+    assignee?.profile?.displayName ??
+    'Unassigned'
+
   const isClosed = task.status === 'closed'
-  const isOverdue = isTaskOverdue(task)
+  const isOverdue = isDateValueOverdue(dueDateValue || undefined, task.status)
   const isSubscribed = currentResourceUserId
     ? (task.subscribers ?? []).includes(currentResourceUserId)
     : false
   const studioUrl = getStudioTaskUrl(task, workspaceId)
+  const isSavingTextFields = isSavingDescription || isSavingTitle
+  const selectedDueDate = parseDateOnlyString(dueDateValue || undefined)
 
   useEffect(() => {
-    if (!isEditingTitle) {
-      setTitleDraft(task.title)
-    }
-  }, [isEditingTitle, task.title])
+    if (lastResetTaskIdRef.current === task._id) return
+    lastResetTaskIdRef.current = task._id
+
+    const nextDescription = toPlainText(task.description ?? []).trim()
+
+    setAssignedToDraft(task.assignedTo)
+    setDescriptionDraft(nextDescription)
+    setDueDateValue(getDateInputValue(task.dueBy))
+    setIsAssignPickerOpen(false)
+    setIsDueDateEditorOpen(false)
+    setIsSavingDescription(false)
+    setIsSavingTitle(false)
+    setTitleDraft(task.title)
+    setTitleValidationMessage(null)
+
+    latestDraftRef.current = {description: nextDescription, title: task.title}
+    lastSavedRef.current = {description: nextDescription, title: task.title}
+  }, [task._id, task.assignedTo, task.description, task.dueBy, task.title])
 
   useEffect(() => {
-    if (!isDueDateEditorOpen) {
-      setDueDateValue(getDateInputValue(task.dueBy))
+    latestDraftRef.current = {description: descriptionDraft, title: titleDraft}
+  }, [descriptionDraft, titleDraft])
+
+  useEffect(() => {
+    titleInputRef.current?.focus()
+  }, [task._id])
+
+  const autoGrowDescription = useCallback(() => {
+    const textarea = descriptionTextareaRef.current
+    if (!textarea) return
+    textarea.style.height = '0px'
+    textarea.style.height = `${textarea.scrollHeight}px`
+  }, [])
+
+  useEffect(() => {
+    autoGrowDescription()
+  }, [autoGrowDescription, descriptionDraft])
+
+  const clearTitleAutosaveTimer = useCallback(() => {
+    if (!titleAutosaveTimerRef.current) return
+    clearTimeout(titleAutosaveTimerRef.current)
+    titleAutosaveTimerRef.current = null
+  }, [])
+
+  const clearDescriptionAutosaveTimer = useCallback(() => {
+    if (!descriptionAutosaveTimerRef.current) return
+    clearTimeout(descriptionAutosaveTimerRef.current)
+    descriptionAutosaveTimerRef.current = null
+  }, [])
+
+  const saveTitleNow = useCallback(
+    async (value: string, options?: {showValidationToast?: boolean}) => {
+      const showValidationToast = options?.showValidationToast ?? true
+      const normalized = value.trim()
+
+      if (normalized.length === 0) {
+        setTitleValidationMessage('Task title is required.')
+        if (showValidationToast) {
+          toast.push({
+            status: 'warning',
+            title: 'Task title is required.',
+          })
+        }
+        return false
+      }
+
+      setTitleValidationMessage(null)
+      if (normalized === lastSavedRef.current.title) return true
+
+      setIsSavingTitle(true)
+      const savePromise = editTask(task._id, {title: normalized})
+        .then(() => {
+          lastSavedRef.current.title = normalized
+          return true
+        })
+        .catch((error) => {
+          console.error('[TaskSummaryDetailView] saveTitleNow failed', {
+            error,
+            taskId: task._id,
+            title: normalized,
+          })
+          toast.push({
+            status: 'error',
+            title: 'Failed to save task title.',
+          })
+          return false
+        })
+        .finally(() => {
+          if (inFlightSavesRef.current.title === savePromise) {
+            inFlightSavesRef.current.title = null
+          }
+          setIsSavingTitle(false)
+        })
+
+      inFlightSavesRef.current.title = savePromise
+      return await savePromise
+    },
+    [editTask, task._id, toast],
+  )
+
+  const saveDescriptionNow = useCallback(
+    async (value: string) => {
+      if (value === lastSavedRef.current.description) return true
+
+      setIsSavingDescription(true)
+      const savePromise = editTask(task._id, {description: buildMessageFromPlainText(value)})
+        .then(() => {
+          lastSavedRef.current.description = value
+          return true
+        })
+        .catch((error) => {
+          console.error('[TaskSummaryDetailView] saveDescriptionNow failed', {
+            description: value,
+            error,
+            taskId: task._id,
+          })
+          toast.push({
+            status: 'error',
+            title: 'Failed to save task description.',
+          })
+          return false
+        })
+        .finally(() => {
+          if (inFlightSavesRef.current.description === savePromise) {
+            inFlightSavesRef.current.description = null
+          }
+          setIsSavingDescription(false)
+        })
+
+      inFlightSavesRef.current.description = savePromise
+      return await savePromise
+    },
+    [editTask, task._id, toast],
+  )
+
+  const scheduleTitleAutosave = useCallback(
+    (nextTitle: string) => {
+      clearTitleAutosaveTimer()
+
+      if (nextTitle.trim().length === 0) {
+        setTitleValidationMessage('Task title is required.')
+        return
+      }
+
+      titleAutosaveTimerRef.current = setTimeout(() => {
+        titleAutosaveTimerRef.current = null
+        void saveTitleNow(nextTitle, {showValidationToast: false})
+      }, TEXT_AUTOSAVE_DEBOUNCE_MS)
+    },
+    [clearTitleAutosaveTimer, saveTitleNow],
+  )
+
+  const scheduleDescriptionAutosave = useCallback(
+    (nextDescription: string) => {
+      clearDescriptionAutosaveTimer()
+      descriptionAutosaveTimerRef.current = setTimeout(() => {
+        descriptionAutosaveTimerRef.current = null
+        void saveDescriptionNow(nextDescription)
+      }, TEXT_AUTOSAVE_DEBOUNCE_MS)
+    },
+    [clearDescriptionAutosaveTimer, saveDescriptionNow],
+  )
+
+  const flushPendingWrites = useCallback(async () => {
+    let success = true
+
+    const hasUnsavedEmptyTitle =
+      latestDraftRef.current.title.trim().length === 0 &&
+      latestDraftRef.current.title !== lastSavedRef.current.title
+    if (hasUnsavedEmptyTitle) {
+      success = (await saveTitleNow(latestDraftRef.current.title)) && success
     }
-  }, [isDueDateEditorOpen, task.dueBy])
+
+    if (titleAutosaveTimerRef.current) {
+      clearTitleAutosaveTimer()
+      success = (await saveTitleNow(latestDraftRef.current.title)) && success
+    }
+
+    if (descriptionAutosaveTimerRef.current) {
+      clearDescriptionAutosaveTimer()
+      success = (await saveDescriptionNow(latestDraftRef.current.description)) && success
+    }
+
+    const inFlightSaves = [
+      inFlightSavesRef.current.title,
+      inFlightSavesRef.current.description,
+    ].filter((candidate): candidate is Promise<boolean> => Boolean(candidate))
+
+    for (const inFlightSave of inFlightSaves) {
+      success = (await inFlightSave) && success
+    }
+
+    return success
+  }, [clearDescriptionAutosaveTimer, clearTitleAutosaveTimer, saveDescriptionNow, saveTitleNow])
+
+  useEffect(() => {
+    onRegisterFlushPending?.(flushPendingWrites)
+    return () => {
+      onRegisterFlushPending?.(null)
+    }
+  }, [flushPendingWrites, onRegisterFlushPending])
+
+  useEffect(
+    () => () => {
+      clearTitleAutosaveTimer()
+      clearDescriptionAutosaveTimer()
+    },
+    [clearDescriptionAutosaveTimer, clearTitleAutosaveTimer],
+  )
 
   useClickOutsideEvent(isAssignPickerOpen ? () => setIsAssignPickerOpen(false) : undefined, () => [
     assignButtonRef.current,
@@ -87,12 +331,34 @@ export function TaskSummaryDetailView({
     () => [dueDateButtonRef.current, dueDateEditorRef.current],
   )
 
+  const handleBack = useCallback(async () => {
+    onInternalInteraction?.()
+    const canNavigateBack = await flushPendingWrites()
+    if (!canNavigateBack) return
+    onBack()
+  }, [flushPendingWrites, onBack, onInternalInteraction])
+
   const handleAssign = useCallback(
     (resourceUserId: string | undefined) => {
-      editTask(task._id, {assignedTo: resourceUserId || ''}).catch(() => {})
+      const previousAssignee = assignedToDraft
+      setAssignedToDraft(resourceUserId)
       setIsAssignPickerOpen(false)
+      onInternalInteraction?.(500)
+
+      editTask(task._id, {assignedTo: resourceUserId ?? ''}).catch((error) => {
+        console.error('[TaskSummaryDetailView] handleAssign failed', {
+          assignedTo: resourceUserId,
+          error,
+          taskId: task._id,
+        })
+        setAssignedToDraft(previousAssignee)
+        toast.push({
+          status: 'error',
+          title: 'Failed to update assignee.',
+        })
+      })
     },
-    [editTask, task._id],
+    [assignedToDraft, editTask, onInternalInteraction, task._id, toast],
   )
 
   const handleDelete = useCallback(async () => {
@@ -109,21 +375,31 @@ export function TaskSummaryDetailView({
     }
   }, [onBack, onDeleteOptimistic, onDeleteRollback, onInternalInteraction, removeTask, task._id])
 
-  const handleSaveTitle = useCallback(() => {
-    const nextTitle = titleDraft.trim()
-    if (!nextTitle) return
-    if (nextTitle !== task.title) {
-      editTask(task._id, {title: nextTitle}).catch(() => {})
-    }
-    setIsEditingTitle(false)
-  }, [editTask, task._id, task.title, titleDraft])
+  const handleSelectDueDate = useCallback(
+    (date: Date | undefined) => {
+      if (!date) return
 
-  const handleSaveDueDate = useCallback(() => {
-    editTask(task._id, {dueBy: dueDateValue ? toDueDateIsoString(dueDateValue) : ''}).catch(
-      () => {},
-    )
-    setIsDueDateEditorOpen(false)
-  }, [dueDateValue, editTask, task._id])
+      const previousDueDateValue = dueDateValue
+      const nextDueDateValue = formatDateOnlyString(date)
+      setDueDateValue(nextDueDateValue)
+      setIsDueDateEditorOpen(false)
+      onInternalInteraction?.(500)
+
+      editTask(task._id, {dueBy: toDueDateIsoString(nextDueDateValue)}).catch((error) => {
+        console.error('[TaskSummaryDetailView] handleSelectDueDate failed', {
+          dueBy: nextDueDateValue,
+          error,
+          taskId: task._id,
+        })
+        setDueDateValue(previousDueDateValue)
+        toast.push({
+          status: 'error',
+          title: 'Failed to update due date.',
+        })
+      })
+    },
+    [dueDateValue, editTask, onInternalInteraction, task._id, toast],
+  )
 
   const handleToggleSubscription = useCallback(() => {
     if (!currentResourceUserId) return
@@ -131,57 +407,86 @@ export function TaskSummaryDetailView({
     const nextSubscribers = isSubscribed
       ? currentSubscribers.filter((subscriber) => subscriber !== currentResourceUserId)
       : [...new Set([...currentSubscribers, currentResourceUserId])]
-    editTask(task._id, {subscribers: nextSubscribers}).catch(() => {})
-  }, [currentResourceUserId, editTask, isSubscribed, task._id, task.subscribers])
+    editTask(task._id, {subscribers: nextSubscribers}).catch((error) => {
+      console.error('[TaskSummaryDetailView] handleToggleSubscription failed', {
+        error,
+        nextSubscribers,
+        taskId: task._id,
+      })
+      toast.push({
+        status: 'error',
+        title: 'Failed to update subscription.',
+      })
+    })
+  }, [currentResourceUserId, editTask, isSubscribed, task._id, task.subscribers, toast])
 
   return (
     <Stack space={4}>
       <Flex align="center" justify="space-between">
         <Flex align="center" gap={2} style={{flex: 1, minWidth: 0}}>
-          <Button icon={<ChevronLeft size={16} />} mode="bleed" onClick={onBack} padding={2} />
-          {isEditingTitle ? (
-            <Flex align="center" gap={1} style={{flex: 1, minWidth: 0}}>
-              <input
-                autoFocus
-                onChange={(event) => setTitleDraft(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter') handleSaveTitle()
-                  if (event.key === 'Escape') {
-                    setTitleDraft(task.title)
-                    setIsEditingTitle(false)
-                  }
-                }}
-                style={inlineInputStyle}
-                value={titleDraft}
-              />
-              <Button fontSize={1} mode="bleed" onClick={handleSaveTitle} text="Save" />
-              <Button
-                fontSize={1}
-                mode="bleed"
-                onClick={() => {
-                  setTitleDraft(task.title)
-                  setIsEditingTitle(false)
-                }}
-                text="Cancel"
-              />
-            </Flex>
-          ) : (
-            <>
-              <Text size={3} weight="semibold" style={{flex: 1, minWidth: 0}}>
-                {task.title}
-              </Text>
-              <InlineIconButton label="Edit title" onClick={() => setIsEditingTitle(true)}>
-                <Pencil size={14} />
-              </InlineIconButton>
-            </>
-          )}
+          <Button
+            icon={<ChevronLeft size={16} />}
+            mode="bleed"
+            onClick={() => {
+              void handleBack()
+            }}
+            padding={2}
+          />
+          <input
+            autoFocus
+            onBlur={() => {
+              void flushPendingWrites()
+            }}
+            onChange={(event) => {
+              const nextTitle = event.target.value
+              setTitleDraft(nextTitle)
+              latestDraftRef.current.title = nextTitle
+              scheduleTitleAutosave(nextTitle)
+            }}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') {
+                event.preventDefault()
+                void flushPendingWrites()
+              }
+            }}
+            placeholder="Task title..."
+            ref={titleInputRef}
+            style={fullWidthInputStyle}
+            value={titleDraft}
+          />
         </Flex>
-
-        <TaskActionsMenu onDelete={handleDelete} studioUrl={studioUrl} />
+        <Flex align="center" gap={2}>
+          {isSavingTextFields && (
+            <Text muted size={1}>
+              Saving...
+            </Text>
+          )}
+          <TaskActionsMenu onDelete={handleDelete} studioUrl={studioUrl} />
+        </Flex>
       </Flex>
 
+      {titleValidationMessage && (
+        <Text muted size={1} style={{color: 'var(--card-caution-fg-color)'}}>
+          {titleValidationMessage}
+        </Text>
+      )}
+
       <Flex align="center" gap={2} style={{flexWrap: 'wrap'}}>
-        <TaskMetadataChip onClick={() => toggleTaskStatus(task._id, task.status).catch(() => {})}>
+        <TaskMetadataChip
+          onClick={() =>
+            toggleTaskStatus(task._id, task.status).catch((error) => {
+              console.error('[TaskSummaryDetailView] toggleTaskStatus failed', {
+                currentStatus: task.status,
+                error,
+                taskId: task._id,
+              })
+              toast.push({
+                status: 'error',
+                title: 'Failed to update task status.',
+              })
+            })
+          }
+        >
           <CircleDashed size={12} />
           <Text size={1}>{isClosed ? 'Done' : 'To Do'}</Text>
         </TaskMetadataChip>
@@ -192,11 +497,11 @@ export function TaskSummaryDetailView({
             ref={assignButtonRef}
           >
             {assignee ? <TaskUserAvatar user={assignee} /> : <CircleDashed size={12} />}
-            <Text size={1}>{assignee?.profile?.displayName ?? 'Unassigned'}</Text>
+            <Text size={1}>{compactAssigneeName}</Text>
           </TaskMetadataChip>
           {isAssignPickerOpen && (
             <TaskSummaryAssignPicker
-              currentAssignee={task.assignedTo}
+              currentAssignee={assignedToDraft}
               onAssign={handleAssign}
               pickerRef={assignPickerRef}
               users={users}
@@ -204,86 +509,87 @@ export function TaskSummaryDetailView({
           )}
         </Box>
 
-        <Box style={{position: 'relative'}}>
+        <Popover
+          animate
+          content={
+            <CalendarPopoverContent popoverRef={dueDateEditorRef}>
+              <Stack space={3}>
+                <DayPicker
+                  defaultMonth={selectedDueDate}
+                  mode="single"
+                  onSelect={handleSelectDueDate}
+                  selected={selectedDueDate}
+                  showOutsideDays
+                />
+                <Flex justify="flex-end">
+                  <Button
+                    disabled={!dueDateValue}
+                    fontSize={1}
+                    mode="bleed"
+                    onClick={() => {
+                      const previousDueDateValue = dueDateValue
+                      setDueDateValue('')
+                      setIsDueDateEditorOpen(false)
+                      onInternalInteraction?.(500)
+                      editTask(task._id, {dueBy: ''}).catch((error) => {
+                        console.error('[TaskSummaryDetailView] clearDueDate failed', {
+                          error,
+                          taskId: task._id,
+                        })
+                        setDueDateValue(previousDueDateValue)
+                        toast.push({
+                          status: 'error',
+                          title: 'Failed to clear due date.',
+                        })
+                      })
+                    }}
+                    text="Clear"
+                  />
+                </Flex>
+              </Stack>
+            </CalendarPopoverContent>
+          }
+          open={isDueDateEditorOpen}
+          placement="bottom-start"
+          portal
+        >
           <TaskMetadataChip
             onClick={() => setIsDueDateEditorOpen((current) => !current)}
             ref={dueDateButtonRef}
             tone={isOverdue ? 'critical' : 'default'}
           >
             <Calendar size={12} />
-            <Text size={1}>{getTaskDueDateLabel(task) ?? 'No date'}</Text>
+            <Text size={1}>{formatDateValueForDisplay(dueDateValue || undefined)}</Text>
           </TaskMetadataChip>
-          {isDueDateEditorOpen && (
-            <Card
-              border
-              padding={2}
-              radius={2}
-              ref={dueDateEditorRef}
-              shadow={2}
-              style={dueDateEditorStyle}
-            >
-              <Stack space={2}>
-                <input
-                  autoFocus
-                  onChange={(event) => setDueDateValue(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter') handleSaveDueDate()
-                    if (event.key === 'Escape') {
-                      setDueDateValue(getDateInputValue(task.dueBy))
-                      setIsDueDateEditorOpen(false)
-                    }
-                  }}
-                  style={dateInputStyle}
-                  type="date"
-                  value={dueDateValue}
-                />
-                <Flex align="center" gap={2} justify="flex-end">
-                  {task.dueBy && (
-                    <Button
-                      fontSize={1}
-                      mode="bleed"
-                      onClick={() => {
-                        setDueDateValue('')
-                        editTask(task._id, {dueBy: ''}).catch(() => {})
-                        setIsDueDateEditorOpen(false)
-                      }}
-                      text="Clear"
-                    />
-                  )}
-                  <Button
-                    fontSize={1}
-                    mode="bleed"
-                    onClick={() => {
-                      setDueDateValue(getDateInputValue(task.dueBy))
-                      setIsDueDateEditorOpen(false)
-                    }}
-                    text="Cancel"
-                  />
-                  <Button
-                    fontSize={1}
-                    mode="ghost"
-                    onClick={handleSaveDueDate}
-                    text="Save"
-                    tone="primary"
-                  />
-                </Flex>
-              </Stack>
-            </Card>
-          )}
-        </Box>
+        </Popover>
       </Flex>
 
       <Card border padding={3} radius={2} tone="transparent">
         <Stack space={2}>
-          <Text size={1} weight="semibold">
+          <Text muted size={1}>
             Description
           </Text>
-          <CommentInput
-            initialValue={task.description}
-            key={`${task._id}:${task.lastEditedAt ?? task._updatedAt}:description`}
-            onSubmit={(message) => editTask(task._id, {description: message}).catch(() => {})}
+          <textarea
+            onBlur={() => {
+              void flushPendingWrites()
+            }}
+            onChange={(event) => {
+              const nextDescription = event.target.value
+              setDescriptionDraft(nextDescription)
+              latestDraftRef.current.description = nextDescription
+              scheduleDescriptionAutosave(nextDescription)
+            }}
             placeholder="Add a description..."
-            showSendButton
+            ref={descriptionTextareaRef}
+            rows={3}
+            style={{
+              ...fullWidthInputStyle,
+              lineHeight: 1.4,
+              minHeight: 88,
+              overflow: 'hidden',
+              resize: 'none',
+            }}
+            value={descriptionDraft}
           />
         </Stack>
       </Card>

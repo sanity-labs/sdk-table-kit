@@ -65,7 +65,18 @@ export function SharedCommentsComposer({
           parentCommentId,
           threadId,
         })
-        .catch(() => rollback())
+        .catch((error) => {
+          console.error('[SharedCommentsComposer] createComment failed', {
+            commentId,
+            documentId,
+            documentType,
+            error,
+            fieldPath,
+            parentCommentId,
+            threadId,
+          })
+          rollback()
+        })
 
       inputRef.current?.clear()
       onCancel?.()

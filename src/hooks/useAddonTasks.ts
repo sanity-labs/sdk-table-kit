@@ -1,36 +1,55 @@
 import {useMemo} from 'react'
 
 import {useAddonData} from '../context/AddonDataContext'
+import type {TaskDocument} from '../types/addonTypes'
 
-export function useAddonTasks(documentId: string) {
+interface AddonTasksSummary {
+  closedCount: number
+  openCount: number
+  overdueCount: number
+  sortedTasks: TaskDocument[]
+  tasks: TaskDocument[]
+  unassignedCount: number
+}
+
+const EMPTY_TASK_SUMMARY: AddonTasksSummary = {
+  closedCount: 0,
+  openCount: 0,
+  overdueCount: 0,
+  sortedTasks: [],
+  tasks: [],
+  unassignedCount: 0,
+}
+
+export function useAddonTasks(documentId: string, _documentType?: string): AddonTasksSummary {
   const {tasksByDocId} = useAddonData()
-  const cleanId = documentId.replace('drafts.', '')
-  const tasks = useMemo(() => tasksByDocId.get(cleanId) ?? [], [cleanId, tasksByDocId])
+  const cleanId = documentId.replace(/^drafts\./, '')
 
-  const sortedTasks = useMemo(
-    () =>
-      [...tasks].sort((a, b) => {
-        if (a.status !== b.status) return a.status === 'open' ? -1 : 1
-        return new Date(b._createdAt).getTime() - new Date(a._createdAt).getTime()
-      }),
-    [tasks],
-  )
+  return useMemo(() => {
+    const tasks = tasksByDocId.get(cleanId) ?? []
+    if (tasks.length === 0) return EMPTY_TASK_SUMMARY
 
-  const openCount = tasks.filter((task) => task.status === 'open').length
-  const closedCount = tasks.length - openCount
-  const overdueCount = tasks.filter((task) => isTaskOverdue(task)).length
-  const unassignedCount = tasks.filter(
-    (task) => task.status === 'open' && !task.assignedTo && !isTaskOverdue(task),
-  ).length
+    const sortedTasks = [...tasks].sort((left, right) => {
+      if (left.status !== right.status) return left.status === 'open' ? -1 : 1
+      return new Date(right._createdAt).getTime() - new Date(left._createdAt).getTime()
+    })
 
-  return {
-    closedCount,
-    openCount,
-    overdueCount,
-    sortedTasks,
-    tasks,
-    unassignedCount,
-  }
+    const openCount = tasks.filter((task) => task.status === 'open').length
+    const closedCount = tasks.length - openCount
+    const overdueCount = tasks.filter((task) => isTaskOverdue(task)).length
+    const unassignedCount = tasks.filter(
+      (task) => task.status === 'open' && !task.assignedTo && !isTaskOverdue(task),
+    ).length
+
+    return {
+      closedCount,
+      openCount,
+      overdueCount,
+      sortedTasks,
+      tasks,
+      unassignedCount,
+    }
+  }, [cleanId, tasksByDocId])
 }
 
 function isTaskOverdue(task: {dueBy?: string; status: string}) {

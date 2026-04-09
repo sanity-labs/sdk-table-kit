@@ -1,6 +1,6 @@
 import {AddonDatasetRuntimeProvider} from '@sanity-labs/sdk-addon-dataset-runtime'
+import {useTasksByDocumentType} from '@sanity-labs/sdk-tasks'
 import type {SanityUser} from '@sanity/sdk-react'
-import {useQuery} from '@sanity/sdk-react'
 import React, {
   createContext,
   type ReactNode,
@@ -13,27 +13,6 @@ import React, {
 } from 'react'
 
 import type {AddonDataContextValue, TaskDocument} from '../types/addonTypes'
-
-const TASKS_BY_DOC_TYPE_QUERY = `*[
-  _type == "tasks.task"
-  && target.documentType == $docType
-]{
-  _id,
-  _type,
-  _createdAt,
-  _updatedAt,
-  title,
-  status,
-  authorId,
-  assignedTo,
-  dueBy,
-  description,
-  context,
-  subscribers,
-  lastEditedAt,
-  createdByUser,
-  target
-} | order(_createdAt desc)`
 
 const AddonDataCtx = createContext<AddonDataContextValue | null>(null)
 
@@ -84,26 +63,13 @@ export function AddonDataProvider({
   const [tasksByDocId, setTasksByDocId] = useState<Map<string, TaskDocument[]>>(new Map())
   const [isLoading, setIsLoading] = useState(true)
 
-  const handleTasks = useCallback((tasks: null | TaskDocument[]) => {
-    const map = new Map<string, TaskDocument[]>()
-
-    if (tasks) {
-      for (const task of tasks) {
-        const docRef = task.target?.document?._ref
-        if (!docRef) continue
-
-        const existing = map.get(docRef)
-        if (existing) {
-          existing.push(task)
-        } else {
-          map.set(docRef, [task])
-        }
-      }
-    }
-
-    setTasksByDocId(map)
-    setIsLoading(false)
-  }, [])
+  const handleTasks = useCallback(
+    (nextTasksByDocId: Map<string, TaskDocument[]>, pending: boolean) => {
+      setTasksByDocId(new Map(nextTasksByDocId))
+      setIsLoading(pending)
+    },
+    [],
+  )
 
   const patchTasks = useCallback(
     (docRef: string, updater: (tasks: TaskDocument[]) => TaskDocument[]) => {
@@ -199,19 +165,18 @@ function TasksFetchBridge({
 }: {
   addonDataset: string
   docType: string
-  onTasks: (tasks: null | TaskDocument[]) => void
+  onTasks: (tasksByDocumentId: Map<string, TaskDocument[]>, pending: boolean) => void
   projectId: string
 }) {
-  const {data: tasks} = useQuery<TaskDocument[]>({
-    dataset: addonDataset,
-    params: {docType},
+  const {isPending, tasksByDocumentId} = useTasksByDocumentType({
+    addonDataset,
+    documentType: docType,
     projectId,
-    query: TASKS_BY_DOC_TYPE_QUERY,
   })
 
   useEffect(() => {
-    onTasks(tasks ?? null)
-  }, [tasks, onTasks])
+    onTasks(tasksByDocumentId, isPending)
+  }, [isPending, onTasks, tasksByDocumentId])
 
   return null
 }

@@ -48,7 +48,15 @@ export function TaskSummaryAddComposer({
     const nextTitle = title.trim()
     if (!nextTitle) return
 
-    createTask(documentId, documentType, nextTitle, assignedTo).catch(() => {})
+    createTask(documentId, documentType, nextTitle, assignedTo).catch((error) => {
+      console.error('[TaskSummaryAddComposer] createTask failed', {
+        assignedTo,
+        documentId,
+        documentType,
+        error,
+        title: nextTitle,
+      })
+    })
     resetForm()
   }, [assignedTo, createTask, documentId, documentType, resetForm, title])
 

@@ -52,13 +52,23 @@ export function SharedCommentsThread({
   const handleToggleResolve = useCallback(() => {
     const newStatus: CommentStatus = isResolved ? 'open' : 'resolved'
     const rollback = onOptimisticStatus(parent._id, newStatus)
-    setCommentStatus(parent._id, newStatus).catch(() => rollback())
+    setCommentStatus(parent._id, newStatus).catch((error) => {
+      console.error('[SharedCommentsThread] setCommentStatus failed', {
+        commentId: parent._id,
+        error,
+        newStatus,
+      })
+      rollback()
+    })
   }, [isResolved, onOptimisticStatus, parent._id, setCommentStatus])
 
   const handleDelete = useCallback(
     (commentId: string) => {
       const rollback = onOptimisticDelete(commentId)
-      deleteComment(commentId).catch(() => rollback())
+      deleteComment(commentId).catch((error) => {
+        console.error('[SharedCommentsThread] deleteComment failed', {commentId, error})
+        rollback()
+      })
       setConfirmDeleteId(null)
     },
     [deleteComment, onOptimisticDelete],
@@ -68,7 +78,10 @@ export function SharedCommentsThread({
     (commentId: string, message: AddonMessage) => {
       const now = new Date().toISOString()
       const rollback = onOptimisticEdit(commentId, message, now)
-      editComment(commentId, message).catch(() => rollback())
+      editComment(commentId, message).catch((error) => {
+        console.error('[SharedCommentsThread] editComment failed', {commentId, error})
+        rollback()
+      })
       setEditingCommentId(null)
     },
     [editComment, onOptimisticEdit],
@@ -94,7 +107,14 @@ export function SharedCommentsThread({
           ]
 
       const rollback = onOptimisticReactions(commentId, nextReactions)
-      toggleReaction(commentId, shortName, currentReactions).catch(() => rollback())
+      toggleReaction(commentId, shortName, currentReactions).catch((error) => {
+        console.error('[SharedCommentsThread] toggleReaction failed', {
+          commentId,
+          error,
+          shortName,
+        })
+        rollback()
+      })
     },
     [currentResourceUserId, onOptimisticReactions, toggleReaction],
   )

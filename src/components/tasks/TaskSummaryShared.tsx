@@ -21,6 +21,7 @@ export const addCircleStyle: React.CSSProperties = {
 export function TaskActionsMenu({onDelete, studioUrl}: {onDelete: () => void; studioUrl: string}) {
   return (
     <MenuButton
+      id="task-actions-menu"
       button={<Button icon={<MoreHorizontal size={16} />} mode="bleed" padding={2} />}
       menu={
         <Menu>
@@ -109,17 +110,33 @@ export function TaskListMetaPill({
   tone = 'default',
 }: {
   children: React.ReactNode
-  tone?: 'caution' | 'default'
+  tone?: 'caution' | 'critical' | 'default' | 'neutral' | 'positive'
 }) {
+  const backgroundByTone: Record<NonNullable<typeof tone>, string> = {
+    caution: 'rgba(234, 179, 8, 0.12)',
+    critical: 'rgba(220, 38, 38, 0.08)',
+    default: 'var(--card-bg-color)',
+    neutral: 'rgba(148, 163, 184, 0.12)',
+    positive: 'rgba(34, 197, 94, 0.12)',
+  }
+  const borderByTone: Record<NonNullable<typeof tone>, string> = {
+    caution: 'rgba(234, 179, 8, 0.2)',
+    critical: 'rgba(220, 38, 38, 0.18)',
+    default: 'var(--card-border-color)',
+    neutral: 'rgba(148, 163, 184, 0.22)',
+    positive: 'rgba(34, 197, 94, 0.2)',
+  }
+
   return (
     <Flex
       align="center"
       gap={1}
       style={{
-        background: tone === 'caution' ? 'rgba(234, 179, 8, 0.12)' : 'var(--card-bg-color)',
-        border: `1px solid ${tone === 'caution' ? 'rgba(234, 179, 8, 0.2)' : 'var(--card-border-color)'}`,
+        background: backgroundByTone[tone],
+        border: `1px solid ${borderByTone[tone]}`,
         borderRadius: 999,
         padding: '4px 8px',
+        minHeight: 30,
       }}
     >
       {children}
