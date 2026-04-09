@@ -14,7 +14,7 @@ import {
   type CommentMessage,
   type CommentThread,
   type CommentThreadGroup,
-} from '@sanetti/comments-core'
+} from '@sanetti/sanity-table-kit'
 
 const DEFAULT_STUDIO_BASE_URL = 'https://www.sanity.io/@oNAgKWFqi/studio/beihhm8eq5gszxxix51uhpzo'
 

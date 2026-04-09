@@ -6,7 +6,7 @@ import type {
   CommentTarget as PublicCommentTarget,
   CrossDatasetReference as PublicCrossDatasetReference,
   Reference as PublicReference,
-} from '@sanetti/comments-core'
+} from '@sanetti/sanity-table-kit'
 import type {SanityUser} from '@sanity/sdk-react'
 
 export type CrossDatasetReference = PublicCrossDatasetReference
