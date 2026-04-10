@@ -1,6 +1,6 @@
 import type {SanityUser} from '@sanity/sdk-react'
 import {Badge, Box, Button, Card, Flex, Stack, Text} from '@sanity/ui'
-import {Calendar, CircleDashed, MessageSquare} from 'lucide-react'
+import {Calendar, CircleDashed} from 'lucide-react'
 
 import {toPlainText} from '../../helpers/comments/addonCommentUtils'
 import {
@@ -12,15 +12,31 @@ import {
   findUserByResourceUserId,
   getUserDisplayNameByResourceUserId,
 } from '../../helpers/users/addonUserUtils'
-import {useTaskComments} from '../../hooks/useTaskComments'
 import type {TaskDocument} from '../../types/addonTypes'
 import {TaskListMetaPill, TaskUserAvatar} from './TaskSummaryShared'
 
 export type TaskListFilter = 'done' | 'overdue' | 'todo' | 'unassigned'
 
+function taskListSkeletonRowCount(
+  activeFilter: TaskListFilter,
+  counts: {doneCount: number; overdueCount: number; todoCount: number; unassignedCount: number},
+): number {
+  const raw =
+    activeFilter === 'todo'
+      ? counts.todoCount
+      : activeFilter === 'unassigned'
+        ? counts.unassignedCount
+        : activeFilter === 'overdue'
+          ? counts.overdueCount
+          : counts.doneCount
+  if (raw > 0) return Math.min(raw, 8)
+  return 1
+}
+
 export function TaskSummaryListView({
   activeFilter,
   doneCount,
+  isTasksLoading,
   onFilterChange,
   onSelectTask,
   overdueCount,
@@ -31,6 +47,7 @@ export function TaskSummaryListView({
 }: {
   activeFilter: TaskListFilter
   doneCount: number
+  isTasksLoading: boolean
   onFilterChange: (filter: TaskListFilter) => void
   onSelectTask: (taskId: string) => void
   overdueCount: number
@@ -87,7 +104,21 @@ export function TaskSummaryListView({
       </Flex>
 
       <Box style={{maxHeight: 420, overflowY: 'auto'}}>
-        {tasks.length === 0 ? (
+        {tasks.length === 0 && isTasksLoading ? (
+          <Stack space={2}>
+            {Array.from(
+              {length: taskListSkeletonRowCount(activeFilter, {
+                doneCount,
+                overdueCount,
+                todoCount,
+                unassignedCount,
+              })},
+              (_, index) => (
+                <TaskSummaryListItemSkeleton key={`task-skeleton-${index}`} />
+              ),
+            )}
+          </Stack>
+        ) : tasks.length === 0 ? (
           <Card border padding={3} radius={2} tone="transparent">
             <Text muted size={1}>
               No tasks in this filter.
@@ -110,6 +141,25 @@ export function TaskSummaryListView({
   )
 }
 
+function TaskSummaryListItemSkeleton() {
+  const bar = {
+    background: 'var(--card-muted-bg-color)',
+    borderRadius: 4,
+  } as const
+
+  return (
+    <Card border padding={3} radius={2} tone="transparent">
+      <Stack space={3}>
+        <Box style={{...bar, height: 16, width: '72%'}} />
+        <Flex align="center" gap={2} style={{flexWrap: 'wrap'}}>
+          <Box style={{...bar, height: 24, width: 88}} />
+          <Box style={{...bar, height: 24, width: 72}} />
+        </Flex>
+      </Stack>
+    </Card>
+  )
+}
+
 function TaskSummaryListItem({
   onSelect,
   task,
@@ -125,8 +175,6 @@ function TaskSummaryListItem({
     formatCompactDisplayName(assigneeName ?? undefined) ?? assigneeName ?? 'Unassigned'
   const isClosed = task.status === 'closed'
   const isOverdue = isTaskOverdue(task)
-  const taskCommentsState = useTaskComments(task._id)
-  const commentsCount = taskCommentsState.comments?.length ?? 0
   const description = task.description ? toPlainText(task.description).trim() : ''
   const hasDescription = description.length > 0
 
@@ -166,14 +214,6 @@ function TaskSummaryListItem({
             <Calendar size={12} />
             <Text size={1}>{getTaskDueDateLabel(task) ?? 'No date'}</Text>
           </TaskListMetaPill>
-          {commentsCount > 0 && (
-            <TaskListMetaPill tone="neutral">
-              <MessageSquare size={12} />
-              <Text size={1}>
-                {commentsCount} {commentsCount === 1 ? 'comment' : 'comments'}
-              </Text>
-            </TaskListMetaPill>
-          )}
         </Flex>
       </Stack>
     </Button>

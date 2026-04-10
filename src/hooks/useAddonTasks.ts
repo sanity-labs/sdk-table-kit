@@ -3,8 +3,9 @@ import {useMemo} from 'react'
 import {useAddonData} from '../context/AddonDataContext'
 import type {TaskDocument} from '../types/addonTypes'
 
-interface AddonTasksSummary {
+export interface AddonTasksSummary {
   closedCount: number
+  isTasksLoading: boolean
   openCount: number
   overdueCount: number
   sortedTasks: TaskDocument[]
@@ -12,7 +13,7 @@ interface AddonTasksSummary {
   unassignedCount: number
 }
 
-const EMPTY_TASK_SUMMARY: AddonTasksSummary = {
+const EMPTY_TASK_SUMMARY: Omit<AddonTasksSummary, 'isTasksLoading'> = {
   closedCount: 0,
   openCount: 0,
   overdueCount: 0,
@@ -22,12 +23,19 @@ const EMPTY_TASK_SUMMARY: AddonTasksSummary = {
 }
 
 export function useAddonTasks(documentId: string, _documentType?: string): AddonTasksSummary {
-  const {tasksByDocId} = useAddonData()
+  const {isLoading, tasksByDocId} = useAddonData()
   const cleanId = documentId.replace(/^drafts\./, '')
 
   return useMemo(() => {
     const tasks = tasksByDocId.get(cleanId) ?? []
-    if (tasks.length === 0) return EMPTY_TASK_SUMMARY
+    const isTasksLoading = tasks.length === 0 && isLoading
+
+    if (tasks.length === 0) {
+      return {
+        ...EMPTY_TASK_SUMMARY,
+        isTasksLoading,
+      }
+    }
 
     const sortedTasks = [...tasks].sort((left, right) => {
       if (left.status !== right.status) return left.status === 'open' ? -1 : 1
@@ -43,13 +51,14 @@ export function useAddonTasks(documentId: string, _documentType?: string): Addon
 
     return {
       closedCount,
+      isTasksLoading: false,
       openCount,
       overdueCount,
       sortedTasks,
       tasks,
       unassignedCount,
     }
-  }, [cleanId, tasksByDocId])
+  }, [cleanId, isLoading, tasksByDocId])
 }
 
 function isTaskOverdue(task: {dueBy?: string; status: string}) {

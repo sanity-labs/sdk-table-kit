@@ -108,6 +108,7 @@ export {
 export {useAddonComments} from './hooks/useAddonComments'
 export {useAddonCommentMutations} from './hooks/useAddonCommentMutations'
 export {useAddonTasks} from './hooks/useAddonTasks'
+export type {AddonTasksSummary} from './hooks/useAddonTasks'
 export {useAddonTaskMutations} from './hooks/useAddonTaskMutations'
 export {useCurrentResourceUserId} from './hooks/useCurrentResourceUserId'
 export {useTaskComments} from './hooks/useTaskComments'

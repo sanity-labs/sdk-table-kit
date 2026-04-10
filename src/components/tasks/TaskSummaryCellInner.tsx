@@ -60,7 +60,7 @@ export function TaskSummaryCellInner({documentId, documentType}: TaskSummaryCell
   const suppressCloseUntilRef = useRef(0)
   /** Newly materialized task id may not be in `tasks` until the addon syncs — don't clear selection meanwhile. */
   const pendingCreatedTaskIdRef = useRef<null | string>(null)
-  const {tasks} = useAddonTasks(documentId, documentType)
+  const {isTasksLoading, tasks} = useAddonTasks(documentId, documentType)
 
   const visibleTasks = useMemo(
     () => tasks.filter((task) => !optimisticallyRemovedTaskIds.has(task._id)),
@@ -359,7 +359,7 @@ export function TaskSummaryCellInner({documentId, documentType}: TaskSummaryCell
           fallback={
             <Card border padding={3} radius={2} tone="transparent">
               <Text muted size={1}>
-                Loading tasks...
+                Loading…
               </Text>
             </Card>
           }
@@ -371,6 +371,7 @@ export function TaskSummaryCellInner({documentId, documentType}: TaskSummaryCell
             doneCount={doneTasks.length}
             filteredTasks={filteredTasks}
             isCreatingTask={isCreatingTask}
+            isTasksLoading={isTasksLoading}
             onBackFromDetail={handleBackFromDetail}
             onCreateComplete={handleCreateComplete}
             onDeleteOptimistic={hideTaskLocally}
@@ -403,6 +404,7 @@ export function TaskSummaryCellInner({documentId, documentType}: TaskSummaryCell
       handleStopCreate,
       hideTaskLocally,
       isCreatingTask,
+      isTasksLoading,
       markInternalInteraction,
       overdueTasks.length,
       registerPendingFlush,
@@ -472,6 +474,7 @@ function TaskSummaryPopoverBody({
   doneCount,
   filteredTasks,
   isCreatingTask,
+  isTasksLoading,
   onBackFromDetail,
   onCreateComplete,
   onDeleteOptimistic,
@@ -494,6 +497,7 @@ function TaskSummaryPopoverBody({
   doneCount: number
   filteredTasks: ReturnType<typeof useAddonTasks>['tasks']
   isCreatingTask: boolean
+  isTasksLoading: boolean
   onBackFromDetail: () => void
   onCreateComplete: (taskId: string) => void
   onDeleteOptimistic: (taskId: string) => void
@@ -522,6 +526,7 @@ function TaskSummaryPopoverBody({
         doneCount={doneCount}
         filteredTasks={filteredTasks}
         isCreatingTask={isCreatingTask}
+        isTasksLoading={isTasksLoading}
         onBackFromDetail={onBackFromDetail}
         onCreateComplete={onCreateComplete}
         onDeleteOptimistic={onDeleteOptimistic}
@@ -550,6 +555,7 @@ function TaskSummaryPopoverBody({
       doneCount={doneCount}
       filteredTasks={filteredTasks}
       isCreatingTask={isCreatingTask}
+      isTasksLoading={isTasksLoading}
       onBackFromDetail={onBackFromDetail}
       onCreateComplete={onCreateComplete}
       onDeleteOptimistic={onDeleteOptimistic}
@@ -584,6 +590,7 @@ function TaskSummaryPopoverBodyContent({
   doneCount,
   filteredTasks,
   isCreatingTask,
+  isTasksLoading,
   onBackFromDetail,
   onCreateComplete,
   onDeleteOptimistic,
@@ -607,6 +614,7 @@ function TaskSummaryPopoverBodyContent({
   doneCount: number
   filteredTasks: ReturnType<typeof useAddonTasks>['tasks']
   isCreatingTask: boolean
+  isTasksLoading: boolean
   onBackFromDetail: () => void
   onCreateComplete: (taskId: string) => void
   onDeleteOptimistic: (taskId: string) => void
@@ -661,6 +669,7 @@ function TaskSummaryPopoverBodyContent({
       <TaskSummaryListView
         activeFilter={activeFilter}
         doneCount={doneCount}
+        isTasksLoading={isTasksLoading}
         onFilterChange={onFilterChange}
         onSelectTask={(taskId) => onSelectTask(taskId)}
         overdueCount={overdueCount}

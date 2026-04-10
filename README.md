@@ -77,6 +77,10 @@ export function ArticlesTable() {
 - `useAddonComments()`
 - `useAddonTasks()`
 
+### Tasks popover and `AddonDataProvider`
+
+Wrap your table with [`AddonDataProvider`](./src/context/AddonDataContext.tsx) so tasks sync from the addon dataset. Pass **`users={SanityUser[]}`** when your shell already has project members (e.g. from app load). That value is forwarded on context; the task list and popover then use **seeded users** and do not fall back to `useUsers()` inside the popover (which would suspend the task UI behind React `Suspense`). Omitting `users` still works but may show a generic loading state until users resolve.
+
 ## Relationship To `react-table-kit`
 
 - Use `@sanity-labs/react-table-kit` for UI-first, data-source-agnostic table primitives.

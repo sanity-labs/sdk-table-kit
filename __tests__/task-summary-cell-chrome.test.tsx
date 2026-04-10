@@ -101,7 +101,7 @@ describe('TaskSummaryCellInner chrome', () => {
   })
 
   it('renders shared empty-state chrome when no tasks exist', () => {
-    mockUseAddonTasks.mockReturnValue({tasks: []})
+    mockUseAddonTasks.mockReturnValue({isTasksLoading: false, tasks: []})
 
     renderWithTheme(<TaskSummaryCellInner documentId="doc-empty" documentType="article" />)
 
@@ -113,6 +113,7 @@ describe('TaskSummaryCellInner chrome', () => {
 
   it('renders shared filled-state chrome when tasks exist', () => {
     mockUseAddonTasks.mockReturnValue({
+      isTasksLoading: false,
       tasks: [
         {
           _createdAt: '2026-04-01T00:00:00.000Z',
@@ -136,6 +137,7 @@ describe('TaskSummaryCellInner chrome', () => {
 
   it('keeps detail open until registered flush succeeds on back', async () => {
     mockUseAddonTasks.mockReturnValue({
+      isTasksLoading: false,
       tasks: [
         {
           _createdAt: '2026-04-01T00:00:00.000Z',
@@ -176,6 +178,7 @@ describe('TaskSummaryCellInner chrome', () => {
 
   it('keeps popover open until registered flush succeeds on trigger-close', async () => {
     mockUseAddonTasks.mockReturnValue({
+      isTasksLoading: false,
       tasks: [
         {
           _createdAt: '2026-04-01T00:00:00.000Z',

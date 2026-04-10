@@ -65,7 +65,14 @@ export function AddonDataProvider({
 
   const handleTasks = useCallback(
     (nextTasksByDocId: Map<string, TaskDocument[]>, pending: boolean) => {
-      setTasksByDocId(new Map(nextTasksByDocId))
+      // useTasksByDocumentType uses useQuery: while isPending, data is undefined so the grouped map
+      // is empty. Keep the previous map during pending empty snapshots so chips/list do not flash.
+      setTasksByDocId((prev) => {
+        if (pending && nextTasksByDocId.size === 0 && prev.size > 0) {
+          return prev
+        }
+        return new Map(nextTasksByDocId)
+      })
       setIsLoading(pending)
     },
     [],

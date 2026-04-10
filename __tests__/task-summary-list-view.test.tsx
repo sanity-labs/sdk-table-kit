@@ -1,30 +1,18 @@
 import {fireEvent, screen} from '@testing-library/react'
 import React from 'react'
-import {beforeEach, describe, expect, it, vi} from 'vitest'
+import {describe, expect, it, vi} from 'vitest'
 
 import {TaskSummaryListView} from '../src/components/tasks/TaskSummaryListView'
 import {buildMessageFromPlainText} from '../src/helpers/comments/addonCommentUtils'
 import {renderWithTheme} from './helpers'
 
-const {mockUseTaskComments} = vi.hoisted(() => ({
-  mockUseTaskComments: vi.fn(),
-}))
-
-vi.mock('../src/hooks/useTaskComments', () => ({
-  useTaskComments: mockUseTaskComments,
-}))
-
 describe('TaskSummaryListView filters', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockUseTaskComments.mockReturnValue({comments: []})
-  })
-
   it('renders all filter badges and disables zero-count filters', () => {
     renderWithTheme(
       <TaskSummaryListView
         activeFilter="todo"
         doneCount={1}
+        isTasksLoading={false}
         onFilterChange={() => {}}
         onSelectTask={() => {}}
         overdueCount={2}
@@ -48,6 +36,7 @@ describe('TaskSummaryListView filters', () => {
       <TaskSummaryListView
         activeFilter="todo"
         doneCount={1}
+        isTasksLoading={false}
         onFilterChange={onFilterChange}
         onSelectTask={() => {}}
         overdueCount={0}
@@ -65,13 +54,12 @@ describe('TaskSummaryListView filters', () => {
     expect(onFilterChange).toHaveBeenCalledWith('done')
   })
 
-  it('renders description, compact assignee, due-date badge, and comment count badge', () => {
-    mockUseTaskComments.mockReturnValue({comments: [{_id: 'comment-1'}, {_id: 'comment-2'}]})
-
+  it('renders description, compact assignee, and due-date badge', () => {
     renderWithTheme(
       <TaskSummaryListView
         activeFilter="todo"
         doneCount={0}
+        isTasksLoading={false}
         onFilterChange={() => {}}
         onSelectTask={() => {}}
         overdueCount={0}
@@ -107,7 +95,6 @@ describe('TaskSummaryListView filters', () => {
     expect(screen.getByText('Sam H')).toBeInTheDocument()
     expect(screen.queryByText('Sam Hemingway')).not.toBeInTheDocument()
     expect(screen.getByText('No date')).toBeInTheDocument()
-    expect(screen.getByText('2 comments')).toBeInTheDocument()
     expect(screen.queryByText('To Do')).not.toBeInTheDocument()
     expect(screen.queryByText('6 days ago')).not.toBeInTheDocument()
   })
