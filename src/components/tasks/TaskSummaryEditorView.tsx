@@ -10,6 +10,9 @@ import {
   Card,
   Flex,
   Label,
+  Menu,
+  MenuButton,
+  MenuItem,
   Popover,
   Stack,
   Text,
@@ -21,9 +24,13 @@ import {
   Bell,
   BellOff,
   Calendar,
+  CheckCircle2,
   ChevronLeft,
   CircleDashed,
 } from "lucide-react";
+
+import { CheckmarkIcon } from "@sanity/icons";
+
 import {
   Suspense,
   useCallback,
@@ -54,17 +61,13 @@ import { useCurrentResourceUserId } from "../../hooks/useCurrentResourceUserId";
 import { useSafeToast } from "../../hooks/useSafeToast";
 import { useTaskCommentMutations } from "../../hooks/useTaskCommentMutations";
 import { useTaskComments } from "../../hooks/useTaskComments";
-import type { TaskDocument } from "../../types/addonTypes";
+import type { TaskDocument, TaskStatus } from "../../types/addonTypes";
 import {
   SharedCommentsPanel,
   type SharedCommentsAdapter,
 } from "../comments/SharedCommentsPanel";
 import { TaskSummaryAssignPicker } from "./TaskSummaryAssignPicker";
-import {
-  TaskActionsMenu,
-  TaskMetadataChip,
-  TaskUserAvatar,
-} from "./TaskSummaryShared";
+import { TaskActionsMenu, TaskUserAvatar } from "./TaskSummaryShared";
 
 const PLACEHOLDER_TITLE = "Untitled task";
 const TEXT_AUTOSAVE_DEBOUNCE_MS = 350;
@@ -96,8 +99,7 @@ export function TaskSummaryEditorView({
 }: TaskSummaryEditorViewProps) {
   const { workspaceId, workspaceTitle } = useAddonData();
   const currentResourceUserId = useCurrentResourceUserId();
-  const { createTask, editTask, removeTask, toggleTaskStatus } =
-    useAddonTaskMutations();
+  const { createTask, editTask, removeTask } = useAddonTaskMutations();
   const toast = useSafeToast();
 
   const [bootstrapTaskId, setBootstrapTaskId] = useState<null | string>(null);
@@ -115,6 +117,8 @@ export function TaskSummaryEditorView({
   const [dueDateValue, setDueDateValue] = useState(() =>
     task ? getDateInputValue(task.dueBy) : "",
   );
+  const [optimisticTaskStatus, setOptimisticTaskStatus] =
+    useState<TaskStatus | null>(null);
 
   const assignButtonRef = useRef<HTMLButtonElement>(null);
   const assignPickerRef = useRef<HTMLDivElement>(null);
@@ -155,11 +159,11 @@ export function TaskSummaryEditorView({
     assignee?.profile?.displayName ??
     "Unassigned";
 
-  const isClosed = task ? task.status === "closed" : false;
-  const taskStatusForOverdue = task?.status ?? "open";
+  const effectiveTaskStatus: TaskStatus =
+    optimisticTaskStatus ?? task?.status ?? "open";
   const isOverdue = isDateValueOverdue(
     dueDateValue || undefined,
-    taskStatusForOverdue,
+    effectiveTaskStatus,
   );
   const isSubscribed = currentResourceUserId
     ? (task?.subscribers ?? []).includes(currentResourceUserId)
@@ -221,7 +225,6 @@ export function TaskSummaryEditorView({
       setIsDueDateEditorOpen(false);
       setIsSavingDescription(false);
       setIsSavingTitle(false);
-      setTitleValidationMessage(null);
       return;
     }
 
@@ -237,7 +240,6 @@ export function TaskSummaryEditorView({
     setIsSavingDescription(false);
     setIsSavingTitle(false);
     setTitleDraft(task.title);
-    setTitleValidationMessage(null);
 
     latestDraftRef.current = {
       description: nextDescription,
@@ -256,6 +258,19 @@ export function TaskSummaryEditorView({
   useEffect(() => {
     titleInputRef.current?.focus();
   }, [task?._id]);
+
+  useEffect(() => {
+    setOptimisticTaskStatus(null);
+  }, [task?._id]);
+
+  useEffect(() => {
+    if (
+      optimisticTaskStatus !== null &&
+      task?.status === optimisticTaskStatus
+    ) {
+      setOptimisticTaskStatus(null);
+    }
+  }, [optimisticTaskStatus, task?.status]);
 
   const autoGrowDescription = useCallback(() => {
     const textarea = descriptionTextareaRef.current;
@@ -335,22 +350,9 @@ export function TaskSummaryEditorView({
   ]);
 
   const saveTitleNow = useCallback(
-    async (value: string, options?: { showValidationToast?: boolean }) => {
-      const showValidationToast = options?.showValidationToast ?? true;
+    async (value: string) => {
       const normalized = value.trim();
 
-      if (normalized.length === 0) {
-        setTitleValidationMessage("Task title is required.");
-        if (showValidationToast) {
-          toast.push({
-            status: "warning",
-            title: "Task title is required.",
-          });
-        }
-        return false;
-      }
-
-      setTitleValidationMessage(null);
       if (normalized === lastSavedRef.current.title) return true;
 
       const taskId = await ensureTaskId();
@@ -428,15 +430,9 @@ export function TaskSummaryEditorView({
   const scheduleTitleAutosave = useCallback(
     (nextTitle: string) => {
       clearTitleAutosaveTimer();
-
-      if (nextTitle.trim().length === 0) {
-        setTitleValidationMessage("Task title is required.");
-        return;
-      }
-
       titleAutosaveTimerRef.current = setTimeout(() => {
         titleAutosaveTimerRef.current = null;
-        void saveTitleNow(nextTitle, { showValidationToast: false });
+        void saveTitleNow(nextTitle);
       }, TEXT_AUTOSAVE_DEBOUNCE_MS);
     },
     [clearTitleAutosaveTimer, saveTitleNow],
@@ -638,21 +634,38 @@ export function TaskSummaryEditorView({
     toast,
   ]);
 
-  const handleMetadataStatusClick = useCallback(async () => {
-    const taskId = await ensureTaskId();
-    const currentStatus = task?.status ?? "open";
-    toggleTaskStatus(taskId, currentStatus).catch((error) => {
-      console.error("[TaskSummaryEditorView] toggleTaskStatus failed", {
-        currentStatus,
-        error,
-        taskId,
-      });
-      toast.push({
-        status: "error",
-        title: "Failed to update task status.",
-      });
-    });
-  }, [ensureTaskId, task?.status, toast, toggleTaskStatus]);
+  const handleSelectTaskStatus = useCallback(
+    async (nextStatus: TaskStatus) => {
+      const currentEffective = optimisticTaskStatus ?? task?.status ?? "open";
+      if (nextStatus === currentEffective) return;
+
+      setOptimisticTaskStatus(nextStatus);
+      onInternalInteraction?.(500);
+
+      try {
+        const taskId = await ensureTaskId();
+        await editTask(taskId, { status: nextStatus });
+      } catch (error) {
+        console.error("[TaskSummaryEditorView] handleSelectTaskStatus failed", {
+          error,
+          nextStatus,
+        });
+        setOptimisticTaskStatus(null);
+        toast.push({
+          status: "error",
+          title: "Failed to update task status.",
+        });
+      }
+    },
+    [
+      editTask,
+      ensureTaskId,
+      onInternalInteraction,
+      optimisticTaskStatus,
+      task?.status,
+      toast,
+    ],
+  );
 
   const onTitleChange = useCallback(
     async (nextTitle: string) => {
@@ -694,24 +707,26 @@ export function TaskSummaryEditorView({
           padding={3}
         />
         <div style={{ flex: 1 }}>
-          <TextInput
-            autoFocus
-            onBlur={() => {
-              void flushPendingWrites();
-            }}
-            onChange={(event) => {
-              void onTitleChange(event.target.value);
-            }}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") {
-                event.preventDefault();
+          <Stack space={2}>
+            <TextInput
+              autoFocus
+              onBlur={() => {
                 void flushPendingWrites();
-              }
-            }}
-            placeholder="Task title..."
-            ref={titleInputRef}
-            value={titleDraft}
-          />
+              }}
+              onChange={(event) => {
+                void onTitleChange(event.target.value);
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  void flushPendingWrites();
+                }
+              }}
+              placeholder="Task title..."
+              ref={titleInputRef}
+              value={titleDraft}
+            />
+          </Stack>
         </div>
         <TaskActionsMenu
           disabled={!effectiveTaskId}
@@ -724,34 +739,88 @@ export function TaskSummaryEditorView({
         gap={2}
         style={{ flexWrap: "wrap" }}
       >
-        <TaskMetadataChip onClick={() => void handleMetadataStatusClick()}>
-          <CircleDashed size={12} />
-          <Text size={1}>{isClosed ? "Done" : "To Do"}</Text>
-        </TaskMetadataChip>
+        <MenuButton
+          button={
+            <Button
+              aria-label="Task status"
+              fontSize={1}
+              icon={
+                effectiveTaskStatus === "closed" ? (
+                  <CheckCircle2 size={12} />
+                ) : (
+                  <CircleDashed size={12} />
+                )
+              }
+              mode="ghost"
+              padding={2}
+              text={effectiveTaskStatus === "closed" ? "Done" : "To Do"}
+            />
+          }
+          id="task-status-menu"
+          menu={
+            <Menu>
+              <MenuItem onClick={() => void handleSelectTaskStatus("open")}>
+                <Box>
+                  <Flex
+                    align="center"
+                    gap={2}
+                  >
+                    <CircleDashed size={16} />
+                    <Text size={1}>To Do</Text>
+                    {effectiveTaskStatus === "open" && <CheckmarkIcon />}
+                  </Flex>
+                </Box>
+              </MenuItem>
+              <MenuItem onClick={() => void handleSelectTaskStatus("closed")}>
+                <Box>
+                  <Flex
+                    align="center"
+                    gap={2}
+                  >
+                    <CheckCircle2 size={16} />
+                    <Text size={1}>Done</Text>
+                    {effectiveTaskStatus === "closed" && <CheckmarkIcon />}
+                  </Flex>
+                </Box>
+              </MenuItem>
+            </Menu>
+          }
+          popover={{ portal: false }}
+        />
 
-        <Box style={{ position: "relative" }}>
-          <TaskMetadataChip
-            onClick={() => setIsAssignPickerOpen((current) => !current)}
-            ref={assignButtonRef}
-          >
-            {assignee ? (
-              <TaskUserAvatar user={assignee} />
-            ) : (
-              <CircleDashed size={12} />
-            )}
-            <Text size={1}>{compactAssigneeName}</Text>
-          </TaskMetadataChip>
-          {isAssignPickerOpen && (
+        <Popover
+          animate
+          content={
             <TaskSummaryAssignPicker
               currentAssignee={assignedToDraft}
+              layout="popoverContent"
               onAssign={(resourceUserId) => {
                 void handleAssign(resourceUserId);
               }}
               pickerRef={assignPickerRef}
               users={users}
             />
-          )}
-        </Box>
+          }
+          open={isAssignPickerOpen}
+          placement="bottom-start"
+          portal
+        >
+          <Button
+            fontSize={1}
+            icon={
+              assignee ? (
+                <TaskUserAvatar user={assignee} />
+              ) : (
+                <CircleDashed size={12} />
+              )
+            }
+            mode="ghost"
+            onClick={() => setIsAssignPickerOpen((current) => !current)}
+            padding={2}
+            ref={assignButtonRef}
+            text={compactAssigneeName}
+          />
+        </Popover>
 
         <Popover
           animate
@@ -803,16 +872,16 @@ export function TaskSummaryEditorView({
           placement="bottom-start"
           portal
         >
-          <TaskMetadataChip
+          <Button
+            fontSize={1}
+            icon={<Calendar size={12} />}
+            mode="ghost"
             onClick={() => setIsDueDateEditorOpen((current) => !current)}
+            padding={2}
             ref={dueDateButtonRef}
+            text={formatDateValueForDisplay(dueDateValue || undefined)}
             tone={isOverdue ? "critical" : "default"}
-          >
-            <Calendar size={12} />
-            <Text size={1}>
-              {formatDateValueForDisplay(dueDateValue || undefined)}
-            </Text>
-          </TaskMetadataChip>
+          />
         </Popover>
       </Flex>
 

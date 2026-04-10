@@ -1,6 +1,15 @@
 import {AddIcon} from '@sanity/icons'
 import type {SanityUser} from '@sanity/sdk-react'
-import {Box, Button, Card, Flex, Stack, Text, useClickOutsideEvent} from '@sanity/ui'
+import {
+  Box,
+  Button,
+  Card,
+  Flex,
+  Popover,
+  Stack,
+  Text,
+  useClickOutsideEvent,
+} from '@sanity/ui'
 import {CircleDashed} from 'lucide-react'
 import {useCallback, useRef, useState} from 'react'
 
@@ -87,18 +96,12 @@ export function TaskSummaryAddComposer({
         />
 
         <Flex align="center" justify="space-between" gap={2}>
-          <Box style={{position: 'relative'}}>
-            <TaskMetadataChip
-              onClick={() => setIsAssignPickerOpen((current) => !current)}
-              ref={assignButtonRef}
-            >
-              {assignee ? <TaskUserAvatar user={assignee} /> : <CircleDashed size={12} />}
-              <Text size={1}>{assignee?.profile?.displayName ?? 'Unassigned'}</Text>
-            </TaskMetadataChip>
-
-            {isAssignPickerOpen && (
+          <Popover
+            animate
+            content={
               <TaskSummaryAssignPicker
                 currentAssignee={assignedTo}
+                layout="popoverContent"
                 onAssign={(resourceUserId) => {
                   setAssignedTo(resourceUserId)
                   setIsAssignPickerOpen(false)
@@ -106,8 +109,19 @@ export function TaskSummaryAddComposer({
                 pickerRef={assignPickerRef}
                 users={users}
               />
-            )}
-          </Box>
+            }
+            open={isAssignPickerOpen}
+            placement="bottom-start"
+            portal
+          >
+            <TaskMetadataChip
+              onClick={() => setIsAssignPickerOpen((current) => !current)}
+              ref={assignButtonRef}
+            >
+              {assignee ? <TaskUserAvatar user={assignee} /> : <CircleDashed size={12} />}
+              <Text size={1}>{assignee?.profile?.displayName ?? 'Unassigned'}</Text>
+            </TaskMetadataChip>
+          </Popover>
 
           <Flex align="center" gap={2}>
             <Button
