@@ -20,16 +20,8 @@ vi.mock('../src/components/tasks/TaskSummaryAddComposer', () => ({
   TaskSummaryAddComposer: () => null,
 }))
 
-vi.mock('../src/components/tasks/TaskSummaryCreateView', () => ({
-  TaskSummaryCreateView: ({onBack}: {onBack: () => void}) => (
-    <button onClick={onBack} type="button">
-      Mock create back
-    </button>
-  ),
-}))
-
-vi.mock('../src/components/tasks/TaskSummaryDetailView', () => ({
-  TaskSummaryDetailView: ({
+vi.mock('../src/components/tasks/TaskSummaryEditorView', () => ({
+  TaskSummaryEditorView: ({
     onBack,
     onRegisterFlushPending,
   }: {

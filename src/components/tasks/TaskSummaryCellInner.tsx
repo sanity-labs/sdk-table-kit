@@ -22,8 +22,7 @@ import {
   isTaskOverdue,
 } from '../../helpers/tasks/TaskSummaryUtils'
 import {useAddonTasks} from '../../hooks/useAddonTasks'
-import {TaskSummaryCreateView} from './TaskSummaryCreateView'
-import {TaskSummaryDetailView} from './TaskSummaryDetailView'
+import {TaskSummaryEditorView} from './TaskSummaryEditorView'
 import {TaskSummaryListView, type TaskListFilter} from './TaskSummaryListView'
 import {addCircleStyle} from './TaskSummaryShared'
 
@@ -59,6 +58,8 @@ export function TaskSummaryCellInner({documentId, documentType}: TaskSummaryCell
   const pendingFlushRef = useRef<null | (() => Promise<boolean>)>(null)
   const triggerRef = useRef<HTMLDivElement>(null)
   const suppressCloseUntilRef = useRef(0)
+  /** Newly materialized task id may not be in `tasks` until the addon syncs — don't clear selection meanwhile. */
+  const pendingCreatedTaskIdRef = useRef<null | string>(null)
   const {tasks} = useAddonTasks(documentId, documentType)
 
   const visibleTasks = useMemo(
@@ -229,6 +230,7 @@ export function TaskSummaryCellInner({documentId, documentType}: TaskSummaryCell
   useEffect(() => {
     if (!open) {
       setIsCreatingTask(false)
+      pendingCreatedTaskIdRef.current = null
       pendingFlushRef.current = null
       setOptimisticallyRemovedTaskIds((prev) => (prev.size === 0 ? prev : new Set()))
       setSelectedTaskId(null)
@@ -237,9 +239,17 @@ export function TaskSummaryCellInner({documentId, documentType}: TaskSummaryCell
   }, [open])
 
   useEffect(() => {
-    if (selectedTaskId && !stableVisibleTasks.some((task) => task._id === selectedTaskId)) {
-      setSelectedTaskId(null)
+    if (!selectedTaskId) return
+    if (stableVisibleTasks.some((task) => task._id === selectedTaskId)) {
+      if (pendingCreatedTaskIdRef.current === selectedTaskId) {
+        pendingCreatedTaskIdRef.current = null
+      }
+      return
     }
+    if (pendingCreatedTaskIdRef.current === selectedTaskId) {
+      return
+    }
+    setSelectedTaskId(null)
   }, [selectedTaskId, stableVisibleTasks])
 
   useEffect(() => {
@@ -272,6 +282,7 @@ export function TaskSummaryCellInner({documentId, documentType}: TaskSummaryCell
     unassignedCount,
   })
   const showEmptyState = stableVisibleTasks.length === 0
+  const showEditorChrome = selectedTaskId !== null || isCreatingTask
 
   const handleBackFromDetail = useCallback(() => {
     markInternalInteraction()
@@ -308,6 +319,7 @@ export function TaskSummaryCellInner({documentId, documentType}: TaskSummaryCell
   const handleCreateComplete = useCallback(
     (taskId: string) => {
       markInternalInteraction(3000)
+      pendingCreatedTaskIdRef.current = taskId
       setIsCreatingTask(false)
       setSelectedTaskId(taskId)
     },
@@ -330,15 +342,13 @@ export function TaskSummaryCellInner({documentId, documentType}: TaskSummaryCell
         ref={popoverRef}
         shadow={2}
         style={{
-          maxWidth:
-            selectedTask || isCreatingTask
-              ? 'min(520px, calc(100vw - 32px))'
-              : 'min(420px, calc(100vw - 32px))',
-          minWidth: selectedTask || isCreatingTask ? 420 : 340,
-          width:
-            selectedTask || isCreatingTask
-              ? 'min(520px, calc(100vw - 32px))'
-              : 'min(420px, calc(100vw - 32px))',
+          maxWidth: showEditorChrome
+            ? 'min(520px, calc(100vw - 32px))'
+            : 'min(420px, calc(100vw - 32px))',
+          minWidth: showEditorChrome ? 420 : 340,
+          width: showEditorChrome
+            ? 'min(520px, calc(100vw - 32px))'
+            : 'min(420px, calc(100vw - 32px))',
         }}
       >
         <Suspense
@@ -369,6 +379,7 @@ export function TaskSummaryCellInner({documentId, documentType}: TaskSummaryCell
             onStopCreate={handleStopCreate}
             overdueCount={overdueTasks.length}
             selectedTask={selectedTask}
+            selectedTaskId={selectedTaskId}
             todoCount={todoTasks.length}
             unassignedCount={unassignedTasks.length}
           />
@@ -393,6 +404,8 @@ export function TaskSummaryCellInner({documentId, documentType}: TaskSummaryCell
       registerPendingFlush,
       rollbackHiddenTask,
       selectedTask,
+      selectedTaskId,
+      showEditorChrome,
       todoTasks.length,
       unassignedTasks.length,
     ],
@@ -467,6 +480,7 @@ function TaskSummaryPopoverBody({
   onStopCreate,
   overdueCount,
   selectedTask,
+  selectedTaskId,
   todoCount,
   unassignedCount,
 }: {
@@ -488,6 +502,7 @@ function TaskSummaryPopoverBody({
   onStopCreate: () => void
   overdueCount: number
   selectedTask: null | ReturnType<typeof useAddonTasks>['tasks'][number]
+  selectedTaskId: null | string
   todoCount: number
   unassignedCount: number
 }) {
@@ -515,6 +530,7 @@ function TaskSummaryPopoverBody({
         onStopCreate={onStopCreate}
         overdueCount={overdueCount}
         selectedTask={selectedTask}
+        selectedTaskId={selectedTaskId}
         todoCount={todoCount}
         unassignedCount={unassignedCount}
         users={seededUsers}
@@ -542,6 +558,7 @@ function TaskSummaryPopoverBody({
       onStopCreate={onStopCreate}
       overdueCount={overdueCount}
       selectedTask={selectedTask}
+      selectedTaskId={selectedTaskId}
       todoCount={todoCount}
       unassignedCount={unassignedCount}
     />
@@ -575,6 +592,7 @@ function TaskSummaryPopoverBodyContent({
   onStopCreate,
   overdueCount,
   selectedTask,
+  selectedTaskId,
   todoCount,
   unassignedCount,
   users,
@@ -597,31 +615,23 @@ function TaskSummaryPopoverBodyContent({
   onStopCreate: () => void
   overdueCount: number
   selectedTask: null | ReturnType<typeof useAddonTasks>['tasks'][number]
+  selectedTaskId: null | string
   todoCount: number
   unassignedCount: number
   users: SanityUser[]
 }) {
-  if (selectedTask) {
+  if (selectedTaskId !== null || isCreatingTask) {
     return (
-      <TaskSummaryDetailView
-        onBack={onBackFromDetail}
-        onInternalInteraction={onInternalInteraction}
-        onRegisterFlushPending={onRegisterFlushPending}
-        onDeleteOptimistic={onDeleteOptimistic}
-        onDeleteRollback={onDeleteRollback}
-        task={selectedTask}
-        users={users}
-      />
-    )
-  }
-
-  if (isCreatingTask) {
-    return (
-      <TaskSummaryCreateView
+      <TaskSummaryEditorView
         documentId={documentId}
         documentType={documentType}
-        onBack={onStopCreate}
-        onCreate={onCreateComplete}
+        onBack={selectedTaskId !== null ? onBackFromDetail : onStopCreate}
+        onDeleteOptimistic={onDeleteOptimistic}
+        onDeleteRollback={onDeleteRollback}
+        onInternalInteraction={onInternalInteraction}
+        onRegisterFlushPending={onRegisterFlushPending}
+        onTaskMaterialized={onCreateComplete}
+        task={selectedTask ?? undefined}
         users={users}
       />
     )

@@ -18,11 +18,30 @@ export const addCircleStyle: React.CSSProperties = {
   width: 24,
 }
 
-export function TaskActionsMenu({onDelete, studioUrl}: {onDelete: () => void; studioUrl: string}) {
+export function TaskActionsMenu({
+  disabled,
+  onDelete,
+  studioUrl,
+}: {
+  disabled?: boolean
+  onDelete: () => void
+  studioUrl: string
+}) {
+  if (disabled) {
+    return (
+      <Button
+        disabled
+        icon={<MoreHorizontal size={16} />}
+        mode="bleed"
+        padding={2}
+      />
+    )
+  }
+
   return (
     <MenuButton
-      id="task-actions-menu"
       button={<Button icon={<MoreHorizontal size={16} />} mode="bleed" padding={2} />}
+      id="task-actions-menu"
       menu={
         <Menu>
           <MenuItem
