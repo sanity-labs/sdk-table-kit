@@ -2,6 +2,8 @@ import { TableCellChrome } from "@sanity-labs/react-table-kit";
 import { AddIcon } from "@sanity/icons";
 import { type SanityUser, useUsers } from "@sanity/sdk-react";
 import {
+  Badge,
+  Box,
   Button,
   Card,
   Flex,
@@ -24,8 +26,7 @@ import {
 import { useOptionalAddonData } from "../../context/AddonDataContext";
 import {
   compareOpenTasks,
-  getTaskSummary,
-  getTaskSummaryTone,
+  getTaskSummaryFilterBadges,
   isTaskOverdue,
 } from "../../helpers/tasks/TaskSummaryUtils";
 import { useAddonTasks } from "../../hooks/useAddonTasks";
@@ -35,6 +36,57 @@ import {
   type TaskListFilter,
 } from "./TaskSummaryListView";
 import { addCircleStyle } from "./TaskSummaryShared";
+
+function TaskSummaryCellFilterBadgeButton({
+  active,
+  ariaLabel,
+  count,
+  label,
+  onPress,
+  tone,
+}: {
+  active: boolean;
+  ariaLabel: string;
+  count: number;
+  label: string;
+  onPress: () => void;
+  tone: "caution" | "critical" | "default" | "neutral" | "positive" | "primary";
+}) {
+  const [hover, setHover] = useState(false);
+
+  return (
+    <button
+      aria-label={ariaLabel}
+      onClick={onPress}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{
+        background: "transparent",
+        border: 0,
+        borderRadius: 999,
+        cursor: "pointer",
+        filter: hover ? "brightness(1.02)" : undefined,
+        outline: active
+          ? "2px solid var(--card-focus-ring-color, #556bfc)"
+          : "none",
+        outlineOffset: 1,
+        padding: 0,
+        transition: "filter 0.15s ease",
+      }}
+      type="button"
+    >
+      <Badge
+        padding={2}
+        tone={tone}
+        style={{
+          cursor: "pointer",
+        }}
+      >
+        {count} {label}
+      </Badge>
+    </button>
+  );
+}
 
 export interface TaskSummaryCellProps {
   documentId: string;
@@ -135,13 +187,21 @@ export function TaskSummaryCellInner({
       };
     }, [stableVisibleTasks]);
 
-  const openCount = useMemo(
-    () => stableVisibleTasks.filter((task) => task.status === "open").length,
-    [stableVisibleTasks],
+  const taskSummaryFilterBadges = useMemo(
+    () =>
+      getTaskSummaryFilterBadges({
+        doneCount: doneTasks.length,
+        overdueCount: overdueTasks.length,
+        todoCount: todoTasks.length,
+        unassignedCount: unassignedTasks.length,
+      }),
+    [
+      doneTasks.length,
+      overdueTasks.length,
+      todoTasks.length,
+      unassignedTasks.length,
+    ],
   );
-  const closedCount = doneTasks.length;
-  const overdueCount = overdueTasks.length;
-  const unassignedCount = unassignedTasks.length;
 
   const selectedTask = selectedTaskId
     ? (stableVisibleTasks.find((task) => task._id === selectedTaskId) ?? null)
@@ -320,13 +380,6 @@ export function TaskSummaryCellInner({
     unassignedTasks.length,
   ]);
 
-  const summary = getTaskSummary({
-    closedCount,
-    openCount,
-    overdueCount,
-    taskCount: stableVisibleTasks.length,
-    unassignedCount,
-  });
   const showEmptyState = stableVisibleTasks.length === 0;
   const showEditorChrome = selectedTaskId !== null || isCreatingTask;
 
@@ -383,6 +436,17 @@ export function TaskSummaryCellInner({
       setSelectedTaskId(null);
     }
   }, [closePopover, markInternalInteraction, open, stableVisibleTasks.length]);
+
+  const handleOpenTasksWithFilter = useCallback(
+    (filter: TaskListFilter) => {
+      markInternalInteraction();
+      setActiveFilter(filter);
+      setIsCreatingTask(false);
+      setSelectedTaskId(null);
+      setOpen(true);
+    },
+    [markInternalInteraction],
+  );
 
   const popoverContent = useMemo(
     () => (
@@ -490,39 +554,54 @@ export function TaskSummaryCellInner({
             event.stopPropagation();
           }}
         >
-          <TableCellChrome
-            dataTestId={
-              showEmptyState ? "task-empty-state" : "task-summary-state"
-            }
-            leading={
-              showEmptyState ? (
+          {showEmptyState ? (
+            <TableCellChrome
+              dataTestId="task-empty-state"
+              leading={
                 <div style={addCircleStyle}>
                   <AddIcon />
                 </div>
-              ) : undefined
-            }
-            onPress={handleTriggerPress}
-            state={showEmptyState ? "empty" : "filled"}
-            title={
-              showEmptyState ? (
+              }
+              onPress={handleTriggerPress}
+              state="empty"
+              title={
                 <Text
                   muted
                   size={1}
                 >
                   Add task
                 </Text>
-              ) : (
-                <Text
-                  size={1}
-                  style={{
-                    color: `var(--card-${getTaskSummaryTone({ closedCount, openCount, overdueCount, unassignedCount })}-fg-color, inherit)`,
-                  }}
-                >
-                  {summary}
-                </Text>
-              )
-            }
-          />
+              }
+            />
+          ) : (
+            <Box
+              data-testid="task-summary-state"
+              style={{ width: "100%" }}
+            >
+              <Flex
+                align="center"
+                gap={2}
+                style={{ flexWrap: "wrap" }}
+              >
+                {taskSummaryFilterBadges
+                  .filter((row) => row.count > 0)
+                  .map((row) => {
+                    const isActive = open && activeFilter === row.key;
+                    return (
+                      <TaskSummaryCellFilterBadgeButton
+                        active={isActive}
+                        ariaLabel={`${row.count} ${row.label}. Open tasks.`}
+                        count={row.count}
+                        key={row.key}
+                        label={row.label}
+                        onPress={() => handleOpenTasksWithFilter(row.key)}
+                        tone={row.tone}
+                      />
+                    );
+                  })}
+              </Flex>
+            </Box>
+          )}
         </div>
       </div>
     </Popover>

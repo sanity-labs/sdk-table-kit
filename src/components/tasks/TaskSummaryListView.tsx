@@ -6,6 +6,7 @@ import { toPlainText } from "../../helpers/comments/addonCommentUtils";
 import {
   formatCompactDisplayName,
   getTaskDueDateLabel,
+  getTaskSummaryFilterBadges,
   isTaskOverdue,
 } from "../../helpers/tasks/TaskSummaryUtils";
 import {
@@ -61,28 +62,12 @@ export function TaskSummaryListView({
   unassignedCount: number;
   users: SanityUser[];
 }) {
-  const filters: Array<{
-    count: number;
-    key: TaskListFilter;
-    label: string;
-    tone:
-      | "critical"
-      | "default"
-      | "positive"
-      | "caution"
-      | "primary"
-      | "neutral";
-  }> = [
-    { count: todoCount, key: "todo", label: "Todo", tone: "neutral" },
-    {
-      count: unassignedCount,
-      key: "unassigned",
-      label: "Unassigned",
-      tone: "caution",
-    },
-    { count: overdueCount, key: "overdue", label: "Overdue", tone: "critical" },
-    { count: doneCount, key: "done", label: "Done", tone: "positive" },
-  ];
+  const filters = getTaskSummaryFilterBadges({
+    doneCount,
+    overdueCount,
+    todoCount,
+    unassignedCount,
+  });
 
   return (
     <Stack space={3}>

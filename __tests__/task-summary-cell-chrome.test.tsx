@@ -130,9 +130,8 @@ describe('TaskSummaryCellInner chrome', () => {
     renderWithTheme(<TaskSummaryCellInner documentId="doc-filled" documentType="article" />)
 
     const filledShell = screen.getByTestId('task-summary-state')
-    expect(filledShell).toHaveAttribute('data-state', 'filled')
-    expect(filledShell).toHaveAttribute('data-border', 'true')
-    expect(screen.getByText('1 open')).toBeInTheDocument()
+    expect(filledShell).toBeInTheDocument()
+    expect(screen.getByText('1 Todo')).toBeInTheDocument()
   })
 
   it('keeps detail open until registered flush succeeds on back', async () => {
@@ -176,7 +175,7 @@ describe('TaskSummaryCellInner chrome', () => {
     })
   })
 
-  it('keeps popover open until registered flush succeeds on trigger-close', async () => {
+  it('opens the task list popover when a summary badge is clicked', () => {
     mockUseAddonTasks.mockReturnValue({
       isTasksLoading: false,
       tasks: [
@@ -191,29 +190,10 @@ describe('TaskSummaryCellInner chrome', () => {
         },
       ],
     })
-    mockViewState.detailFlushResults = [false, true]
 
-    renderWithTheme(<TaskSummaryCellInner documentId="doc-trigger-flush" documentType="article" />)
+    renderWithTheme(<TaskSummaryCellInner documentId="doc-badge-open" documentType="article" />)
 
-    const getTrigger = () => screen.getByTestId('task-summary-state').querySelector('button')
-    expect(getTrigger()).toBeTruthy()
-
-    fireEvent.click(getTrigger()!)
-    if (!screen.queryByRole('button', {name: 'Open first task'})) {
-      fireEvent.click(getTrigger()!)
-    }
-    fireEvent.click(screen.getByRole('button', {name: 'Open first task'}))
-    expect(screen.getByRole('button', {name: 'Mock detail back'})).toBeInTheDocument()
-    await new Promise((resolve) => setTimeout(resolve, 220))
-
-    fireEvent.click(getTrigger()!)
-    await waitFor(() => {
-      expect(screen.getByRole('button', {name: 'Mock detail back'})).toBeInTheDocument()
-    })
-
-    fireEvent.click(getTrigger()!)
-    await waitFor(() => {
-      expect(screen.queryByRole('button', {name: 'Mock detail back'})).not.toBeInTheDocument()
-    })
+    fireEvent.click(screen.getByRole('button', {name: /Open tasks/}))
+    expect(screen.getByTestId('mock-popover')).toBeInTheDocument()
   })
 })

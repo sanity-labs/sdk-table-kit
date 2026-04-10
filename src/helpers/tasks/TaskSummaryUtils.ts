@@ -71,6 +71,37 @@ export function getTaskDueDateLabel(task: Pick<TaskDocument, 'dueBy' | 'status'>
   return new Date(task.dueBy).toLocaleDateString()
 }
 
+/** Same four rows as the task list filter badges (Todo, Unassigned, Overdue, Done). */
+export type TaskSummaryFilterBadgeKey =
+  | 'done'
+  | 'overdue'
+  | 'todo'
+  | 'unassigned'
+
+export function getTaskSummaryFilterBadges(counts: {
+  doneCount: number
+  overdueCount: number
+  todoCount: number
+  unassignedCount: number
+}): Array<{
+  count: number
+  key: TaskSummaryFilterBadgeKey
+  label: string
+  tone: 'critical' | 'default' | 'positive' | 'caution' | 'primary' | 'neutral'
+}> {
+  return [
+    { count: counts.todoCount, key: 'todo', label: 'Todo', tone: 'neutral' },
+    {
+      count: counts.unassignedCount,
+      key: 'unassigned',
+      label: 'Unassigned',
+      tone: 'caution',
+    },
+    { count: counts.overdueCount, key: 'overdue', label: 'Overdue', tone: 'critical' },
+    { count: counts.doneCount, key: 'done', label: 'Done', tone: 'positive' },
+  ]
+}
+
 export function getTaskSummary({
   closedCount,
   openCount,
