@@ -332,7 +332,11 @@ export function TaskSummaryCellInner({documentId, documentType}: TaskSummaryCell
     }
     markInternalInteraction()
     setOpen(true)
-  }, [closePopover, markInternalInteraction, open])
+    if (stableVisibleTasks.length === 0) {
+      setIsCreatingTask(true)
+      setSelectedTaskId(null)
+    }
+  }, [closePopover, markInternalInteraction, open, stableVisibleTasks.length])
 
   const popoverContent = useMemo(
     () => (
