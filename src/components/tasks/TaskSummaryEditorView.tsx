@@ -111,8 +111,6 @@ export function TaskSummaryEditorView({
   );
   const [isAssignPickerOpen, setIsAssignPickerOpen] = useState(false);
   const [isDueDateEditorOpen, setIsDueDateEditorOpen] = useState(false);
-  const [isSavingDescription, setIsSavingDescription] = useState(false);
-  const [isSavingTitle, setIsSavingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState(() => task?.title ?? "");
   const [dueDateValue, setDueDateValue] = useState(() =>
     task ? getDateInputValue(task.dueBy) : "",
@@ -185,7 +183,6 @@ export function TaskSummaryEditorView({
     );
   }, [effectiveTaskId, task, titleDraft, workspaceId]);
 
-  const isSavingTextFields = isSavingDescription || isSavingTitle;
   const selectedDueDate = parseDateOnlyString(dueDateValue || undefined);
 
   const commentTaskForHooks: TaskDocument | null = useMemo(() => {
@@ -223,8 +220,6 @@ export function TaskSummaryEditorView({
       setDueDateValue(getDateInputValue(task.dueBy));
       setIsAssignPickerOpen(false);
       setIsDueDateEditorOpen(false);
-      setIsSavingDescription(false);
-      setIsSavingTitle(false);
       return;
     }
 
@@ -237,8 +232,6 @@ export function TaskSummaryEditorView({
     setDueDateValue(getDateInputValue(task.dueBy));
     setIsAssignPickerOpen(false);
     setIsDueDateEditorOpen(false);
-    setIsSavingDescription(false);
-    setIsSavingTitle(false);
     setTitleDraft(task.title);
 
     latestDraftRef.current = {
@@ -357,7 +350,6 @@ export function TaskSummaryEditorView({
 
       const taskId = await ensureTaskId();
 
-      setIsSavingTitle(true);
       const savePromise = editTask(taskId, { title: normalized })
         .then(() => {
           lastSavedRef.current.title = normalized;
@@ -379,7 +371,6 @@ export function TaskSummaryEditorView({
           if (inFlightSavesRef.current.title === savePromise) {
             inFlightSavesRef.current.title = null;
           }
-          setIsSavingTitle(false);
         });
 
       inFlightSavesRef.current.title = savePromise;
@@ -394,7 +385,6 @@ export function TaskSummaryEditorView({
 
       const taskId = await ensureTaskId();
 
-      setIsSavingDescription(true);
       const savePromise = editTask(taskId, {
         description: buildMessageFromPlainText(value),
       })
@@ -418,7 +408,6 @@ export function TaskSummaryEditorView({
           if (inFlightSavesRef.current.description === savePromise) {
             inFlightSavesRef.current.description = null;
           }
-          setIsSavingDescription(false);
         });
 
       inFlightSavesRef.current.description = savePromise;
@@ -803,7 +792,7 @@ export function TaskSummaryEditorView({
           }
           open={isAssignPickerOpen}
           placement="bottom-start"
-          portal
+          portal={false}
         >
           <Button
             fontSize={1}
@@ -870,7 +859,7 @@ export function TaskSummaryEditorView({
           }
           open={isDueDateEditorOpen}
           placement="bottom-start"
-          portal
+          portal={false}
         >
           <Button
             fontSize={1}
@@ -905,14 +894,6 @@ export function TaskSummaryEditorView({
           width="100%"
           value={descriptionDraft}
         />
-        {isSavingTextFields && (
-          <Text
-            muted
-            size={1}
-          >
-            Saving...
-          </Text>
-        )}
       </Stack>
 
       <Box

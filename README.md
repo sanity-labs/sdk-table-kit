@@ -48,18 +48,18 @@ Optional feature dependencies used by the bundled comments/tasks helpers:
 ## Quick Start
 
 ```tsx
-import {SanityDocumentTable, column} from '@sanity-labs/sdk-table-kit'
+import { SanityDocumentTable, column } from "@sanity-labs/sdk-table-kit";
 
 export function ArticlesTable() {
   return (
     <SanityDocumentTable
       documentType="article"
       columns={[
-        column.title({field: 'title', edit: true}),
+        column.title({ field: "title", edit: true }),
         column.updatedAt(),
       ]}
     />
-  )
+  );
 }
 ```
 

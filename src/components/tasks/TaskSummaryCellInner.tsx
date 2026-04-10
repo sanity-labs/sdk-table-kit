@@ -1,6 +1,6 @@
-import {TableCellChrome} from '@sanity-labs/react-table-kit'
-import {AddIcon} from '@sanity/icons'
-import {type SanityUser, useUsers} from '@sanity/sdk-react'
+import { TableCellChrome } from "@sanity-labs/react-table-kit";
+import { AddIcon } from "@sanity/icons";
+import { type SanityUser, useUsers } from "@sanity/sdk-react";
 import {
   Button,
   Card,
@@ -11,260 +11,306 @@ import {
   Text,
   useClickOutsideEvent,
   useGlobalKeyDown,
-} from '@sanity/ui'
-import {Suspense, useCallback, useEffect, useMemo, useRef, useState} from 'react'
+} from "@sanity/ui";
+import {
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
-import {useOptionalAddonData} from '../../context/AddonDataContext'
+import { useOptionalAddonData } from "../../context/AddonDataContext";
 import {
   compareOpenTasks,
   getTaskSummary,
   getTaskSummaryTone,
   isTaskOverdue,
-} from '../../helpers/tasks/TaskSummaryUtils'
-import {useAddonTasks} from '../../hooks/useAddonTasks'
-import {TaskSummaryEditorView} from './TaskSummaryEditorView'
-import {TaskSummaryListView, type TaskListFilter} from './TaskSummaryListView'
-import {addCircleStyle} from './TaskSummaryShared'
+} from "../../helpers/tasks/TaskSummaryUtils";
+import { useAddonTasks } from "../../hooks/useAddonTasks";
+import { TaskSummaryEditorView } from "./TaskSummaryEditorView";
+import {
+  TaskSummaryListView,
+  type TaskListFilter,
+} from "./TaskSummaryListView";
+import { addCircleStyle } from "./TaskSummaryShared";
 
 export interface TaskSummaryCellProps {
-  documentId: string
-  documentType: string
+  documentId: string;
+  documentType: string;
 }
 
 interface TaskPopoverState {
-  activeFilter: TaskListFilter
-  isCreatingTask: boolean
-  open: boolean
-  selectedTaskId: null | string
+  activeFilter: TaskListFilter;
+  isCreatingTask: boolean;
+  open: boolean;
+  selectedTaskId: null | string;
 }
 
-const taskPopoverStateStore = new Map<string, TaskPopoverState>()
+const taskPopoverStateStore = new Map<string, TaskPopoverState>();
 
-export function TaskSummaryCellInner({documentId, documentType}: TaskSummaryCellProps) {
-  const stateKey = documentId.replace(/^drafts\./, '')
-  const persistedState = taskPopoverStateStore.get(stateKey)
+export function TaskSummaryCellInner({
+  documentId,
+  documentType,
+}: TaskSummaryCellProps) {
+  const stateKey = documentId.replace(/^drafts\./, "");
+  const persistedState = taskPopoverStateStore.get(stateKey);
   const [activeFilter, setActiveFilter] = useState<TaskListFilter>(
-    persistedState?.activeFilter ?? 'todo',
-  )
-  const [isCreatingTask, setIsCreatingTask] = useState(persistedState?.isCreatingTask ?? false)
-  const [open, setOpen] = useState(persistedState?.open ?? false)
+    persistedState?.activeFilter ?? "todo",
+  );
+  const [isCreatingTask, setIsCreatingTask] = useState(
+    persistedState?.isCreatingTask ?? false,
+  );
+  const [open, setOpen] = useState(persistedState?.open ?? false);
   const [selectedTaskId, setSelectedTaskId] = useState<null | string>(
     persistedState?.selectedTaskId ?? null,
-  )
-  const [optimisticallyRemovedTaskIds, setOptimisticallyRemovedTaskIds] = useState<Set<string>>(
-    () => new Set(),
-  )
-  const popoverRef = useRef<HTMLDivElement>(null)
-  const pendingFlushRef = useRef<null | (() => Promise<boolean>)>(null)
-  const triggerRef = useRef<HTMLDivElement>(null)
-  const suppressCloseUntilRef = useRef(0)
+  );
+  const [optimisticallyRemovedTaskIds, setOptimisticallyRemovedTaskIds] =
+    useState<Set<string>>(() => new Set());
+  const popoverRef = useRef<HTMLDivElement>(null);
+  const pendingFlushRef = useRef<null | (() => Promise<boolean>)>(null);
+  const triggerRef = useRef<HTMLDivElement>(null);
+  const suppressCloseUntilRef = useRef(0);
   /** Newly materialized task id may not be in `tasks` until the addon syncs — don't clear selection meanwhile. */
-  const pendingCreatedTaskIdRef = useRef<null | string>(null)
-  const {isTasksLoading, tasks} = useAddonTasks(documentId, documentType)
+  const pendingCreatedTaskIdRef = useRef<null | string>(null);
+  const { isTasksLoading, tasks } = useAddonTasks(documentId, documentType);
 
   const visibleTasks = useMemo(
     () => tasks.filter((task) => !optimisticallyRemovedTaskIds.has(task._id)),
     [optimisticallyRemovedTaskIds, tasks],
-  )
+  );
   const visibleTasksSignature = useMemo(
     () =>
       visibleTasks
         .map(
           (task) =>
-            `${task._id}:${task._updatedAt}:${task.status}:${task.assignedTo ?? ''}:${task.dueBy ?? ''}:${task.title}`,
+            `${task._id}:${task._updatedAt}:${task.status}:${task.assignedTo ?? ""}:${task.dueBy ?? ""}:${task.title}`,
         )
-        .join('|'),
+        .join("|"),
     [visibleTasks],
-  )
-  const stableVisibleTasksRef = useRef<null | {signature: string; tasks: typeof visibleTasks}>(null)
+  );
+  const stableVisibleTasksRef = useRef<null | {
+    signature: string;
+    tasks: typeof visibleTasks;
+  }>(null);
   const stableVisibleTasks = useMemo(() => {
-    const cachedVisibleTasks = stableVisibleTasksRef.current
-    if (cachedVisibleTasks && cachedVisibleTasks.signature === visibleTasksSignature) {
-      return cachedVisibleTasks.tasks
+    const cachedVisibleTasks = stableVisibleTasksRef.current;
+    if (
+      cachedVisibleTasks &&
+      cachedVisibleTasks.signature === visibleTasksSignature
+    ) {
+      return cachedVisibleTasks.tasks;
     }
 
-    stableVisibleTasksRef.current = {signature: visibleTasksSignature, tasks: visibleTasks}
-    return visibleTasks
-  }, [visibleTasks, visibleTasksSignature])
+    stableVisibleTasksRef.current = {
+      signature: visibleTasksSignature,
+      tasks: visibleTasks,
+    };
+    return visibleTasks;
+  }, [visibleTasks, visibleTasksSignature]);
 
-  const {doneTasks, overdueTasks, todoTasks, unassignedTasks} = useMemo(() => {
-    const overdue = stableVisibleTasks
-      .filter((task) => isTaskOverdue(task))
-      .sort((left, right) => compareOpenTasks(left, right))
-    const todo = stableVisibleTasks
-      .filter((task) => task.status === 'open' && !isTaskOverdue(task))
-      .sort((left, right) => compareOpenTasks(left, right))
-    const unassigned = todo.filter((task) => !task.assignedTo)
-    const done = stableVisibleTasks
-      .filter((task) => task.status === 'closed')
-      .sort(
-        (left, right) => new Date(right._updatedAt).getTime() - new Date(left._updatedAt).getTime(),
-      )
+  const { doneTasks, overdueTasks, todoTasks, unassignedTasks } =
+    useMemo(() => {
+      const overdue = stableVisibleTasks
+        .filter((task) => isTaskOverdue(task))
+        .sort((left, right) => compareOpenTasks(left, right));
+      const todo = stableVisibleTasks
+        .filter((task) => task.status === "open" && !isTaskOverdue(task))
+        .sort((left, right) => compareOpenTasks(left, right));
+      const unassigned = todo.filter((task) => !task.assignedTo);
+      const done = stableVisibleTasks
+        .filter((task) => task.status === "closed")
+        .sort(
+          (left, right) =>
+            new Date(right._updatedAt).getTime() -
+            new Date(left._updatedAt).getTime(),
+        );
 
-    return {doneTasks: done, overdueTasks: overdue, todoTasks: todo, unassignedTasks: unassigned}
-  }, [stableVisibleTasks])
+      return {
+        doneTasks: done,
+        overdueTasks: overdue,
+        todoTasks: todo,
+        unassignedTasks: unassigned,
+      };
+    }, [stableVisibleTasks]);
 
   const openCount = useMemo(
-    () => stableVisibleTasks.filter((task) => task.status === 'open').length,
+    () => stableVisibleTasks.filter((task) => task.status === "open").length,
     [stableVisibleTasks],
-  )
-  const closedCount = doneTasks.length
-  const overdueCount = overdueTasks.length
-  const unassignedCount = unassignedTasks.length
+  );
+  const closedCount = doneTasks.length;
+  const overdueCount = overdueTasks.length;
+  const unassignedCount = unassignedTasks.length;
 
   const selectedTask = selectedTaskId
     ? (stableVisibleTasks.find((task) => task._id === selectedTaskId) ?? null)
-    : null
+    : null;
 
   const filteredTasks = useMemo(() => {
-    if (activeFilter === 'todo') return todoTasks
-    if (activeFilter === 'unassigned') return unassignedTasks
-    if (activeFilter === 'overdue') return overdueTasks
-    return doneTasks
-  }, [activeFilter, doneTasks, overdueTasks, todoTasks, unassignedTasks])
+    if (activeFilter === "todo") return todoTasks;
+    if (activeFilter === "unassigned") return unassignedTasks;
+    if (activeFilter === "overdue") return overdueTasks;
+    return doneTasks;
+  }, [activeFilter, doneTasks, overdueTasks, todoTasks, unassignedTasks]);
 
   const markInternalInteraction = useCallback((durationMs = 150) => {
     // Prevent outside-click close handlers from racing against internal click handlers.
-    suppressCloseUntilRef.current = Date.now() + durationMs
-  }, [])
+    suppressCloseUntilRef.current = Date.now() + durationMs;
+  }, []);
 
   const hideTaskLocally = useCallback(
     (taskId: string) => {
-      markInternalInteraction(3000)
+      markInternalInteraction(3000);
       setOptimisticallyRemovedTaskIds((prev) => {
-        if (prev.has(taskId)) return prev
-        const next = new Set(prev)
-        next.add(taskId)
-        return next
-      })
-      setSelectedTaskId(null)
+        if (prev.has(taskId)) return prev;
+        const next = new Set(prev);
+        next.add(taskId);
+        return next;
+      });
+      setSelectedTaskId(null);
     },
     [markInternalInteraction],
-  )
+  );
 
   const rollbackHiddenTask = useCallback((taskId: string) => {
     setOptimisticallyRemovedTaskIds((prev) => {
-      if (!prev.has(taskId)) return prev
-      const next = new Set(prev)
-      next.delete(taskId)
-      return next
-    })
-  }, [])
+      if (!prev.has(taskId)) return prev;
+      const next = new Set(prev);
+      next.delete(taskId);
+      return next;
+    });
+  }, []);
 
   const closePopoverWithoutGuard = useCallback(() => {
-    setOpen(false)
-    setIsCreatingTask(false)
-    pendingFlushRef.current = null
-    setOptimisticallyRemovedTaskIds((prev) => (prev.size === 0 ? prev : new Set()))
-    setSelectedTaskId(null)
-  }, [])
+    setOpen(false);
+    setIsCreatingTask(false);
+    pendingFlushRef.current = null;
+    setOptimisticallyRemovedTaskIds((prev) =>
+      prev.size === 0 ? prev : new Set(),
+    );
+    setSelectedTaskId(null);
+  }, []);
 
-  const registerPendingFlush = useCallback((flushFn: null | (() => Promise<boolean>)) => {
-    pendingFlushRef.current = flushFn
-  }, [])
+  const registerPendingFlush = useCallback(
+    (flushFn: null | (() => Promise<boolean>)) => {
+      pendingFlushRef.current = flushFn;
+    },
+    [],
+  );
 
   const flushPendingWrites = useCallback(async () => {
-    const flushFn = pendingFlushRef.current
-    if (!flushFn) return true
+    const flushFn = pendingFlushRef.current;
+    if (!flushFn) return true;
     try {
-      return await flushFn()
+      return await flushFn();
     } catch (error) {
-      console.error('[TaskSummaryCellInner] flush failed before close:', error)
-      return false
+      console.error("[TaskSummaryCellInner] flush failed before close:", error);
+      return false;
     }
-  }, [])
+  }, []);
 
   const closePopover = useCallback(async () => {
     if (Date.now() < suppressCloseUntilRef.current) {
-      return
+      return;
     }
-    const canClose = await flushPendingWrites()
-    if (!canClose) return
-    closePopoverWithoutGuard()
-  }, [closePopoverWithoutGuard, flushPendingWrites])
+    const canClose = await flushPendingWrites();
+    if (!canClose) return;
+    closePopoverWithoutGuard();
+  }, [closePopoverWithoutGuard, flushPendingWrites]);
 
   useEffect(() => {
     const hasTransientState =
-      open || isCreatingTask || selectedTaskId !== null || activeFilter !== 'todo'
+      open ||
+      isCreatingTask ||
+      selectedTaskId !== null ||
+      activeFilter !== "todo";
     if (hasTransientState) {
-      taskPopoverStateStore.set(stateKey, {activeFilter, isCreatingTask, open, selectedTaskId})
-      return
+      taskPopoverStateStore.set(stateKey, {
+        activeFilter,
+        isCreatingTask,
+        open,
+        selectedTaskId,
+      });
+      return;
     }
-    taskPopoverStateStore.delete(stateKey)
-  }, [activeFilter, isCreatingTask, open, selectedTaskId, stateKey])
+    taskPopoverStateStore.delete(stateKey);
+  }, [activeFilter, isCreatingTask, open, selectedTaskId, stateKey]);
 
   useClickOutsideEvent(
     open
       ? () => {
-          void closePopover()
+          void closePopover();
         }
       : undefined,
     () => [popoverRef.current, triggerRef.current],
-  )
+  );
 
   useGlobalKeyDown((event) => {
-    if (!open || event.key !== 'Escape') return
-    event.preventDefault()
+    if (!open || event.key !== "Escape") return;
+    event.preventDefault();
 
     void (async () => {
       if (selectedTaskId) {
-        markInternalInteraction()
-        const canGoBack = await flushPendingWrites()
-        if (!canGoBack) return
-        setSelectedTaskId(null)
-        return
+        markInternalInteraction();
+        const canGoBack = await flushPendingWrites();
+        if (!canGoBack) return;
+        setSelectedTaskId(null);
+        return;
       }
 
       if (isCreatingTask) {
-        markInternalInteraction()
-        const canLeaveCreate = await flushPendingWrites()
-        if (!canLeaveCreate) return
-        setIsCreatingTask(false)
-        return
+        markInternalInteraction();
+        const canLeaveCreate = await flushPendingWrites();
+        if (!canLeaveCreate) return;
+        setIsCreatingTask(false);
+        return;
       }
 
-      await closePopover()
-    })()
-  })
+      await closePopover();
+    })();
+  });
 
   useEffect(() => {
     if (!open) {
-      setIsCreatingTask(false)
-      pendingCreatedTaskIdRef.current = null
-      pendingFlushRef.current = null
-      setOptimisticallyRemovedTaskIds((prev) => (prev.size === 0 ? prev : new Set()))
-      setSelectedTaskId(null)
-      return
+      setIsCreatingTask(false);
+      pendingCreatedTaskIdRef.current = null;
+      pendingFlushRef.current = null;
+      setOptimisticallyRemovedTaskIds((prev) =>
+        prev.size === 0 ? prev : new Set(),
+      );
+      setSelectedTaskId(null);
+      return;
     }
-  }, [open])
+  }, [open]);
 
   useEffect(() => {
-    if (!selectedTaskId) return
+    if (!selectedTaskId) return;
     if (stableVisibleTasks.some((task) => task._id === selectedTaskId)) {
       if (pendingCreatedTaskIdRef.current === selectedTaskId) {
-        pendingCreatedTaskIdRef.current = null
+        pendingCreatedTaskIdRef.current = null;
       }
-      return
+      return;
     }
     if (pendingCreatedTaskIdRef.current === selectedTaskId) {
-      return
+      return;
     }
-    setSelectedTaskId(null)
-  }, [selectedTaskId, stableVisibleTasks])
+    setSelectedTaskId(null);
+  }, [selectedTaskId, stableVisibleTasks]);
 
   useEffect(() => {
-    if (stableVisibleTasks.length === 0) return
+    if (stableVisibleTasks.length === 0) return;
     const countByFilter: Record<TaskListFilter, number> = {
       done: doneTasks.length,
       overdue: overdueTasks.length,
       todo: todoTasks.length,
       unassigned: unassignedTasks.length,
-    }
-    if (countByFilter[activeFilter] > 0) return
-    const nextFilter = (['todo', 'unassigned', 'overdue', 'done'] as const).find(
-      (filter) => countByFilter[filter] > 0,
-    )
-    if (nextFilter) setActiveFilter(nextFilter)
+    };
+    if (countByFilter[activeFilter] > 0) return;
+    const nextFilter = (
+      ["todo", "unassigned", "overdue", "done"] as const
+    ).find((filter) => countByFilter[filter] > 0);
+    if (nextFilter) setActiveFilter(nextFilter);
   }, [
     activeFilter,
     doneTasks.length,
@@ -272,7 +318,7 @@ export function TaskSummaryCellInner({documentId, documentType}: TaskSummaryCell
     stableVisibleTasks.length,
     todoTasks.length,
     unassignedTasks.length,
-  ])
+  ]);
 
   const summary = getTaskSummary({
     closedCount,
@@ -280,63 +326,63 @@ export function TaskSummaryCellInner({documentId, documentType}: TaskSummaryCell
     overdueCount,
     taskCount: stableVisibleTasks.length,
     unassignedCount,
-  })
-  const showEmptyState = stableVisibleTasks.length === 0
-  const showEditorChrome = selectedTaskId !== null || isCreatingTask
+  });
+  const showEmptyState = stableVisibleTasks.length === 0;
+  const showEditorChrome = selectedTaskId !== null || isCreatingTask;
 
   const handleBackFromDetail = useCallback(() => {
-    markInternalInteraction()
+    markInternalInteraction();
     void (async () => {
-      const canGoBack = await flushPendingWrites()
-      if (!canGoBack) return
-      setSelectedTaskId(null)
-    })()
-  }, [flushPendingWrites, markInternalInteraction])
+      const canGoBack = await flushPendingWrites();
+      if (!canGoBack) return;
+      setSelectedTaskId(null);
+    })();
+  }, [flushPendingWrites, markInternalInteraction]);
 
   const handleStopCreate = useCallback(() => {
-    markInternalInteraction()
+    markInternalInteraction();
     void (async () => {
-      const canLeaveCreate = await flushPendingWrites()
-      if (!canLeaveCreate) return
-      setIsCreatingTask(false)
-    })()
-  }, [flushPendingWrites, markInternalInteraction])
+      const canLeaveCreate = await flushPendingWrites();
+      if (!canLeaveCreate) return;
+      setIsCreatingTask(false);
+    })();
+  }, [flushPendingWrites, markInternalInteraction]);
 
   const handleSelectTask = useCallback(
     (taskId: null | string) => {
-      markInternalInteraction()
-      setSelectedTaskId(taskId)
+      markInternalInteraction();
+      setSelectedTaskId(taskId);
     },
     [markInternalInteraction],
-  )
+  );
 
   const handleStartCreate = useCallback(() => {
-    markInternalInteraction()
-    setIsCreatingTask(true)
-    setSelectedTaskId(null)
-  }, [markInternalInteraction])
+    markInternalInteraction();
+    setIsCreatingTask(true);
+    setSelectedTaskId(null);
+  }, [markInternalInteraction]);
 
   const handleCreateComplete = useCallback(
     (taskId: string) => {
-      markInternalInteraction(3000)
-      pendingCreatedTaskIdRef.current = taskId
-      setIsCreatingTask(false)
-      setSelectedTaskId(taskId)
+      markInternalInteraction(3000);
+      pendingCreatedTaskIdRef.current = taskId;
+      setIsCreatingTask(false);
+      setSelectedTaskId(taskId);
     },
     [markInternalInteraction],
-  )
+  );
   const handleTriggerPress = useCallback(() => {
     if (open) {
-      void closePopover()
-      return
+      void closePopover();
+      return;
     }
-    markInternalInteraction()
-    setOpen(true)
+    markInternalInteraction();
+    setOpen(true);
     if (stableVisibleTasks.length === 0) {
-      setIsCreatingTask(true)
-      setSelectedTaskId(null)
+      setIsCreatingTask(true);
+      setSelectedTaskId(null);
     }
-  }, [closePopover, markInternalInteraction, open, stableVisibleTasks.length])
+  }, [closePopover, markInternalInteraction, open, stableVisibleTasks.length]);
 
   const popoverContent = useMemo(
     () => (
@@ -347,18 +393,26 @@ export function TaskSummaryCellInner({documentId, documentType}: TaskSummaryCell
         shadow={2}
         style={{
           maxWidth: showEditorChrome
-            ? 'min(520px, calc(100vw - 32px))'
-            : 'min(420px, calc(100vw - 32px))',
+            ? "min(520px, calc(100vw - 32px))"
+            : "min(420px, calc(100vw - 32px))",
           minWidth: showEditorChrome ? 420 : 340,
           width: showEditorChrome
-            ? 'min(520px, calc(100vw - 32px))'
-            : 'min(420px, calc(100vw - 32px))',
+            ? "min(520px, calc(100vw - 32px))"
+            : "min(420px, calc(100vw - 32px))",
         }}
       >
         <Suspense
           fallback={
-            <Card border padding={3} radius={2} tone="transparent">
-              <Text muted size={1}>
+            <Card
+              border
+              padding={3}
+              radius={2}
+              tone="transparent"
+            >
+              <Text
+                muted
+                size={1}
+              >
                 Loading…
               </Text>
             </Card>
@@ -415,7 +469,7 @@ export function TaskSummaryCellInner({documentId, documentType}: TaskSummaryCell
       todoTasks.length,
       unassignedTasks.length,
     ],
-  )
+  );
 
   return (
     <Popover
@@ -427,14 +481,19 @@ export function TaskSummaryCellInner({documentId, documentType}: TaskSummaryCell
       radius={2}
       shadow={3}
     >
-      <div ref={triggerRef} style={{width: '100%'}}>
+      <div
+        ref={triggerRef}
+        style={{ width: "100%" }}
+      >
         <div
           onClick={(event) => {
-            event.stopPropagation()
+            event.stopPropagation();
           }}
         >
           <TableCellChrome
-            dataTestId={showEmptyState ? 'task-empty-state' : 'task-summary-state'}
+            dataTestId={
+              showEmptyState ? "task-empty-state" : "task-summary-state"
+            }
             leading={
               showEmptyState ? (
                 <div style={addCircleStyle}>
@@ -443,17 +502,20 @@ export function TaskSummaryCellInner({documentId, documentType}: TaskSummaryCell
               ) : undefined
             }
             onPress={handleTriggerPress}
-            state={showEmptyState ? 'empty' : 'filled'}
+            state={showEmptyState ? "empty" : "filled"}
             title={
               showEmptyState ? (
-                <Text muted size={1}>
+                <Text
+                  muted
+                  size={1}
+                >
                   Add task
                 </Text>
               ) : (
                 <Text
                   size={1}
                   style={{
-                    color: `var(--card-${getTaskSummaryTone({closedCount, openCount, overdueCount, unassignedCount})}-fg-color, inherit)`,
+                    color: `var(--card-${getTaskSummaryTone({ closedCount, openCount, overdueCount, unassignedCount })}-fg-color, inherit)`,
                   }}
                 >
                   {summary}
@@ -464,7 +526,7 @@ export function TaskSummaryCellInner({documentId, documentType}: TaskSummaryCell
         </div>
       </div>
     </Popover>
-  )
+  );
 }
 
 function TaskSummaryPopoverBody({
@@ -491,31 +553,31 @@ function TaskSummaryPopoverBody({
   todoCount,
   unassignedCount,
 }: {
-  activeFilter: TaskListFilter
-  documentId: string
-  documentType: string
-  doneCount: number
-  filteredTasks: ReturnType<typeof useAddonTasks>['tasks']
-  isCreatingTask: boolean
-  isTasksLoading: boolean
-  onBackFromDetail: () => void
-  onCreateComplete: (taskId: string) => void
-  onDeleteOptimistic: (taskId: string) => void
-  onDeleteRollback: (taskId: string) => void
-  onFilterChange: (filter: TaskListFilter) => void
-  onInternalInteraction: (durationMs?: number) => void
-  onRegisterFlushPending: (flushFn: null | (() => Promise<boolean>)) => void
-  onSelectTask: (taskId: null | string) => void
-  onStartCreate: () => void
-  onStopCreate: () => void
-  overdueCount: number
-  selectedTask: null | ReturnType<typeof useAddonTasks>['tasks'][number]
-  selectedTaskId: null | string
-  todoCount: number
-  unassignedCount: number
+  activeFilter: TaskListFilter;
+  documentId: string;
+  documentType: string;
+  doneCount: number;
+  filteredTasks: ReturnType<typeof useAddonTasks>["tasks"];
+  isCreatingTask: boolean;
+  isTasksLoading: boolean;
+  onBackFromDetail: () => void;
+  onCreateComplete: (taskId: string) => void;
+  onDeleteOptimistic: (taskId: string) => void;
+  onDeleteRollback: (taskId: string) => void;
+  onFilterChange: (filter: TaskListFilter) => void;
+  onInternalInteraction: (durationMs?: number) => void;
+  onRegisterFlushPending: (flushFn: null | (() => Promise<boolean>)) => void;
+  onSelectTask: (taskId: null | string) => void;
+  onStartCreate: () => void;
+  onStopCreate: () => void;
+  overdueCount: number;
+  selectedTask: null | ReturnType<typeof useAddonTasks>["tasks"][number];
+  selectedTaskId: null | string;
+  todoCount: number;
+  unassignedCount: number;
 }) {
-  const addonData = useOptionalAddonData()
-  const seededUsers = addonData?.users
+  const addonData = useOptionalAddonData();
+  const seededUsers = addonData?.users;
 
   if (seededUsers) {
     return (
@@ -544,7 +606,7 @@ function TaskSummaryPopoverBody({
         unassignedCount={unassignedCount}
         users={seededUsers}
       />
-    )
+    );
   }
 
   return (
@@ -572,15 +634,20 @@ function TaskSummaryPopoverBody({
       todoCount={todoCount}
       unassignedCount={unassignedCount}
     />
-  )
+  );
 }
 
 function TaskSummaryPopoverBodyWithUsersQuery(
-  props: Omit<Parameters<typeof TaskSummaryPopoverBodyContent>[0], 'users'>,
+  props: Omit<Parameters<typeof TaskSummaryPopoverBodyContent>[0], "users">,
 ) {
-  const {data: users = []} = useUsers()
+  const { data: users = [] } = useUsers();
 
-  return <TaskSummaryPopoverBodyContent {...props} users={users} />
+  return (
+    <TaskSummaryPopoverBodyContent
+      {...props}
+      users={users}
+    />
+  );
 }
 
 function TaskSummaryPopoverBodyContent({
@@ -608,29 +675,29 @@ function TaskSummaryPopoverBodyContent({
   unassignedCount,
   users,
 }: {
-  activeFilter: TaskListFilter
-  documentId: string
-  documentType: string
-  doneCount: number
-  filteredTasks: ReturnType<typeof useAddonTasks>['tasks']
-  isCreatingTask: boolean
-  isTasksLoading: boolean
-  onBackFromDetail: () => void
-  onCreateComplete: (taskId: string) => void
-  onDeleteOptimistic: (taskId: string) => void
-  onDeleteRollback: (taskId: string) => void
-  onFilterChange: (filter: TaskListFilter) => void
-  onInternalInteraction: (durationMs?: number) => void
-  onRegisterFlushPending: (flushFn: null | (() => Promise<boolean>)) => void
-  onSelectTask: (taskId: null | string) => void
-  onStartCreate: () => void
-  onStopCreate: () => void
-  overdueCount: number
-  selectedTask: null | ReturnType<typeof useAddonTasks>['tasks'][number]
-  selectedTaskId: null | string
-  todoCount: number
-  unassignedCount: number
-  users: SanityUser[]
+  activeFilter: TaskListFilter;
+  documentId: string;
+  documentType: string;
+  doneCount: number;
+  filteredTasks: ReturnType<typeof useAddonTasks>["tasks"];
+  isCreatingTask: boolean;
+  isTasksLoading: boolean;
+  onBackFromDetail: () => void;
+  onCreateComplete: (taskId: string) => void;
+  onDeleteOptimistic: (taskId: string) => void;
+  onDeleteRollback: (taskId: string) => void;
+  onFilterChange: (filter: TaskListFilter) => void;
+  onInternalInteraction: (durationMs?: number) => void;
+  onRegisterFlushPending: (flushFn: null | (() => Promise<boolean>)) => void;
+  onSelectTask: (taskId: null | string) => void;
+  onStartCreate: () => void;
+  onStopCreate: () => void;
+  overdueCount: number;
+  selectedTask: null | ReturnType<typeof useAddonTasks>["tasks"][number];
+  selectedTaskId: null | string;
+  todoCount: number;
+  unassignedCount: number;
+  users: SanityUser[];
 }) {
   if (selectedTaskId !== null || isCreatingTask) {
     return (
@@ -646,24 +713,38 @@ function TaskSummaryPopoverBodyContent({
         task={selectedTask ?? undefined}
         users={users}
       />
-    )
+    );
   }
 
   return (
     <Stack space={4}>
-      <Flex align="center" justify="space-between">
-        <Flex align="center" gap={2}>
+      <Flex
+        align="center"
+        justify="space-between"
+      >
+        <Flex
+          align="center"
+          gap={2}
+        >
           {/* <Button
             icon={<ChevronLeft size={16} />}
             mode="bleed"
             onClick={onClosePopover}
             padding={2}
           /> */}
-          <Heading size={2} weight="semibold">
+          <Heading
+            size={2}
+            weight="semibold"
+          >
             Tasks
           </Heading>
         </Flex>
-        <Button icon={AddIcon} mode="ghost" onClick={onStartCreate} text="Add task" />
+        <Button
+          icon={AddIcon}
+          mode="ghost"
+          onClick={onStartCreate}
+          text="Add task"
+        />
       </Flex>
 
       <TaskSummaryListView
@@ -679,5 +760,5 @@ function TaskSummaryPopoverBodyContent({
         users={users}
       />
     </Stack>
-  )
+  );
 }
