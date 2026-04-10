@@ -1,9 +1,8 @@
 import { SearchIcon } from "@sanity/icons";
 import type { SanityUser } from "@sanity/sdk-react";
-import { Box, Button, Card, Flex, Stack, Text, TextInput } from "@sanity/ui";
+import { Box, Button, Flex, Stack, Text, TextInput } from "@sanity/ui";
 import { X } from "lucide-react";
 import { useMemo, useState } from "react";
-import type { CSSProperties } from "react";
 
 import { getResourceUserId } from "../../helpers/users/addonUserUtils";
 import { TaskUserAvatar } from "./TaskSummaryShared";
@@ -13,7 +12,7 @@ export type TaskSummaryAssignPickerLayout = "anchored" | "popoverContent";
 
 export function TaskSummaryAssignPicker({
   currentAssignee,
-  layout = "anchored",
+  layout: _layout = "anchored",
   onAssign,
   pickerRef,
   users,
@@ -38,22 +37,9 @@ export function TaskSummaryAssignPicker({
 
     return projectUsers.filter(({ user }) => {
       const displayName = user.profile?.displayName?.toLowerCase() ?? "";
-      const email = user.profile?.email?.toLowerCase() ?? "";
-      return displayName.includes(query) || email.includes(query);
+      return displayName.includes(query);
     });
   }, [search, users]);
-
-  const cardStyle: CSSProperties =
-    layout === "popoverContent"
-      ? { width: 280 }
-      : {
-          left: 0,
-          marginTop: 6,
-          position: "absolute",
-          top: "100%",
-          width: 280,
-          zIndex: 2,
-        };
 
   return (
     <Box ref={pickerRef}>
