@@ -43,11 +43,11 @@
     "lint": "oxlint src __tests__ __mocks__ tsdown.config.ts vitest.config.component.ts vitest.setup.ts",
     "test": "vitest run --config vitest.config.component.ts",
     "test:watch": "vitest --config vitest.config.component.ts",
-    "typecheck": "tsc --noEmit -p tsconfig.json"
+    "typecheck": "tsgo --noEmit -p tsconfig.json"
   },
   "dependencies": {
     "@portabletext/react": "^6.0.3",
-    "@sanity-labs/react-table-kit": "file:../react-table-kit",
+    "@sanity-labs/react-table-kit": "^1.0.0",
     "@sanity-labs/sdk-addon-dataset-runtime": "^1.0.0",
     "@sanity-labs/sdk-comments": "^1.0.0",
     "@sanity-labs/sdk-tasks": "^1.0.0",
@@ -57,6 +57,7 @@
     "slate-react": "^0.124.0"
   },
   "devDependencies": {
+    "@changesets/cli": "^2.30.0",
     "@sanity/icons": "^3.7.4",
     "@sanity/sdk": "^2.8.0",
     "@sanity/sdk-react": "^2.8.0",
@@ -69,6 +70,7 @@
     "@types/node": "^24.0.4",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
+    "@typescript/native-preview": "7.0.0-dev.20260320.1",
     "@vitejs/plugin-react": "^6.0.1",
     "jsdom": "^26.0.0",
     "nuqs": "^2.8.9",

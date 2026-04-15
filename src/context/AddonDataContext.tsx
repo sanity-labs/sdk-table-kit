@@ -1,6 +1,6 @@
-import { AddonDatasetRuntimeProvider } from "@sanity-labs/sdk-addon-dataset-runtime";
-import { useTasksByDocumentType } from "@sanity-labs/sdk-tasks";
-import type { SanityUser } from "@sanity/sdk-react";
+import {AddonDatasetRuntimeProvider} from '@sanity-labs/sdk-addon-dataset-runtime'
+import {useTasksByDocumentType} from '@sanity-labs/sdk-tasks'
+import type {SanityUser} from '@sanity/sdk-react'
 import React, {
   createContext,
   type ReactNode,
@@ -10,43 +10,43 @@ import React, {
   useEffect,
   useMemo,
   useState,
-} from "react";
+} from 'react'
 
-import type { AddonDataContextValue, TaskDocument } from "../types/addonTypes";
+import type {AddonDataContextValue, TaskDocument} from '../types/addonTypes'
 
-const AddonDataCtx = createContext<AddonDataContextValue | null>(null);
+const AddonDataCtx = createContext<AddonDataContextValue | null>(null)
 
 interface AddonDataProviderProps {
-  addonDataset: string;
-  children: ReactNode;
-  contentDataset?: string;
-  docType: string;
-  projectId: string;
-  users?: SanityUser[];
-  workspaceId?: string;
-  workspaceTitle?: string;
+  addonDataset: string
+  children: ReactNode
+  contentDataset?: string
+  docType: string
+  projectId: string
+  users?: SanityUser[]
+  workspaceId?: string
+  workspaceTitle?: string
 }
 
 class AddonErrorBoundaryInner extends React.Component<
-  { children: ReactNode; fallback: ReactNode },
-  { error: Error | null }
+  {children: ReactNode; fallback: ReactNode},
+  {error: Error | null}
 > {
-  state = { error: null as Error | null };
+  state = {error: null as Error | null}
 
   static getDerivedStateFromError(error: Error) {
-    return { error };
+    return {error}
   }
 
   componentDidCatch(error: Error) {
-    console.error("[AddonErrorBoundary] caught error:", error.message, error);
+    console.error('[AddonErrorBoundary] caught error:', error.message, error)
   }
 
   render() {
     if (this.state.error) {
-      return this.props.fallback;
+      return this.props.fallback
     }
 
-    return this.props.children;
+    return this.props.children
   }
 }
 
@@ -60,10 +60,8 @@ export function AddonDataProvider({
   workspaceId,
   workspaceTitle,
 }: AddonDataProviderProps) {
-  const [tasksByDocId, setTasksByDocId] = useState<Map<string, TaskDocument[]>>(
-    new Map(),
-  );
-  const [isLoading, setIsLoading] = useState(true);
+  const [tasksByDocId, setTasksByDocId] = useState<Map<string, TaskDocument[]>>(new Map())
+  const [isLoading, setIsLoading] = useState(true)
 
   const handleTasks = useCallback(
     (nextTasksByDocId: Map<string, TaskDocument[]>, pending: boolean) => {
@@ -71,33 +69,33 @@ export function AddonDataProvider({
       // is empty. Keep the previous map during pending empty snapshots so chips/list do not flash.
       setTasksByDocId((prev) => {
         if (pending && nextTasksByDocId.size === 0 && prev.size > 0) {
-          return prev;
+          return prev
         }
-        return new Map(nextTasksByDocId);
-      });
-      setIsLoading(pending);
+        return new Map(nextTasksByDocId)
+      })
+      setIsLoading(pending)
     },
     [],
-  );
+  )
 
   const patchTasks = useCallback(
     (docRef: string, updater: (tasks: TaskDocument[]) => TaskDocument[]) => {
       setTasksByDocId((prev) => {
-        const next = new Map(prev);
-        const current = next.get(docRef) ?? [];
-        const updated = updater(current);
+        const next = new Map(prev)
+        const current = next.get(docRef) ?? []
+        const updated = updater(current)
 
         if (updated.length > 0) {
-          next.set(docRef, updated);
+          next.set(docRef, updated)
         } else {
-          next.delete(docRef);
+          next.delete(docRef)
         }
 
-        return next;
-      });
+        return next
+      })
     },
     [],
-  );
+  )
 
   const value = useMemo<AddonDataContextValue>(
     () => ({
@@ -122,7 +120,7 @@ export function AddonDataProvider({
       workspaceId,
       workspaceTitle,
     ],
-  );
+  )
 
   return (
     <AddonDatasetRuntimeProvider
@@ -146,34 +144,24 @@ export function AddonDataProvider({
         {children}
       </AddonDataCtx.Provider>
     </AddonDatasetRuntimeProvider>
-  );
+  )
 }
 
 export function useAddonData(): AddonDataContextValue {
-  const ctx = useContext(AddonDataCtx);
+  const ctx = useContext(AddonDataCtx)
   if (!ctx) {
-    throw new Error("useAddonData must be used inside <AddonDataProvider>");
+    throw new Error('useAddonData must be used inside <AddonDataProvider>')
   }
 
-  return ctx;
+  return ctx
 }
 
 export function useOptionalAddonData(): AddonDataContextValue | null {
-  return useContext(AddonDataCtx);
+  return useContext(AddonDataCtx)
 }
 
-function AddonErrorBoundary({
-  children,
-  fallback,
-}: {
-  children: ReactNode;
-  fallback: ReactNode;
-}) {
-  return (
-    <AddonErrorBoundaryInner fallback={fallback}>
-      {children}
-    </AddonErrorBoundaryInner>
-  );
+function AddonErrorBoundary({children, fallback}: {children: ReactNode; fallback: ReactNode}) {
+  return <AddonErrorBoundaryInner fallback={fallback}>{children}</AddonErrorBoundaryInner>
 }
 
 function TasksFetchBridge({
@@ -182,23 +170,20 @@ function TasksFetchBridge({
   onTasks,
   projectId,
 }: {
-  addonDataset: string;
-  docType: string;
-  onTasks: (
-    tasksByDocumentId: Map<string, TaskDocument[]>,
-    pending: boolean,
-  ) => void;
-  projectId: string;
+  addonDataset: string
+  docType: string
+  onTasks: (tasksByDocumentId: Map<string, TaskDocument[]>, pending: boolean) => void
+  projectId: string
 }) {
-  const { isPending, tasksByDocumentId } = useTasksByDocumentType({
+  const {isPending, tasksByDocumentId} = useTasksByDocumentType({
     addonDataset,
     documentType: docType,
     projectId,
-  });
+  })
 
   useEffect(() => {
-    onTasks(tasksByDocumentId, isPending);
-  }, [isPending, onTasks, tasksByDocumentId]);
+    onTasks(tasksByDocumentId, isPending)
+  }, [isPending, onTasks, tasksByDocumentId])
 
-  return null;
+  return null
 }

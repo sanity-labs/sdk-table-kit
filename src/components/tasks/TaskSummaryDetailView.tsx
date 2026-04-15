@@ -1,5 +1,6 @@
-import type {TaskDocument} from '../../types/addonTypes'
 import type {SanityUser} from '@sanity/sdk-react'
+
+import type {TaskDocument} from '../../types/addonTypes'
 import {TaskSummaryEditorView} from './TaskSummaryEditorView'
 
 /** @deprecated Prefer `TaskSummaryEditorView` — kept for backwards compatibility. */

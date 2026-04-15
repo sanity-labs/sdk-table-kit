@@ -1,15 +1,6 @@
 import {AddIcon} from '@sanity/icons'
 import type {SanityUser} from '@sanity/sdk-react'
-import {
-  Box,
-  Button,
-  Card,
-  Flex,
-  Popover,
-  Stack,
-  Text,
-  useClickOutsideEvent,
-} from '@sanity/ui'
+import {Box, Button, Card, Flex, Popover, Stack, Text, useClickOutsideEvent} from '@sanity/ui'
 import {CircleDashed} from 'lucide-react'
 import {useCallback, useRef, useState} from 'react'
 

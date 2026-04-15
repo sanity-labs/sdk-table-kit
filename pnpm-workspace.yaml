@@ -1,0 +1,2 @@
+overrides:
+  '@sanity-labs/react-table-kit': file:../react-table-kit
