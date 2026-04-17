@@ -14,20 +14,9 @@ pnpm add @sanity-labs/react-table-kit @sanity-labs/sdk-table-kit
 
 ## Local Development
 
-Until `@sanity-labs/react-table-kit` is published to npm, local development expects
-the sibling repo checkout at `../react-table-kit`.
-
 ```bash
-cd ../react-table-kit
-pnpm install
-pnpm build
-
-cd ../sdk-table-kit
 pnpm install
 ```
-
-If you change `react-table-kit`, rebuild it and rerun `pnpm install` here so the
-file dependency snapshot is refreshed.
 
 Peer dependencies:
 
