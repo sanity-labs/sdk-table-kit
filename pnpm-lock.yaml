@@ -4,9 +4,6 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
-overrides:
-  '@sanity-labs/react-table-kit': file:../react-table-kit
-
 importers:
 
   .:
@@ -15,8 +12,8 @@ importers:
         specifier: ^6.0.3
         version: 6.0.3(react@19.2.5)
       '@sanity-labs/react-table-kit':
-        specifier: file:../react-table-kit
-        version: file:../react-table-kit(@emotion/is-prop-valid@1.4.0)(@sanity/types@5.20.0(@types/react@19.2.14))(@sanity/ui@3.1.14(@emotion/is-prop-valid@1.4.0)(react-dom@19.2.5(react@19.2.5))(react-is@19.2.5)(react@19.2.5)(styled-components@6.4.0(react-dom@19.2.5(react@19.2.5))(react@19.2.5)))(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(styled-components@6.4.0(react-dom@19.2.5(react@19.2.5))(react@19.2.5))
+        specifier: ^1.0.0
+        version: 1.0.0(@emotion/is-prop-valid@1.4.0)(@sanity/types@5.20.0(@types/react@19.2.14))(@sanity/ui@3.1.14(@emotion/is-prop-valid@1.4.0)(react-dom@19.2.5(react@19.2.5))(react-is@19.2.5)(react@19.2.5)(styled-components@6.4.0(react-dom@19.2.5(react@19.2.5))(react@19.2.5)))(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(styled-components@6.4.0(react-dom@19.2.5(react@19.2.5))(react@19.2.5))
       '@sanity-labs/sdk-addon-dataset-runtime':
         specifier: ^1.0.0
         version: 1.0.0(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
@@ -1014,8 +1011,8 @@ packages:
   '@rolldown/pluginutils@1.0.0-rc.7':
     resolution: {integrity: sha512-qujRfC8sFVInYSPPMLQByRh7zhwkGFS4+tyMQ83srV1qrxL4g8E2tyxVVyxd0+8QeBM1mIk9KbWxkegRr76XzA==}
 
-  '@sanity-labs/react-table-kit@file:../react-table-kit':
-    resolution: {directory: ../react-table-kit, type: directory}
+  '@sanity-labs/react-table-kit@1.0.0':
+    resolution: {integrity: sha512-oxHMRKubT0Ou0/vYqod7t2foowJ+GghjOZwmQWklJLoWnhG3SanJBjKq2UHaTWHDZYteitxAHtUuUH9brWXljA==}
     peerDependencies:
       '@sanity/types': ^5.18.0
       '@sanity/ui': ^3.0.0
@@ -3360,7 +3357,7 @@ snapshots:
 
   '@rolldown/pluginutils@1.0.0-rc.7': {}
 
-  '@sanity-labs/react-table-kit@file:../react-table-kit(@emotion/is-prop-valid@1.4.0)(@sanity/types@5.20.0(@types/react@19.2.14))(@sanity/ui@3.1.14(@emotion/is-prop-valid@1.4.0)(react-dom@19.2.5(react@19.2.5))(react-is@19.2.5)(react@19.2.5)(styled-components@6.4.0(react-dom@19.2.5(react@19.2.5))(react@19.2.5)))(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(styled-components@6.4.0(react-dom@19.2.5(react@19.2.5))(react@19.2.5))':
+  '@sanity-labs/react-table-kit@1.0.0(@emotion/is-prop-valid@1.4.0)(@sanity/types@5.20.0(@types/react@19.2.14))(@sanity/ui@3.1.14(@emotion/is-prop-valid@1.4.0)(react-dom@19.2.5(react@19.2.5))(react-is@19.2.5)(react@19.2.5)(styled-components@6.4.0(react-dom@19.2.5(react@19.2.5))(react@19.2.5)))(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(styled-components@6.4.0(react-dom@19.2.5(react@19.2.5))(react@19.2.5))':
     dependencies:
       '@atlaskit/pragmatic-drag-and-drop': 1.7.10
       '@radix-ui/react-popover': 1.1.15(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
