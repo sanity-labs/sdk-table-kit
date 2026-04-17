@@ -113,6 +113,10 @@ export {useAddonTaskMutations} from './hooks/useAddonTaskMutations'
 export {useCurrentResourceUserId} from './hooks/useCurrentResourceUserId'
 export {useTaskComments} from './hooks/useTaskComments'
 export {useTaskCommentMutations} from './hooks/useTaskCommentMutations'
+export {
+  TaskSummaryEditorView,
+  type TaskSummaryEditorViewProps,
+} from './components/tasks/TaskSummaryEditorView'
 export type {
   AddonDataContextValue,
   AddonMessage,
