@@ -1,6 +1,6 @@
 {
   "name": "@sanity-labs/sdk-table-kit",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "private": false,
   "description": "Sanity SDK integration layer for @sanity-labs/react-table-kit.",
   "keywords": [
