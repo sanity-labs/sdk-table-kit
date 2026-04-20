@@ -1,4 +1,4 @@
-import {AddIcon, ChevronDownIcon} from '@sanity/icons'
+import {ChevronDownIcon} from '@sanity/icons'
 import {
   Box,
   Button,
@@ -10,7 +10,6 @@ import {
   MenuItem,
   Stack,
   Text,
-  Tooltip,
 } from '@sanity/ui'
 import {useMemo} from 'react'
 import styled from 'styled-components'
@@ -121,22 +120,6 @@ const StickyTopCard = styled(Card)<{$continueLine?: boolean}>`
     `}
 `
 
-const StickyBottomCard = styled(Card)`
-  background: var(--card-bg-color);
-  position: relative;
-
-  &::before {
-    content: '';
-    position: absolute;
-    left: calc(var(--menu-inset) * -1);
-    right: calc(var(--menu-inset) * -1);
-    top: 0;
-    height: 1px;
-    background: var(--card-border-color);
-    pointer-events: none;
-  }
-`
-
 const ReleaseGroupCard = styled(Card)<{$continueLine?: boolean; $showDivider?: boolean}>`
   position: relative;
 
@@ -171,14 +154,6 @@ const ReleaseGroupCard = styled(Card)<{$continueLine?: boolean; $showDivider?: b
     `}
 `
 
-interface GlobalPerspectivePickerProps {
-  /**
-   * Called when the user activates the disabled "New release" footer item.
-   * Wired up later — kept as an optional prop so the trigger wiring is ready.
-   */
-  onCreateRelease?: () => void
-}
-
 /**
  * Studio-style global perspective / release picker.
  *
@@ -186,13 +161,12 @@ interface GlobalPerspectivePickerProps {
  * Open state: a clamped-width menu with three bands:
  *   1. Sticky top — Published + Drafts.
  *   2. Scrollable middle — release groups (asap / scheduled / undecided).
- *   3. Sticky footer — "New release" (disabled for now).
  *
  * A 1px vertical connector runs through the currently-in-range rows
  * (Published → Drafts → selected release) via `GlobalPerspectiveMenuItemIndicator`
  * / `GlobalPerspectiveMenuLabelIndicator`.
  */
-export function GlobalPerspectivePicker({onCreateRelease: _onCreateRelease}: GlobalPerspectivePickerProps = {}) {
+export function GlobalPerspectivePicker() {
   const {
     activeReleases,
     isPublishedPerspective,
@@ -409,24 +383,6 @@ export function GlobalPerspectivePicker({onCreateRelease: _onCreateRelease}: Glo
                   </Stack>
                 </ScrollSection>
 
-                <StickyBottomCard padding={1} data-testid="release-picker-footer-band">
-                  <Tooltip
-                    content={
-                      <Box padding={2}>
-                        <Text size={1}>Coming soon</Text>
-                      </Box>
-                    }
-                    placement="top"
-                    portal
-                  >
-                    <MenuItem
-                      icon={AddIcon}
-                      text="New release"
-                      disabled
-                      data-testid="create-release-button"
-                    />
-                  </Tooltip>
-                </StickyBottomCard>
               </StyledMenu>
             }
             popover={{

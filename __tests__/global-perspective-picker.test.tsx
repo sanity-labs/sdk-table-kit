@@ -212,21 +212,6 @@ describe('GlobalPerspectivePicker', () => {
     expect(screen.getByText('Published')).toBeInTheDocument()
   })
 
-  it('New release footer item is rendered but disabled', async () => {
-    const user = userEvent.setup()
-    const onCreateRelease = vi.fn()
-    renderWithTheme(<GlobalPerspectivePicker onCreateRelease={onCreateRelease} />)
-    await user.click(screen.getByTestId('release-picker-button'))
-
-    expect(screen.getByTestId('release-picker-footer-band')).toBeInTheDocument()
-    const createBtn = screen.getByTestId('create-release-button')
-    expect(createBtn).toBeInTheDocument()
-    expect(createBtn).toHaveAttribute('data-disabled')
-
-    await user.click(createBtn)
-    expect(onCreateRelease).not.toHaveBeenCalled()
-  })
-
   it('menu closes after selecting a release', async () => {
     const user = userEvent.setup()
     renderWithTheme(<GlobalPerspectivePicker />)
