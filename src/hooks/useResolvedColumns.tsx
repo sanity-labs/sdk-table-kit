@@ -1,41 +1,10 @@
 import type {ColumnDef, DocumentBase} from '@sanity-labs/react-table-kit'
 import {ToggleSwitch} from '@sanity-labs/react-table-kit'
-import {editDocument} from '@sanity/sdk'
-import {useApplyDocumentActions} from '@sanity/sdk-react'
 import type {PreviewConfig, PreviewValue} from '@sanity/types'
-import React, {useMemo, useCallback, useEffect, useRef} from 'react'
+import React, {useMemo, useCallback} from 'react'
 
 import {ReferenceCell} from '../components/references/ReferenceCell'
-import {useOptionalReleaseContext} from '../context/ReleaseContext'
-
-/**
- * Resolve a document ID for editing based on the active release.
- * When a release is selected, edits target the version document.
- * Strips drafts./versions. prefixes to get the published base ID first.
- */
-function resolveEditDocumentId(documentId: string, selectedReleaseId: string | null): string {
-  // Strip any prefix to get the published base ID
-  let baseId = documentId
-  if (baseId.startsWith('drafts.')) {
-    baseId = baseId.slice(7)
-  } else if (baseId.startsWith('versions.')) {
-    // versions.<releaseName>.<docId> — extract docId
-    const parts = baseId.split('.')
-    baseId = parts.slice(2).join('.')
-  }
-
-  if (selectedReleaseId) {
-    return `versions.${selectedReleaseId}.${baseId}`
-  }
-  return documentId
-}
-
-function createDocumentHandle(document: DocumentBase, documentId: string) {
-  return {
-    documentId,
-    documentType: document._type,
-  }
-}
+import {useSDKEditHandler} from './useSDKEditHandler'
 
 /**
  * Extended edit config with optional reference type marker.
@@ -65,47 +34,19 @@ interface EditConfigWithRef {
 export function useResolvedColumns<T extends DocumentBase = DocumentBase>(
   columns: ColumnDef<T>[],
 ): ColumnDef<T>[] {
-  const apply = useApplyDocumentActions()
-  const applyRef = useRef(apply)
-
-  // Get release context for version-aware editing (null if no ReleaseProvider)
-  const releaseCtx = useOptionalReleaseContext()
-  const selectedReleaseId = releaseCtx?.selectedReleaseId ?? null
-
-  useEffect(() => {
-    applyRef.current = apply
-  }, [apply])
+  const {createOnSave, handleEdit} = useSDKEditHandler()
 
   const applyFieldPatch = useCallback(
-    (document: DocumentBase, field: string, value: unknown) => {
-      const targetId = resolveEditDocumentId(document._id, selectedReleaseId)
-      const action = editDocument(createDocumentHandle(document, targetId), {set: {[field]: value}})
-      return applyRef.current(action)
-    },
-    [selectedReleaseId],
-  )
-
-  const createOnSave = useCallback(
-    (field: string) => {
-      return (document: DocumentBase, newValue: string) => {
-        try {
-          void applyFieldPatch(document, field, newValue)
-        } catch (err) {
-          console.error('[useResolvedColumns] apply() threw:', err)
-        }
-      }
-    },
-    [applyFieldPatch],
+    (document: DocumentBase, field: string, value: unknown) => handleEdit(document, field, value),
+    [handleEdit],
   )
 
   const createReferenceOnSave = useCallback(
     (field: string) => {
       return (row: DocumentBase, newValue: {_type: 'reference'; _ref: string} | null) => {
-        try {
-          applyFieldPatch(row, field, newValue)
-        } catch (err) {
+        void applyFieldPatch(row, field, newValue).catch((err) => {
           console.error('[useResolvedColumns] reference apply() threw:', err)
-        }
+        })
       }
     },
     [applyFieldPatch],

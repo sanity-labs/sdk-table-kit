@@ -31,7 +31,9 @@ export function ReleasePicker({onCreateRelease}: ReleasePickerProps) {
     undecided: activeReleases.filter((r) => r.metadata.releaseType === 'undecided'),
   }
 
-  const buttonText = selectedRelease ? selectedRelease.metadata.title : 'Drafts'
+  const buttonText = selectedRelease
+    ? `Stage to ${selectedRelease.metadata.title ?? selectedRelease.name}`
+    : 'Stage to Drafts'
 
   return (
     <MenuButton
@@ -47,12 +49,7 @@ export function ReleasePicker({onCreateRelease}: ReleasePickerProps) {
       menu={
         <Menu data-testid="release-picker-menu">
           <MenuItem
-            text="Published"
-            onClick={() => setSelectedReleaseId(null)}
-            data-testid="option-published"
-          />
-          <MenuItem
-            text="Drafts"
+            text="Stage to Drafts"
             onClick={() => setSelectedReleaseId(null)}
             data-testid="option-drafts"
             selected={!selectedReleaseId}
@@ -98,7 +95,7 @@ export function ReleasePicker({onCreateRelease}: ReleasePickerProps) {
 
           <MenuDivider />
           <MenuItem
-            text="Create new release"
+            text="Create release"
             onClick={onCreateRelease}
             data-testid="create-release-button"
           />

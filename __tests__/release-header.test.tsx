@@ -107,14 +107,14 @@ describe('ReleaseHeader', () => {
   it('Behavior 5: shows release title and type badge when selected', () => {
     mockUseReleaseContext.mockReturnValue({selectedRelease: asapRelease})
     renderWithTheme(<ReleaseHeader />)
-    expect(screen.getByText('Spring Campaign')).toBeInTheDocument()
+    expect(screen.getByText('Staging to Spring Campaign')).toBeInTheDocument()
     expect(screen.getByText('ASAP')).toBeInTheDocument()
   })
 
-  it('Behavior 6: shows "Drafts" label when no release selected', () => {
+  it('Behavior 6: shows staging label for drafts when no release selected', () => {
     mockUseReleaseContext.mockReturnValue({selectedRelease: null})
     renderWithTheme(<ReleaseHeader />)
-    expect(screen.getByText('Drafts')).toBeInTheDocument()
+    expect(screen.getByText('Staging to Drafts')).toBeInTheDocument()
   })
 
   it('Behavior 7: filter bar and search are inside the table card border', () => {

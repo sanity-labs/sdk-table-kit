@@ -5,6 +5,8 @@ import {useSDKEditHandler} from '../src/hooks/useSDKEditHandler'
 
 const mockApply = vi.fn()
 const mockEditDocument = vi.fn()
+const mockPatchDocumentInRelease = vi.fn()
+let mockHasSelectedRelease = false
 
 vi.mock('@sanity/sdk-react', () => ({
   useApplyDocumentActions: () => mockApply,
@@ -16,10 +18,21 @@ vi.mock('@sanity/sdk', () => ({
   editDocument: (...args: unknown[]) => mockEditDocument(...args),
 }))
 
+vi.mock('../src/hooks/useReleaseDocumentMutations', () => ({
+  useReleaseDocumentMutations: () => ({
+    hasSelectedRelease: mockHasSelectedRelease,
+    patchDocumentInRelease: (...args: unknown[]) => mockPatchDocumentInRelease(...args),
+    resolveReleaseDocumentId: vi.fn(),
+    selectedReleaseId: mockHasSelectedRelease ? 'spring' : null,
+  }),
+}))
+
 describe('useSDKEditHandler', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockHasSelectedRelease = false
     mockApply.mockResolvedValue(undefined)
+    mockPatchDocumentInRelease.mockResolvedValue('versions.spring.doc-1')
     mockEditDocument.mockImplementation((document, patches) => ({
       document,
       patches,
@@ -111,5 +124,22 @@ describe('useSDKEditHandler', () => {
       {documentId: 'doc-1', documentType: 'article'},
       {set: {title: 'New Title'}},
     )
+  })
+
+  it('Behavior 6: routes edits through release patching when a release is selected', async () => {
+    mockHasSelectedRelease = true
+
+    const {result} = renderHook(() => useSDKEditHandler())
+    const doc = {_id: 'doc-1', _type: 'article', title: 'Old'}
+
+    await act(async () => {
+      await result.current.handleEdit(doc, 'title', 'Staged Title')
+    })
+
+    expect(mockPatchDocumentInRelease).toHaveBeenCalledWith('doc-1', {
+      set: {title: 'Staged Title'},
+    })
+    expect(mockEditDocument).not.toHaveBeenCalled()
+    expect(mockApply).not.toHaveBeenCalled()
   })
 })

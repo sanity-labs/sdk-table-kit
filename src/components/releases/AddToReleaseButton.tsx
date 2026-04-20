@@ -112,7 +112,7 @@ export function AddToReleaseButton({
             )
           })}
           <MenuDivider />
-          <MenuItem text="Create new release" onClick={onCreateRelease} />
+          <MenuItem text="Create release" onClick={onCreateRelease} />
         </Menu>
       }
     />

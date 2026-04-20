@@ -3,6 +3,8 @@ import {editDocument} from '@sanity/sdk'
 import {useApplyDocumentActions} from '@sanity/sdk-react'
 import {useCallback} from 'react'
 
+import {useReleaseDocumentMutations} from './useReleaseDocumentMutations'
+
 /**
  * Result from the SDK edit handler hook.
  */
@@ -34,9 +36,15 @@ export interface SDKEditHandlerResult {
  */
 export function useSDKEditHandler(): SDKEditHandlerResult {
   const apply = useApplyDocumentActions()
+  const {hasSelectedRelease, patchDocumentInRelease} = useReleaseDocumentMutations()
 
   const handleEdit = useCallback(
     async (document: DocumentBase, field: string, value: unknown) => {
+      if (hasSelectedRelease) {
+        await patchDocumentInRelease(document._id, {set: {[field]: value}})
+        return
+      }
+
       await apply(
         editDocument(
           {
@@ -47,13 +55,15 @@ export function useSDKEditHandler(): SDKEditHandlerResult {
         ),
       )
     },
-    [apply],
+    [apply, hasSelectedRelease, patchDocumentInRelease],
   )
 
   const createOnSave = useCallback(
     (field: string) => {
       return (document: DocumentBase, newValue: string) => {
-        void handleEdit(document, field, newValue)
+        void handleEdit(document, field, newValue).catch((error) => {
+          console.error('[useSDKEditHandler] Failed to save field:', error)
+        })
       }
     },
     [handleEdit],

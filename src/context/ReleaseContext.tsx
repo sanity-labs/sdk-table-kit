@@ -2,6 +2,8 @@ import {useActiveReleases, useClient} from '@sanity/sdk-react'
 import {useQueryState, parseAsString} from 'nuqs'
 import React, {createContext, useCallback, useContext, useEffect, useMemo} from 'react'
 
+import {buildVersionDocumentId, normalizeBaseDocumentId} from '../helpers/releases/documentIds'
+
 /**
  * ReleaseDocument shape from @sanity/sdk.
  * Re-declared here to avoid importing from @sanity/sdk directly.
@@ -27,13 +29,13 @@ export interface CreateReleaseMetadata {
 export interface ReleaseContextValue {
   /** All active releases */
   activeReleases: ReleaseDocument[]
-  /** Currently selected release (null = drafts perspective) */
+  /** Currently selected staging target (null = drafts) */
   selectedRelease: ReleaseDocument | null
   /** Currently selected release ID (the name field) */
   selectedReleaseId: string | null
   /** Set the active release (null to clear) */
   setSelectedReleaseId: (id: string | null) => void
-  /** Get the perspective for SDK queries */
+  /** Helper for consumers that want release-as-published SDK reads */
   getQueryPerspective: () => 'published' | [string, 'published']
   /** Create a new release */
   createRelease: (metadata: CreateReleaseMetadata) => Promise<void>
@@ -107,9 +109,8 @@ export function ReleaseProvider({children}: {children: React.ReactNode}) {
     async (documentIds: string[], releaseName: string) => {
       await Promise.all(
         documentIds.map((docId) => {
-          // Strip drafts. prefix to get published ID
-          const publishedId = docId.startsWith('drafts.') ? docId.slice(7) : docId
-          const versionId = `versions.${releaseName}.${publishedId}`
+          const publishedId = normalizeBaseDocumentId(docId)
+          const versionId = buildVersionDocumentId(publishedId, releaseName)
           return client.action({
             actionType: 'sanity.action.document.version.create',
             publishedId,

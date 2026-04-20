@@ -9,7 +9,7 @@ This package sits on top of `@sanity-labs/react-table-kit` and adds:
 - Sanity SDK-backed data fetching and pagination
 - automatic GROQ projection generation from your columns
 - explicit filter definitions with URL-backed state
-- inline editing, inline create, and release-aware behavior
+- inline editing, inline create, and release-aware staging
 - Sanity-specific cells for references, users, document status, tasks, comments, and Studio links
 
 Use `@sanity-labs/react-table-kit` when you only need UI primitives and already have table data.
@@ -101,7 +101,7 @@ export function ArticlesTable() {
 ## Main Features
 
 - `SanityDocumentTable` gives you an all-in-one table with data fetching, sorting, pagination,
-  filter UI, bulk actions, and optional release-aware behavior.
+  filter UI, bulk actions, and optional release-aware staging.
 - `column` merges the base `react-table-kit` column helpers with SDK-specific helpers like
   `reference()`, `user()`, `documentStatus()`, and `tasks()`.
 - `filter`, `useFilterUrlState`, and `useFilterPresets` are re-exported from
@@ -184,7 +184,7 @@ most apps reach for first:
   // `true` uses defaults, or pass `{buttonText, initialValues}` for custom behavior.
 
   releases
-  // Adds release-aware UI, release header state, and version-aware data behavior.
+  // Adds release-aware UI, release header state, and version-aware staging behavior.
 
   computedFilters={computedFilters}
   // Named filters that other UI surfaces can activate, such as stat cards.
@@ -210,6 +210,9 @@ most apps reach for first:
   those features are enabled.
 - `createDocument` supports either `true` or an object config for custom button text and initial
   values.
+- `releases` does not filter the table or change the table read perspective. It keeps the normal
+  row set visible and treats the selected release as the staging target for edits and release
+  actions.
 
 ## `column` Helper Reference
 

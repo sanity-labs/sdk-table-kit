@@ -12,7 +12,7 @@ import {column as baseColumn} from '@sanity-labs/react-table-kit'
 import {mapFilterValuesToInitialValues, useFilterUrlState} from '@sanity-labs/react-table-kit'
 import {PublishIcon} from '@sanity/icons'
 import {publishDocument} from '@sanity/sdk'
-import {useApplyDocumentActions, useQuery} from '@sanity/sdk-react'
+import {useApplyDocumentActions} from '@sanity/sdk-react'
 import {PortalProvider} from '@sanity/ui'
 import {Button} from '@sanity/ui'
 import {ToastProvider} from '@sanity/ui'
@@ -23,12 +23,14 @@ import {DocumentStatusBatchProvider} from '../../context/DocumentStatusBatchCont
 import {ReleaseProvider, useOptionalReleaseContext} from '../../context/ReleaseContext'
 import {compileFilters} from '../../helpers/filters/compileFilters'
 import {getServerSortableColumnIds} from '../../helpers/filters/getServerSortableColumnIds'
+import {normalizeBaseDocumentId} from '../../helpers/releases/documentIds'
 import {resolveColumnAliases} from '../../helpers/table/resolveColumnAliases'
 import {useCreateDocument, type CreateDocumentConfig} from '../../hooks/useCreateDocument'
 import {useDocumentStatusBatch} from '../../hooks/useDocumentStatusBatch'
 import {useResolvedColumns} from '../../hooks/useResolvedColumns'
 import {useRoleFilteredColumns} from '../../hooks/useRoleFilteredColumns'
 import {useSanityTableData} from '../../hooks/useSanityTableData'
+import {useSelectedReleaseRows} from '../../hooks/useSelectedReleaseRows'
 import {ServerFilterBar} from '../filters/ServerFilterBar'
 import {AddToReleaseButton} from '../releases/AddToReleaseButton'
 import {CreateReleaseDialog} from '../releases/CreateReleaseDialog'
@@ -121,7 +123,7 @@ export interface SanityDocumentTableProps<T extends DocumentBase = DocumentBase>
   createDocument?: boolean | CreateDocumentConfig
 
   // === Releases ===
-  /** Enable release-aware UI (header bar, perspective picker, version-aware editing). */
+  /** Enable release-aware UI (header bar, staging-target picker, version-aware editing). */
   releases?: boolean
 
   // === Computed Filters ===
@@ -152,45 +154,18 @@ export function SanityDocumentTable<T extends DocumentBase = DocumentBase>(
   if (props.releases) {
     return (
       <ReleaseProvider>
-        <ReleaseEnabledTableInner {...props} />
+        <SanityDocumentTableInner {...props} />
       </ReleaseProvider>
     )
   }
-  return <SanityDocumentTableInner {...props} releaseQueryData={null} releaseQueryPending={false} />
-}
-
-/**
- * Release-enabled wrapper — runs release-only hooks inside ReleaseProvider.
- */
-function ReleaseEnabledTableInner<T extends DocumentBase = DocumentBase>(
-  props: SanityDocumentTableProps<T>,
-) {
-  const releaseCtx = useOptionalReleaseContext()
-  const selectedReleaseId = releaseCtx?.selectedReleaseId ?? null
-  const releaseVersionQuery = useQuery({
-    query: selectedReleaseId
-      ? `*[_id in path("versions.${selectedReleaseId}.*")]._id`
-      : '*[_id == "___never___"][0..0]',
-    params: {},
-  })
-
-  return (
-    <SanityDocumentTableInner
-      {...props}
-      releaseQueryData={releaseVersionQuery.data}
-      releaseQueryPending={releaseVersionQuery.isPending}
-    />
-  )
+  return <SanityDocumentTableInner {...props} />
 }
 
 /**
  * Inner table component — all common hooks run here.
  */
 function SanityDocumentTableInner<T extends DocumentBase = DocumentBase>(
-  props: SanityDocumentTableProps<T> & {
-    releaseQueryData: unknown
-    releaseQueryPending: boolean
-  },
+  props: SanityDocumentTableProps<T>,
 ) {
   const {
     documentType,
@@ -215,25 +190,11 @@ function SanityDocumentTableInner<T extends DocumentBase = DocumentBase>(
     onColumnOrderChange,
     createDocument: createDocumentConfig,
     computedFilters,
-    releaseQueryData,
-    releaseQueryPending,
   } = props
 
   // Always call the optional hook to preserve hook ordering.
   const releaseCtx = useOptionalReleaseContext()
-  const perspective = releases ? releaseCtx?.getQueryPerspective() : undefined
   const selectedReleaseId = releases ? (releaseCtx?.selectedReleaseId ?? null) : null
-
-  // Extract base document IDs from version IDs (versions.<release>.<docId> → <docId>)
-  const releaseDocIds = useMemo(() => {
-    if (!selectedReleaseId || !Array.isArray(releaseQueryData)) return null
-    const prefix = `versions.${selectedReleaseId}.`
-    return new Set(
-      (releaseQueryData as string[])
-        .filter((id) => typeof id === 'string' && id.startsWith(prefix))
-        .map((id) => id.slice(prefix.length)),
-    )
-  }, [selectedReleaseId, releaseQueryData])
 
   const internalFilterState = useFilterUrlState(filters)
   const filterState = controlledFilterState ?? internalFilterState
@@ -289,19 +250,35 @@ function SanityDocumentTableInner<T extends DocumentBase = DocumentBase>(
     onPageSizeChange,
     defaultSort,
     projection,
-    perspective,
     params: combinedParams,
   })
 
-  // Client-side filter: when a release is selected, only show documents in that release
+  const {rowsByBaseId: selectedReleaseRowsByBaseId} = useSelectedReleaseRows<T>({
+    columns: columns as ColumnDef[],
+    projectionOverride: projection,
+    rows: rawData,
+    selectedReleaseId,
+  })
+
   const data = useMemo(() => {
-    if (!releaseDocIds || !rawData) return rawData
-    return rawData.filter((row) => {
-      const baseId = row._id.replace(/^drafts\./, '')
-      return releaseDocIds.has(baseId)
+    if (!Array.isArray(rawData) || selectedReleaseRowsByBaseId.size === 0) {
+      return rawData
+    }
+
+    return rawData.map((row) => {
+      const selectedReleaseRow = selectedReleaseRowsByBaseId.get(normalizeBaseDocumentId(row._id))
+
+      if (!selectedReleaseRow) {
+        return row
+      }
+
+      return {
+        ...row,
+        ...selectedReleaseRow,
+      }
     })
-  }, [rawData, releaseDocIds])
-  const loading = rawLoading || (selectedReleaseId !== null && releaseQueryPending)
+  }, [rawData, selectedReleaseRowsByBaseId])
+  const loading = rawLoading
 
   // Watch for new data arriving after creation — reset spinner when new row appears
   const {isCreating: isCreateInFlight, resetCreating} = createHook

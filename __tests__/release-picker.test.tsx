@@ -124,18 +124,19 @@ describe('ReleasePicker', () => {
     renderWithTheme(<ReleasePicker />)
     const button = screen.getByTestId('release-picker-button')
     expect(button).toBeInTheDocument()
+    expect(screen.getByText('Stage to Drafts')).toBeInTheDocument()
     // Button should contain an SVG icon (ChevronDownIcon)
     const svg = button.querySelector('svg')
     expect(svg).toBeInTheDocument()
   })
 
-  it('Behavior 2: menu shows "Published" and "Drafts" as top items', async () => {
+  it('Behavior 2: menu shows "Stage to Drafts" as the default top item', async () => {
     const user = userEvent.setup()
     renderWithTheme(<ReleasePicker />)
     await user.click(screen.getByTestId('release-picker-button'))
 
-    expect(screen.getByTestId('option-published')).toBeInTheDocument()
     expect(screen.getByTestId('option-drafts')).toBeInTheDocument()
+    expect(screen.getAllByText('Stage to Drafts').length).toBeGreaterThanOrEqual(1)
   })
 
   it('Behavior 3: menu shows releases grouped by type: ASAP → Scheduled → Undecided', async () => {
@@ -194,7 +195,7 @@ describe('ReleasePicker', () => {
     expect(mockSetSelectedReleaseId).toHaveBeenCalledWith('spring')
   })
 
-  it('Behavior 6: clicking "Drafts" clears the selected release', async () => {
+  it('Behavior 6: clicking "Stage to Drafts" clears the selected release', async () => {
     const user = userEvent.setup()
     mockUseReleaseContext.mockReturnValue({
       activeReleases: allReleases,
@@ -220,6 +221,7 @@ describe('ReleasePicker', () => {
       createRelease: mockCreateRelease,
     })
     renderWithTheme(<ReleasePicker />)
+    expect(screen.getByText('Stage to Spring Campaign')).toBeInTheDocument()
     await user.click(screen.getByTestId('release-picker-button'))
 
     const springItem = screen.getByTestId('release-spring')

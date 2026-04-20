@@ -88,6 +88,11 @@ export type {ActionBarProps} from './components/common/ActionBar'
 export {CommentInput} from './components/comments/CommentInput'
 export type {CommentInputHandle} from './components/comments/CommentInput'
 export {SharedCommentsPanel} from './components/comments/SharedCommentsPanel'
+export {useReleaseDocumentMutations} from './hooks/useReleaseDocumentMutations'
+export type {
+  ReleaseDocumentMutationsResult,
+  ReleasePatchOperations,
+} from './hooks/useReleaseDocumentMutations'
 export {useSDKEditHandler} from './hooks/useSDKEditHandler'
 export type {SDKEditHandlerResult} from './hooks/useSDKEditHandler'
 export {AddonDataProvider, useAddonData, useOptionalAddonData} from './context/AddonDataContext'
