@@ -26,17 +26,38 @@ export interface CreateReleaseMetadata {
   intendedPublishAt?: string
 }
 
+export type ReleasePerspective =
+  | {kind: 'drafts'}
+  | {kind: 'published'}
+  | {kind: 'release'; releaseId: string}
+
+export const PUBLISHED_PERSPECTIVE_PARAM = '__published__'
+
+export function parseReleasePerspectiveParam(value: string | null | undefined): ReleasePerspective {
+  if (!value) return {kind: 'drafts'}
+  if (value === PUBLISHED_PERSPECTIVE_PARAM) return {kind: 'published'}
+  return {kind: 'release', releaseId: value}
+}
+
 export interface ReleaseContextValue {
   /** All active releases */
   activeReleases: ReleaseDocument[]
+  /** Currently selected perspective */
+  selectedPerspective: ReleasePerspective
   /** Currently selected staging target (null = drafts) */
   selectedRelease: ReleaseDocument | null
   /** Currently selected release ID (the name field) */
   selectedReleaseId: string | null
   /** Set the active release (null to clear) */
   setSelectedReleaseId: (id: string | null) => void
-  /** Helper for consumers that want release-as-published SDK reads */
-  getQueryPerspective: () => 'published' | [string, 'published']
+  /** Set the active perspective */
+  setSelectedPerspective: (perspective: ReleasePerspective) => void
+  /** Whether the published perspective is active */
+  isPublishedPerspective: boolean
+  /** Whether the drafts perspective is active */
+  isDraftsPerspective: boolean
+  /** Helper for consumers that want release-aware SDK reads */
+  getQueryPerspective: () => 'published' | [string, 'published'] | undefined
   /** Create a new release */
   createRelease: (metadata: CreateReleaseMetadata) => Promise<void>
   /** Batch-add documents to a release */
@@ -58,7 +79,13 @@ export function ReleaseProvider({children}: {children: React.ReactNode}) {
   const client = useClient({apiVersion: '2025-05-06'})
   const [releaseParam, setReleaseParam] = useQueryState('release', parseAsString.withDefault(''))
 
-  const selectedReleaseId = releaseParam || null
+  const selectedPerspective = useMemo(
+    () => parseReleasePerspectiveParam(releaseParam),
+    [releaseParam],
+  )
+  const selectedReleaseId = selectedPerspective.kind === 'release' ? selectedPerspective.releaseId : null
+  const isPublishedPerspective = selectedPerspective.kind === 'published'
+  const isDraftsPerspective = selectedPerspective.kind === 'drafts'
 
   // Validate selected release still exists
   useEffect(() => {
@@ -77,15 +104,33 @@ export function ReleaseProvider({children}: {children: React.ReactNode}) {
 
   const setSelectedReleaseId = useCallback(
     (id: string | null) => {
-      setReleaseParam(id)
+      setReleaseParam(id ?? null)
     },
     [setReleaseParam],
   )
 
-  const getQueryPerspective = useCallback((): 'published' | [string, 'published'] => {
-    if (!selectedReleaseId) return 'published'
-    return [selectedReleaseId, 'published']
-  }, [selectedReleaseId])
+  const setSelectedPerspective = useCallback(
+    (perspective: ReleasePerspective) => {
+      switch (perspective.kind) {
+        case 'published':
+          setReleaseParam(PUBLISHED_PERSPECTIVE_PARAM)
+          return
+        case 'release':
+          setReleaseParam(perspective.releaseId)
+          return
+        case 'drafts':
+        default:
+          setReleaseParam(null)
+      }
+    },
+    [setReleaseParam],
+  )
+
+  const getQueryPerspective = useCallback((): 'published' | [string, 'published'] | undefined => {
+    if (selectedPerspective.kind === 'published') return 'published'
+    if (selectedPerspective.kind === 'release') return [selectedPerspective.releaseId, 'published']
+    return undefined
+  }, [selectedPerspective])
 
   const createRelease = useCallback(
     async (metadata: CreateReleaseMetadata) => {
@@ -126,18 +171,26 @@ export function ReleaseProvider({children}: {children: React.ReactNode}) {
   const value = useMemo<ReleaseContextValue>(
     () => ({
       activeReleases,
+      selectedPerspective,
       selectedRelease,
       selectedReleaseId,
       setSelectedReleaseId,
+      setSelectedPerspective,
+      isPublishedPerspective,
+      isDraftsPerspective,
       getQueryPerspective,
       createRelease,
       addToRelease,
     }),
     [
       activeReleases,
+      selectedPerspective,
       selectedRelease,
       selectedReleaseId,
       setSelectedReleaseId,
+      setSelectedPerspective,
+      isPublishedPerspective,
+      isDraftsPerspective,
       getQueryPerspective,
       createRelease,
       addToRelease,

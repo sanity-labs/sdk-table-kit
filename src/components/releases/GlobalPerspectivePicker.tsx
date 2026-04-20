@@ -184,7 +184,7 @@ interface GlobalPerspectivePickerProps {
  *
  * Closed state: a pill-shaped Card with [avatar] [label] [chevron trigger].
  * Open state: a clamped-width menu with three bands:
- *   1. Sticky top — Published (disabled for now) + Drafts.
+ *   1. Sticky top — Published + Drafts.
  *   2. Scrollable middle — release groups (asap / scheduled / undecided).
  *   3. Sticky footer — "New release" (disabled for now).
  *
@@ -193,7 +193,15 @@ interface GlobalPerspectivePickerProps {
  * / `GlobalPerspectiveMenuLabelIndicator`.
  */
 export function GlobalPerspectivePicker({onCreateRelease: _onCreateRelease}: GlobalPerspectivePickerProps = {}) {
-  const {activeReleases, selectedRelease, selectedReleaseId, setSelectedReleaseId} =
+  const {
+    activeReleases,
+    isPublishedPerspective,
+    selectedPerspective,
+    selectedRelease,
+    selectedReleaseId,
+    setSelectedPerspective,
+    setSelectedReleaseId,
+  } =
     useReleaseContext()
 
   const grouped = useMemo<Record<ReleaseType, ReleaseDocument[]>>(
@@ -205,7 +213,9 @@ export function GlobalPerspectivePicker({onCreateRelease: _onCreateRelease}: Glo
     [activeReleases],
   )
 
-  const activeLayer: PerspectiveLayer = selectedRelease?.metadata.releaseType ?? 'drafts'
+  const activeLayer: PerspectiveLayer = isPublishedPerspective
+    ? 'published'
+    : selectedRelease?.metadata.releaseType ?? 'drafts'
   const visibleGroups = useMemo(
     () =>
       ORDERED_RELEASE_TYPES.map((type) => ({type, releases: grouped[type]})).filter(
@@ -214,9 +224,11 @@ export function GlobalPerspectivePicker({onCreateRelease: _onCreateRelease}: Glo
     [grouped],
   )
 
-  const pillLabel = selectedRelease
-    ? selectedRelease.metadata.title ?? selectedRelease.name
-    : 'Drafts'
+  const pillLabel = isPublishedPerspective
+    ? 'Published'
+    : selectedRelease
+      ? selectedRelease.metadata.title ?? selectedRelease.name
+      : 'Drafts'
   const selectedTypeIndex =
     selectedRelease?.metadata.releaseType != null
       ? ORDERED_RELEASE_TYPES.indexOf(selectedRelease.metadata.releaseType)
@@ -252,7 +264,7 @@ export function GlobalPerspectivePicker({onCreateRelease: _onCreateRelease}: Glo
                 style={{borderRadius: '0.375rem'}}
               >
                 <StickyTopCard
-                  $continueLine={Boolean(selectedReleaseId)}
+                  $continueLine={selectedPerspective.kind === 'release'}
                   paddingTop={1}
                   paddingBottom={1}
                   data-testid="release-picker-top-band"
@@ -260,38 +272,35 @@ export function GlobalPerspectivePicker({onCreateRelease: _onCreateRelease}: Glo
                   <MenuRows direction="column">
                     <GlobalPerspectiveMenuItemIndicator
                       data-first="true"
+                      data-last={isPublishedPerspective ? 'true' : undefined}
                       data-release-row
                       data-testid="indicator-published"
                     >
-                      <Tooltip
-                        content={
-                          <Box padding={2}>
-                            <Text size={1}>Read-only — wiring up soon</Text>
-                          </Box>
-                        }
-                        placement="top"
-                        portal
+                      <MenuItem
+                        padding={1}
+                        pressed={isPublishedPerspective}
+                        selected={isPublishedPerspective}
+                        onClick={() => setSelectedPerspective({kind: 'published'})}
+                        data-testid="option-published"
                       >
-                        <MenuItem
-                          padding={1}
-                          disabled
-                          data-testid="option-published"
-                          aria-label="Published (disabled)"
-                        >
-                          <PerspectiveRow layer="published" title="Published" />
-                        </MenuItem>
-                      </Tooltip>
+                        <PerspectiveRow layer="published" title="Published" />
+                      </MenuItem>
                     </GlobalPerspectiveMenuItemIndicator>
 
                     <GlobalPerspectiveMenuItemIndicator
-                      data-last={!selectedReleaseId ? 'true' : undefined}
+                      data-first={isPublishedPerspective ? 'true' : undefined}
+                      data-last={
+                        selectedPerspective.kind === 'drafts' || isPublishedPerspective
+                          ? 'true'
+                          : undefined
+                      }
                       data-release-row
                       data-testid="indicator-drafts"
                     >
                       <MenuItem
                         padding={1}
-                        pressed={!selectedReleaseId}
-                        selected={!selectedReleaseId}
+                        pressed={selectedPerspective.kind === 'drafts'}
+                        selected={selectedPerspective.kind === 'drafts'}
                         onClick={() => setSelectedReleaseId(null)}
                         data-testid="option-drafts"
                       >

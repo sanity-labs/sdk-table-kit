@@ -2,7 +2,11 @@ import {renderHook, act} from '@testing-library/react'
 import React from 'react'
 import {describe, it, expect, vi, beforeEach} from 'vitest'
 
-import {ReleaseProvider, useReleaseContext} from '../src/context/ReleaseContext'
+import {
+  PUBLISHED_PERSPECTIVE_PARAM,
+  ReleaseProvider,
+  useReleaseContext,
+} from '../src/context/ReleaseContext'
 
 // Mock @sanity/sdk-react
 const mockActiveReleases = vi.fn()
@@ -100,16 +104,27 @@ describe('useReleaseContext', () => {
     expect(result.current.selectedReleaseId).toBe('spring-campaign')
   })
 
-  it('Behavior 3: getQueryPerspective returns published when no release selected', () => {
+  it('Behavior 3: drafts is the default perspective when no release is selected', () => {
     mockReleaseParam = null
     const {result} = renderHook(() => useReleaseContext(), {wrapper})
-    expect(result.current.getQueryPerspective()).toBe('published')
+    expect(result.current.selectedPerspective).toEqual({kind: 'drafts'})
+    expect(result.current.isDraftsPerspective).toBe(true)
+    expect(result.current.isPublishedPerspective).toBe(false)
+    expect(result.current.getQueryPerspective()).toBeUndefined()
   })
 
   it('Behavior 4: getQueryPerspective returns [releaseName, published] when release selected', () => {
     mockReleaseParam = 'spring-campaign'
     const {result} = renderHook(() => useReleaseContext(), {wrapper})
     expect(result.current.getQueryPerspective()).toEqual(['spring-campaign', 'published'])
+  })
+
+  it('Behavior 4b: published perspective is addressable separately from drafts', () => {
+    mockReleaseParam = PUBLISHED_PERSPECTIVE_PARAM
+    const {result} = renderHook(() => useReleaseContext(), {wrapper})
+    expect(result.current.selectedPerspective).toEqual({kind: 'published'})
+    expect(result.current.isPublishedPerspective).toBe(true)
+    expect(result.current.getQueryPerspective()).toBe('published')
   })
 
   it('Behavior 5: selectedReleaseId clears if release no longer exists', () => {
@@ -165,5 +180,13 @@ describe('useReleaseContext', () => {
   it('Behavior 8: release client uses the pinned apiVersion', () => {
     renderHook(() => useReleaseContext(), {wrapper})
     expect(mockUseClient).toHaveBeenCalledWith({apiVersion: '2025-05-06'})
+  })
+
+  it('Behavior 9: setSelectedPerspective stores the published sentinel in URL state', () => {
+    const {result} = renderHook(() => useReleaseContext(), {wrapper})
+    act(() => {
+      result.current.setSelectedPerspective({kind: 'published'})
+    })
+    expect(mockSetRelease).toHaveBeenCalledWith(PUBLISHED_PERSPECTIVE_PARAM)
   })
 })

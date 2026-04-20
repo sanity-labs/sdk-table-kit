@@ -1,12 +1,13 @@
 import {filter, type ColumnDef, type FilterDef} from '@sanity-labs/react-table-kit'
 import {ThemeProvider} from '@sanity/ui'
 import {buildTheme} from '@sanity/ui/theme'
-import {render, screen} from '@testing-library/react'
+import {render, screen, within} from '@testing-library/react'
 import {NuqsTestingAdapter} from 'nuqs/adapters/testing'
 import React from 'react'
 import {describe, it, expect, vi, beforeEach, beforeAll} from 'vitest'
 
 let mockReleaseParam: string | null = null
+const publishedPerspectiveParam = '__published__'
 
 vi.mock(import('nuqs'), async (importOriginal) => {
   const actual = await importOriginal()
@@ -243,6 +244,14 @@ describe('R-T9: Integration — SanityDocumentTable releases prop', () => {
     expect(screen.getByTestId('filter-surface')).toHaveAttribute('data-surface-tone', 'transparent')
   })
 
+  it('Behavior 6g: published perspective applies positive tone to the full filter surface', () => {
+    mockReleaseParam = publishedPerspectiveParam
+
+    renderTable(true, undefined, [filter.search({fields: ['title'], label: 'Search'})])
+
+    expect(screen.getByTestId('filter-surface')).toHaveAttribute('data-surface-tone', 'positive')
+  })
+
   it('Behavior 7: perspective is passed to data hook when releases enabled', () => {
     renderTable(true)
     // useQuery should have been called (query mode for array documentType)
@@ -250,7 +259,7 @@ describe('R-T9: Integration — SanityDocumentTable releases prop', () => {
     expect(mockUseQuery).toHaveBeenCalled()
   })
 
-  it('Behavior 8 [TRACER]: selected release does not change the table read perspective', () => {
+  it('Behavior 8: selected release uses release-as-published table perspective', () => {
     mockReleaseParam = 'spring'
 
     renderTable(true)
@@ -265,7 +274,7 @@ describe('R-T9: Integration — SanityDocumentTable releases prop', () => {
       )
 
     expect(tableQueryCall).toBeDefined()
-    expect(tableQueryCall?.perspective).toBeUndefined()
+    expect(tableQueryCall?.perspective).toEqual(['spring', 'published'])
   })
 
   it('Behavior 9 [TRACER]: selected release does not narrow the visible row set', () => {
@@ -341,5 +350,83 @@ describe('R-T9: Integration — SanityDocumentTable releases prop', () => {
 
     expect(screen.getByText('Article 1')).toBeInTheDocument()
     expect(screen.getByText('draft')).toBeInTheDocument()
+  })
+
+  it('Behavior 12: published perspective uses published table query perspective', () => {
+    mockReleaseParam = publishedPerspectiveParam
+
+    renderTable(true)
+
+    const tableQueryCall = mockUseQuery.mock.calls
+      .map(([args]) => args)
+      .find(
+        (args) =>
+          typeof args?.query === 'string' &&
+          args.query.includes('_type in $docTypes') &&
+          !args.query.includes('path("versions.'),
+      )
+
+    expect(tableQueryCall).toBeDefined()
+    expect(tableQueryCall?.perspective).toBe('published')
+  })
+
+  it('Behavior 13: published perspective does not overlay release version rows', () => {
+    mockReleaseParam = publishedPerspectiveParam
+    mockUseQuery.mockImplementation((args?: {params?: {documentIds?: string[]}}) => {
+      if (args?.params?.documentIds?.includes('versions.spring.doc-1')) {
+        return {
+          data: [
+            {
+              _id: 'versions.spring.doc-1',
+              _type: 'article',
+              status: 'approved',
+              title: 'Article 1 (Version)',
+            },
+          ],
+          isPending: false,
+        }
+      }
+
+      return {data: mockData, isPending: false}
+    })
+
+    renderTable(true, [
+      column.title(),
+      {
+        cell: renderStatus,
+        field: 'status',
+        header: 'Status',
+        projection: 'coalesce(status, "draft")',
+      },
+    ])
+
+    expect(screen.getByText('Article 1')).toBeInTheDocument()
+    expect(screen.queryByText('Article 1 (Version)')).toBeNull()
+  })
+
+  it('Behavior 14: published perspective strips inline cell edit affordances', () => {
+    mockReleaseParam = publishedPerspectiveParam
+
+    renderTable(true, [
+      column.title(),
+      {
+        field: 'status',
+        header: 'Status',
+        id: 'status',
+        edit: {
+          mode: 'select',
+          onSave: vi.fn(),
+          options: [
+            {label: 'Draft', value: 'draft'},
+            {label: 'Review', value: 'review'},
+          ],
+        },
+      },
+    ])
+
+    const table = screen.getByRole('table')
+    const statusCellValue = within(table).getByText('draft')
+
+    expect(statusCellValue.closest('button')).toBeNull()
   })
 })

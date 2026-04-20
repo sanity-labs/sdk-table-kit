@@ -79,6 +79,7 @@ function TaskSummaryCellFilterBadgeButton({
 export interface TaskSummaryCellProps {
   documentId: string
   documentType: string
+  readOnly?: boolean
 }
 
 interface TaskPopoverState {
@@ -90,7 +91,11 @@ interface TaskPopoverState {
 
 const taskPopoverStateStore = new Map<string, TaskPopoverState>()
 
-export function TaskSummaryCellInner({documentId, documentType}: TaskSummaryCellProps) {
+export function TaskSummaryCellInner({
+  documentId,
+  documentType,
+  readOnly = false,
+}: TaskSummaryCellProps) {
   const stateKey = documentId.replace(/^drafts\./, '')
   const persistedState = taskPopoverStateStore.get(stateKey)
   const [activeFilter, setActiveFilter] = useState<TaskListFilter>(
@@ -489,6 +494,26 @@ export function TaskSummaryCellInner({documentId, documentType}: TaskSummaryCell
       unassignedTasks.length,
     ],
   )
+
+  const readOnlyContent = showEmptyState ? (
+    <span style={{color: 'var(--card-muted-fg-color)'}}>—</span>
+  ) : (
+    <Box data-testid="task-summary-state" style={{width: '100%'}}>
+      <Flex align="center" gap={2} style={{flexWrap: 'wrap'}}>
+        {taskSummaryFilterBadges
+          .filter((row) => row.count > 0)
+          .map((row) => (
+            <Badge key={row.key} padding={2} tone={row.tone}>
+              {row.count} {row.label}
+            </Badge>
+          ))}
+      </Flex>
+    </Box>
+  )
+
+  if (readOnly) {
+    return readOnlyContent
+  }
 
   return (
     <Popover

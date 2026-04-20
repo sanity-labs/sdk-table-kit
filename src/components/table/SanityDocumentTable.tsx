@@ -34,6 +34,7 @@ import {ServerFilterBar} from '../filters/ServerFilterBar'
 import {AddToReleaseButton} from '../releases/AddToReleaseButton'
 import {GlobalPerspectivePicker} from '../releases/GlobalPerspectivePicker'
 import {PublishConfirmDialog} from '../releases/PublishConfirmDialog'
+import {TaskSummaryCellView} from '../tasks/TaskSummaryCellView'
 import {PaginationControls} from './PaginationControls'
 
 /**
@@ -191,11 +192,20 @@ function SanityDocumentTableInner<T extends DocumentBase = DocumentBase>(
 
   // Always call the optional hook to preserve hook ordering.
   const releaseCtx = useOptionalReleaseContext()
+  const selectedPerspective = releases
+    ? (releaseCtx?.selectedPerspective ?? {kind: 'drafts' as const})
+    : null
+  const isPublishedPerspective = releases ? (releaseCtx?.isPublishedPerspective ?? false) : false
   const selectedRelease = releases ? (releaseCtx?.selectedRelease ?? null) : null
   const selectedReleaseId = releases ? (releaseCtx?.selectedReleaseId ?? null) : null
+  const queryPerspective = releases ? releaseCtx?.getQueryPerspective() : undefined
   const filterSurfaceTone = useMemo<FilterSurfaceTone>(
-    () => getPerspectiveSurfaceTone(selectedRelease?.metadata.releaseType),
-    [selectedRelease?.metadata.releaseType],
+    () =>
+      getPerspectiveSurfaceTone(
+        selectedPerspective?.kind ?? 'drafts',
+        selectedRelease?.metadata.releaseType,
+      ),
+    [selectedPerspective?.kind, selectedRelease?.metadata.releaseType],
   )
 
   const internalFilterState = useFilterUrlState(filters)
@@ -253,13 +263,14 @@ function SanityDocumentTableInner<T extends DocumentBase = DocumentBase>(
     defaultSort,
     projection,
     params: combinedParams,
+    perspective: queryPerspective,
   })
 
   const {rowsByBaseId: selectedReleaseRowsByBaseId} = useSelectedReleaseRows<T>({
     columns: columns as ColumnDef[],
     projectionOverride: projection,
     rows: rawData,
-    selectedReleaseId,
+    selectedReleaseId: selectedPerspective?.kind === 'release' ? selectedReleaseId : null,
   })
 
   const data = useMemo(() => {
@@ -346,6 +357,11 @@ function SanityDocumentTableInner<T extends DocumentBase = DocumentBase>(
   // Wrap consumer bulkActions to prepend default Publish button + Add to Release
   const wrappedBulkActions = useCallback(
     (selection: SelectionConfig<T>) => {
+      if (isPublishedPerspective) {
+        selectionClearRef.current = selection.clearSelection ?? null
+        return null
+      }
+
       const selectedRows = selection.selectedRows ?? []
       const count = selectedRows.length
       selectionClearRef.current = selection.clearSelection ?? null
@@ -372,18 +388,27 @@ function SanityDocumentTableInner<T extends DocumentBase = DocumentBase>(
         </>
       )
     },
-    [bulkActions, handlePublishClick, releases, selectedReleaseId],
+    [bulkActions, handlePublishClick, isPublishedPerspective, releases, selectedReleaseId],
   )
 
   // Resolve edit: true markers into actual onSave callbacks via SDK
-  const resolvedColumns = useResolvedColumns(roleFilteredColumns as ColumnDef<T>[])
+  const resolvedColumns = useResolvedColumns(roleFilteredColumns as ColumnDef<T>[], {
+    readOnly: isPublishedPerspective,
+  })
+  const publishedReadOnlyColumns = useMemo(
+    () =>
+      isPublishedPerspective
+        ? makePublishedReadOnlyColumns(resolvedColumns as ColumnDef<T>[])
+        : resolvedColumns,
+    [isPublishedPerspective, resolvedColumns],
+  )
 
   // Auto-insert select checkbox column for bulk actions
   const finalColumns = useMemo(() => {
-    const hasSelect = resolvedColumns.some((c: ColumnDef<T>) => c._isSelectColumn)
-    if (hasSelect) return resolvedColumns
-    return [baseColumn.select(), ...resolvedColumns]
-  }, [resolvedColumns])
+    const hasSelect = publishedReadOnlyColumns.some((c: ColumnDef<T>) => c._isSelectColumn)
+    if (hasSelect) return publishedReadOnlyColumns
+    return [baseColumn.select(), ...publishedReadOnlyColumns]
+  }, [publishedReadOnlyColumns])
   const serverSortableColumnIds = useMemo(
     () => (sorting ? getServerSortableColumnIds(finalColumns as ColumnDef[]) : undefined),
     [finalColumns, sorting],
@@ -413,9 +438,9 @@ function SanityDocumentTableInner<T extends DocumentBase = DocumentBase>(
       reorderable={reorderable}
       columnOrder={columnOrder}
       onColumnOrderChange={onColumnOrderChange}
-      onCreateDocument={isCreateEnabled ? createHook.create : undefined}
-      createButtonText={isCreateEnabled ? createButtonText : undefined}
-      isCreating={createHook.isCreating}
+      onCreateDocument={isCreateEnabled && !isPublishedPerspective ? createHook.create : undefined}
+      createButtonText={isCreateEnabled && !isPublishedPerspective ? createButtonText : undefined}
+      isCreating={isPublishedPerspective ? false : createHook.isCreating}
       computedFilters={computedFilters}
       hideFilterBar={!!filters?.length}
       filterBarSearchLeading={releases ? <GlobalPerspectivePicker /> : undefined}
@@ -466,9 +491,43 @@ function SanityDocumentTableInner<T extends DocumentBase = DocumentBase>(
   )
 }
 
+interface ReadOnlyAwareColumn<T extends DocumentBase = DocumentBase> extends ColumnDef<T> {
+  comments?: unknown
+}
+
+function makePublishedReadOnlyColumns<T extends DocumentBase = DocumentBase>(
+  columns: ColumnDef<T>[],
+): ColumnDef<T>[] {
+  return columns.map((column) => {
+    const roleAwareColumn = column as ReadOnlyAwareColumn<T>
+    const baseColumnWithoutComments = roleAwareColumn.comments
+      ? (() => {
+          const {comments: _comments, cellDecorator: _cellDecorator, ...rest} = roleAwareColumn
+          return rest as ColumnDef<T>
+        })()
+      : column
+
+    if (baseColumnWithoutComments.id === '_tasks') {
+      return {
+        ...baseColumnWithoutComments,
+        cell: (_value: unknown, row: T) => (
+          <TaskSummaryCellView documentId={row._id} documentType={row._type} readOnly />
+        ),
+      }
+    }
+
+    return baseColumnWithoutComments
+  })
+}
+
 function getPerspectiveSurfaceTone(
+  perspectiveKind: 'drafts' | 'published' | 'release',
   releaseType: 'asap' | 'scheduled' | 'undecided' | undefined,
 ): FilterSurfaceTone {
+  if (perspectiveKind === 'published') {
+    return 'positive'
+  }
+
   switch (releaseType) {
     case 'asap':
       return 'caution'

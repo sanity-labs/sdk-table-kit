@@ -2,7 +2,7 @@ import {useClient} from '@sanity/sdk-react'
 import {parseAsString, useQueryState} from 'nuqs'
 import {useCallback} from 'react'
 
-import {useOptionalReleaseContext} from '../context/ReleaseContext'
+import {parseReleasePerspectiveParam, useOptionalReleaseContext} from '../context/ReleaseContext'
 import {buildVersionDocumentId, normalizeBaseDocumentId} from '../helpers/releases/documentIds'
 
 const RELEASE_DOCUMENT_QUERY = '*[_id == $documentId][0]'
@@ -298,8 +298,10 @@ export function useReleaseDocumentMutations(): ReleaseDocumentMutationsResult {
   const client = useClient({apiVersion: '2025-05-06'})
   const releaseContext = useOptionalReleaseContext()
   const [releaseParam] = useQueryState('release', parseAsString.withDefault(''))
-
-  const selectedReleaseId = (releaseContext?.selectedReleaseId ?? releaseParam) || null
+  const fallbackPerspective = parseReleasePerspectiveParam(releaseParam)
+  const selectedReleaseId =
+    releaseContext?.selectedReleaseId ??
+    (fallbackPerspective.kind === 'release' ? fallbackPerspective.releaseId : null)
 
   const resolveReleaseDocumentId = useCallback(
     (documentId: string) => {

@@ -7,6 +7,7 @@ import {GlobalPerspectivePicker} from '../src/components/releases/GlobalPerspect
 import {renderWithTheme} from './helpers'
 
 const mockSetSelectedReleaseId = vi.fn()
+const mockSetSelectedPerspective = vi.fn()
 const mockCreateRelease = vi.fn()
 const mockUseReleaseContext = vi.fn()
 
@@ -72,9 +73,13 @@ describe('GlobalPerspectivePicker', () => {
     vi.clearAllMocks()
     mockUseReleaseContext.mockReturnValue({
       activeReleases: allReleases,
+      isDraftsPerspective: true,
+      isPublishedPerspective: false,
+      selectedPerspective: {kind: 'drafts'},
       selectedRelease: null,
       selectedReleaseId: null,
       setSelectedReleaseId: mockSetSelectedReleaseId,
+      setSelectedPerspective: mockSetSelectedPerspective,
       createRelease: mockCreateRelease,
     })
   })
@@ -88,16 +93,20 @@ describe('GlobalPerspectivePicker', () => {
   it('renders the pill with the selected release title', () => {
     mockUseReleaseContext.mockReturnValue({
       activeReleases: allReleases,
+      isDraftsPerspective: false,
+      isPublishedPerspective: false,
+      selectedPerspective: {kind: 'release', releaseId: 'spring'},
       selectedRelease: asapRelease,
       selectedReleaseId: 'spring',
       setSelectedReleaseId: mockSetSelectedReleaseId,
+      setSelectedPerspective: mockSetSelectedPerspective,
       createRelease: mockCreateRelease,
     })
     renderWithTheme(<GlobalPerspectivePicker />)
     expect(screen.getByText('Spring Campaign')).toBeInTheDocument()
   })
 
-  it('shows Published (disabled) and Drafts in the sticky top band', async () => {
+  it('shows Published and Drafts in the sticky top band', async () => {
     const user = userEvent.setup()
     renderWithTheme(<GlobalPerspectivePicker />)
     await user.click(screen.getByTestId('release-picker-button'))
@@ -106,7 +115,6 @@ describe('GlobalPerspectivePicker', () => {
     const published = screen.getByTestId('option-published')
     const drafts = screen.getByTestId('option-drafts')
     expect(published).toBeInTheDocument()
-    expect(published).toHaveAttribute('data-disabled')
     expect(drafts).toBeInTheDocument()
   })
 
@@ -143,9 +151,13 @@ describe('GlobalPerspectivePicker', () => {
     const user = userEvent.setup()
     mockUseReleaseContext.mockReturnValue({
       activeReleases: allReleases,
+      isDraftsPerspective: false,
+      isPublishedPerspective: false,
+      selectedPerspective: {kind: 'release', releaseId: 'spring'},
       selectedRelease: asapRelease,
       selectedReleaseId: 'spring',
       setSelectedReleaseId: mockSetSelectedReleaseId,
+      setSelectedPerspective: mockSetSelectedPerspective,
       createRelease: mockCreateRelease,
     })
     renderWithTheme(<GlobalPerspectivePicker />)
@@ -159,9 +171,13 @@ describe('GlobalPerspectivePicker', () => {
     const user = userEvent.setup()
     mockUseReleaseContext.mockReturnValue({
       activeReleases: allReleases,
+      isDraftsPerspective: false,
+      isPublishedPerspective: false,
+      selectedPerspective: {kind: 'release', releaseId: 'spring'},
       selectedRelease: asapRelease,
       selectedReleaseId: 'spring',
       setSelectedReleaseId: mockSetSelectedReleaseId,
+      setSelectedPerspective: mockSetSelectedPerspective,
       createRelease: mockCreateRelease,
     })
     renderWithTheme(<GlobalPerspectivePicker />)
@@ -171,13 +187,29 @@ describe('GlobalPerspectivePicker', () => {
     expect(springItem).toHaveAttribute('data-selected')
   })
 
-  it('published menu item is disabled and does not fire onClick', async () => {
+  it('clicking Published selects the published perspective', async () => {
     const user = userEvent.setup()
     renderWithTheme(<GlobalPerspectivePicker />)
     await user.click(screen.getByTestId('release-picker-button'))
     await user.click(screen.getByTestId('option-published'))
 
-    expect(mockSetSelectedReleaseId).not.toHaveBeenCalled()
+    expect(mockSetSelectedPerspective).toHaveBeenCalledWith({kind: 'published'})
+  })
+
+  it('renders the pill with the Published label when published is selected', () => {
+    mockUseReleaseContext.mockReturnValue({
+      activeReleases: allReleases,
+      isDraftsPerspective: false,
+      isPublishedPerspective: true,
+      selectedPerspective: {kind: 'published'},
+      selectedRelease: null,
+      selectedReleaseId: null,
+      setSelectedReleaseId: mockSetSelectedReleaseId,
+      setSelectedPerspective: mockSetSelectedPerspective,
+      createRelease: mockCreateRelease,
+    })
+    renderWithTheme(<GlobalPerspectivePicker />)
+    expect(screen.getByText('Published')).toBeInTheDocument()
   })
 
   it('New release footer item is rendered but disabled', async () => {
@@ -218,13 +250,38 @@ describe('GlobalPerspectivePicker', () => {
     expect(screen.getByTestId('indicator-drafts')).toHaveAttribute('data-last', 'true')
   })
 
+  it('keeps the connector ending on Published when published is selected', async () => {
+    const user = userEvent.setup()
+    mockUseReleaseContext.mockReturnValue({
+      activeReleases: allReleases,
+      isDraftsPerspective: false,
+      isPublishedPerspective: true,
+      selectedPerspective: {kind: 'published'},
+      selectedRelease: null,
+      selectedReleaseId: null,
+      setSelectedReleaseId: mockSetSelectedReleaseId,
+      setSelectedPerspective: mockSetSelectedPerspective,
+      createRelease: mockCreateRelease,
+    })
+    renderWithTheme(<GlobalPerspectivePicker />)
+    await user.click(screen.getByTestId('release-picker-button'))
+
+    expect(screen.getByTestId('indicator-published')).toHaveAttribute('data-last', 'true')
+    expect(screen.getByTestId('indicator-drafts')).toHaveAttribute('data-first', 'true')
+    expect(screen.getByTestId('indicator-drafts')).toHaveAttribute('data-last', 'true')
+  })
+
   it('extends the connector through grouped releases down to the selected perspective', async () => {
     const user = userEvent.setup()
     mockUseReleaseContext.mockReturnValue({
       activeReleases: allReleases,
+      isDraftsPerspective: false,
+      isPublishedPerspective: false,
+      selectedPerspective: {kind: 'release', releaseId: 'cyber'},
       selectedRelease: scheduledRelease,
       selectedReleaseId: 'cyber',
       setSelectedReleaseId: mockSetSelectedReleaseId,
+      setSelectedPerspective: mockSetSelectedPerspective,
       createRelease: mockCreateRelease,
     })
     renderWithTheme(<GlobalPerspectivePicker />)

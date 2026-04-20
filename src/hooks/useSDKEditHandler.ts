@@ -3,6 +3,7 @@ import {editDocument} from '@sanity/sdk'
 import {useApplyDocumentActions} from '@sanity/sdk-react'
 import {useCallback} from 'react'
 
+import {useOptionalReleaseContext} from '../context/ReleaseContext'
 import {useReleaseDocumentMutations} from './useReleaseDocumentMutations'
 
 /**
@@ -36,10 +37,16 @@ export interface SDKEditHandlerResult {
  */
 export function useSDKEditHandler(): SDKEditHandlerResult {
   const apply = useApplyDocumentActions()
+  const releaseContext = useOptionalReleaseContext()
   const {hasSelectedRelease, patchDocumentInRelease} = useReleaseDocumentMutations()
+  const isPublishedPerspective = releaseContext?.isPublishedPerspective ?? false
 
   const handleEdit = useCallback(
     async (document: DocumentBase, field: string, value: unknown) => {
+      if (isPublishedPerspective) {
+        throw new Error('Cannot edit while the published perspective is selected')
+      }
+
       if (hasSelectedRelease) {
         await patchDocumentInRelease(document._id, {set: {[field]: value}})
         return
@@ -55,7 +62,7 @@ export function useSDKEditHandler(): SDKEditHandlerResult {
         ),
       )
     },
-    [apply, hasSelectedRelease, patchDocumentInRelease],
+    [apply, hasSelectedRelease, isPublishedPerspective, patchDocumentInRelease],
   )
 
   const createOnSave = useCallback(

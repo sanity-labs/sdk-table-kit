@@ -45,23 +45,37 @@ vi.mock('@sanity/sdk', () => ({
 let mockSelectedReleaseId: string | null = null
 
 vi.mock('../src/context/ReleaseContext', () => ({
+  parseReleasePerspectiveParam: (value: string | null | undefined) =>
+    value ? {kind: 'release' as const, releaseId: value} : {kind: 'drafts' as const},
   useReleaseContext: () => ({
     activeReleases: [],
+    isDraftsPerspective: mockSelectedReleaseId === null,
+    isPublishedPerspective: false,
+    selectedPerspective: mockSelectedReleaseId
+      ? {kind: 'release' as const, releaseId: mockSelectedReleaseId}
+      : {kind: 'drafts' as const},
     selectedRelease: null,
     selectedReleaseId: mockSelectedReleaseId,
     setSelectedReleaseId: vi.fn(),
+    setSelectedPerspective: vi.fn(),
     getQueryPerspective: () =>
-      mockSelectedReleaseId ? [mockSelectedReleaseId, 'published'] : 'published',
+      mockSelectedReleaseId ? [mockSelectedReleaseId, 'published'] : undefined,
     createRelease: vi.fn(),
     addToRelease: vi.fn(),
   }),
   useOptionalReleaseContext: () => ({
     activeReleases: [],
+    isDraftsPerspective: mockSelectedReleaseId === null,
+    isPublishedPerspective: false,
+    selectedPerspective: mockSelectedReleaseId
+      ? {kind: 'release' as const, releaseId: mockSelectedReleaseId}
+      : {kind: 'drafts' as const},
     selectedRelease: null,
     selectedReleaseId: mockSelectedReleaseId,
     setSelectedReleaseId: vi.fn(),
+    setSelectedPerspective: vi.fn(),
     getQueryPerspective: () =>
-      mockSelectedReleaseId ? [mockSelectedReleaseId, 'published'] : 'published',
+      mockSelectedReleaseId ? [mockSelectedReleaseId, 'published'] : undefined,
     createRelease: vi.fn(),
     addToRelease: vi.fn(),
   }),

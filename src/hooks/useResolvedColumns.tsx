@@ -6,6 +6,10 @@ import React, {useMemo, useCallback} from 'react'
 import {ReferenceCell} from '../components/references/ReferenceCell'
 import {useSDKEditHandler} from './useSDKEditHandler'
 
+interface UseResolvedColumnsOptions {
+  readOnly?: boolean
+}
+
 /**
  * Extended edit config with optional reference type marker.
  * @internal
@@ -33,7 +37,9 @@ interface EditConfigWithRef {
  */
 export function useResolvedColumns<T extends DocumentBase = DocumentBase>(
   columns: ColumnDef<T>[],
+  options: UseResolvedColumnsOptions = {},
 ): ColumnDef<T>[] {
+  const {readOnly = false} = options
   const {createOnSave, handleEdit} = useSDKEditHandler()
 
   const applyFieldPatch = useCallback(
@@ -55,6 +61,12 @@ export function useResolvedColumns<T extends DocumentBase = DocumentBase>(
   return useMemo(() => {
     return columns.map((col) => {
       if (!col.edit || !col.edit._autoSave || !col.edit._field) {
+        if (readOnly && col.edit) {
+          return {
+            ...col,
+            edit: undefined,
+          }
+        }
         return col
       }
 
@@ -78,30 +90,34 @@ export function useResolvedColumns<T extends DocumentBase = DocumentBase>(
                 row={row}
                 prepare={preview?.prepare as (data: Record<string, unknown>) => PreviewValue}
                 selectKeys={preview ? Object.keys(preview.select) : []}
-                editMeta={{
-                  onSave,
-                  referenceType,
-                  preview,
-                  placeholder,
-                  rawRefValue: (() => {
-                    // The resolved value is the dereferenced object (not the raw ref).
-                    // Use the column's id (alias) to look up the resolved object,
-                    // then construct a raw ref from its _id.
-                    const colId = col.id || field
-                    const resolved = (row as Record<string, unknown>)[colId]
-                    if (
-                      resolved &&
-                      typeof resolved === 'object' &&
-                      '_id' in (resolved as Record<string, unknown>)
-                    ) {
-                      return {
-                        _type: 'reference' as const,
-                        _ref: String((resolved as Record<string, unknown>)._id),
+                editMeta={
+                  readOnly
+                    ? undefined
+                    : {
+                        onSave,
+                        referenceType,
+                        preview,
+                        placeholder,
+                        rawRefValue: (() => {
+                          // The resolved value is the dereferenced object (not the raw ref).
+                          // Use the column's id (alias) to look up the resolved object,
+                          // then construct a raw ref from its _id.
+                          const colId = col.id || field
+                          const resolved = (row as Record<string, unknown>)[colId]
+                          if (
+                            resolved &&
+                            typeof resolved === 'object' &&
+                            '_id' in (resolved as Record<string, unknown>)
+                          ) {
+                            return {
+                              _type: 'reference' as const,
+                              _ref: String((resolved as Record<string, unknown>)._id),
+                            }
+                          }
+                          return null
+                        })(),
                       }
-                    }
-                    return null
-                  })(),
-                }}
+                }
               />
             )
           },
@@ -115,6 +131,10 @@ export function useResolvedColumns<T extends DocumentBase = DocumentBase>(
           ...col,
           edit: undefined, // Remove edit config — cell handles its own toggle
           cell: (value: unknown, row: T) => {
+            if (readOnly) {
+              return <ReadOnlyBooleanCell checked={!!value} />
+            }
+
             return (
               <OptimisticBooleanCell
                 documentId={row._id}
@@ -130,6 +150,13 @@ export function useResolvedColumns<T extends DocumentBase = DocumentBase>(
       }
 
       // Resolve _autoSave marker into actual onSave callback
+      if (readOnly) {
+        return {
+          ...col,
+          edit: undefined,
+        }
+      }
+
       const {_autoSave, _field, ...editRest} = col.edit
       return {
         ...col,
@@ -139,7 +166,7 @@ export function useResolvedColumns<T extends DocumentBase = DocumentBase>(
         },
       }
     })
-  }, [applyFieldPatch, columns, createOnSave, createReferenceOnSave])
+  }, [applyFieldPatch, columns, createOnSave, createReferenceOnSave, readOnly])
 }
 
 /**
@@ -232,6 +259,14 @@ function OptimisticBooleanCell({
           onToggle(newValue)
         }}
       />
+    </div>
+  )
+}
+
+function ReadOnlyBooleanCell({checked}: {checked: boolean}) {
+  return (
+    <div style={{display: 'flex', justifyContent: 'center', width: '100%'}}>
+      <ToggleSwitch checked={checked} readOnly />
     </div>
   )
 }

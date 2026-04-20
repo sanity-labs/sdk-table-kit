@@ -10,7 +10,7 @@ type PerspectiveLayer = ReleaseType | 'drafts' | 'published'
 /**
  * Maps a perspective layer to its Sanity badge tone token.
  * Mirrors Studio: asap → caution (amber bolt), scheduled → suggest (purple clock),
- * drafts → caution (dot), published/undecided → default.
+ * drafts → caution (dot), published in the menu → positive, undecided → default.
  */
 const TONE_VAR: Record<PerspectiveLayer, string> = {
   asap: 'var(--card-badge-caution-icon-color)',
@@ -61,13 +61,18 @@ interface ReleaseAvatarIconProps {
  */
 export function ReleaseAvatarIcon({layer, variant = 'menu'}: ReleaseAvatarIconProps) {
   const Icon = ICON[layer]
+  const iconToneVar =
+    layer === 'published' && variant === 'menu'
+      ? 'var(--card-badge-positive-icon-color)'
+      : TONE_VAR[layer]
+
   return (
     <IconWrapperBox
       paddingX={variant === 'pill' ? 2 : 3}
       paddingY={2}
       style={{
         backgroundColor: variant === 'menu' ? 'var(--card-bg-color)' : 'transparent',
-        ['--card-icon-color' as string]: TONE_VAR[layer],
+        ['--card-icon-color' as string]: iconToneVar,
       }}
     >
       <Text size={1}>
