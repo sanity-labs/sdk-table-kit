@@ -11,7 +11,9 @@ const mockApply = vi.fn()
 const mockFetch = vi.fn()
 const mockAction = vi.fn()
 const mockFetchReleaseDocuments = vi.fn()
+const mockFetchReleaseDocumentsThis = vi.fn()
 let mockVersionDocuments = new Map<string, Record<string, unknown>>()
+let mockReleaseDocumentsApiMarker = 'release-documents-api'
 
 vi.mock(import('nuqs'), async (importOriginal) => {
   const actual = await importOriginal()
@@ -27,7 +29,11 @@ vi.mock('@sanity/sdk-react', () => ({
     action: (...args: unknown[]) => mockAction(...args),
     fetch: (...args: unknown[]) => mockFetch(...args),
     releases: {
-      fetchDocuments: (...args: unknown[]) => mockFetchReleaseDocuments(...args),
+      marker: mockReleaseDocumentsApiMarker,
+      async fetchDocuments(this: {marker: string}, ...args: unknown[]) {
+        mockFetchReleaseDocumentsThis(this)
+        return mockFetchReleaseDocuments(...args)
+      },
     },
   }),
   useDocumentPreview: () => ({data: {title: 'Preview'}}),
@@ -99,6 +105,7 @@ describe('R-T8: Inline edits target version documents in release context', () =>
     vi.clearAllMocks()
     mockSelectedReleaseId = null
     mockVersionDocuments = new Map()
+    mockReleaseDocumentsApiMarker = 'release-documents-api'
     mockApply.mockResolvedValue(undefined)
     mockFetchReleaseDocuments.mockImplementation(async () => [])
     mockFetch.mockImplementation(
@@ -277,6 +284,9 @@ describe('R-T8: Inline edits target version documents in release context', () =>
 
     await waitFor(() => {
       expect(mockFetchReleaseDocuments).toHaveBeenCalledWith({releaseId: 'spring-campaign'})
+      expect(mockFetchReleaseDocumentsThis).toHaveBeenCalledWith(
+        expect.objectContaining({marker: 'release-documents-api'}),
+      )
       expect(mockAction).toHaveBeenCalledWith({
         actionType: 'sanity.action.document.version.replace',
         document: expect.objectContaining({
@@ -284,6 +294,38 @@ describe('R-T8: Inline edits target version documents in release context', () =>
           _type: 'article',
           assignments: [{_key: 'a1', _type: 'assignment', userId: 'user-1'}],
           title: 'Recovered release title',
+        }),
+      })
+    })
+  })
+
+  it('Behavior 3d: release document fallback preserves method binding for fetchDocuments', async () => {
+    mockSelectedReleaseId = 'spring-campaign'
+    mockFetch.mockResolvedValue(null)
+    mockFetchReleaseDocuments.mockResolvedValue([
+      {
+        _id: 'versions.spring-campaign.doc-1',
+        _type: 'article',
+        title: 'Existing release title',
+      },
+    ])
+
+    const {result} = renderHook(() => useResolvedColumns([makeAutoSaveColumn('title')]))
+    const resolved = result.current[0]
+    const mockRow: DocumentBase = {_id: 'doc-1', _type: 'article'}
+    resolved.edit!.onSave!(mockRow, 'Bound release title')
+
+    await waitFor(() => {
+      expect(mockFetchReleaseDocuments).toHaveBeenCalledWith({releaseId: 'spring-campaign'})
+      expect(mockFetchReleaseDocumentsThis).toHaveBeenCalledWith(
+        expect.objectContaining({marker: 'release-documents-api'}),
+      )
+      expect(mockAction).toHaveBeenCalledWith({
+        actionType: 'sanity.action.document.version.replace',
+        document: expect.objectContaining({
+          _id: 'versions.spring-campaign.doc-1',
+          _type: 'article',
+          title: 'Bound release title',
         }),
       })
     })

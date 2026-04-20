@@ -1,8 +1,8 @@
 import {DocumentTable} from '@sanity-labs/react-table-kit'
 import type {
   ColumnDef,
-  FilterDef,
   FilterSurfaceTone,
+  FilterDef,
   SortConfig,
   UseFilterUrlStateResult,
   DocumentBase,
@@ -22,10 +22,17 @@ import {DocumentStatusBatchProvider} from '../../context/DocumentStatusBatchCont
 import {ReleaseProvider, useOptionalReleaseContext} from '../../context/ReleaseContext'
 import {compileFilters} from '../../helpers/filters/compileFilters'
 import {getServerSortableColumnIds} from '../../helpers/filters/getServerSortableColumnIds'
+import {
+  getEditedFieldIndicatorTone,
+  getPerspectiveSurfaceTone,
+  type EditedFieldIndicatorTone,
+} from '../../helpers/releases/perspectiveTones'
 import {normalizeBaseDocumentId} from '../../helpers/releases/documentIds'
 import {resolveColumnAliases} from '../../helpers/table/resolveColumnAliases'
+import {withEditedFieldIndicators} from '../../helpers/table/withEditedFieldIndicators'
 import {useCreateDocument, type CreateDocumentConfig} from '../../hooks/useCreateDocument'
 import {useDocumentStatusBatch} from '../../hooks/useDocumentStatusBatch'
+import {usePublishedComparisonRows} from '../../hooks/usePublishedComparisonRows'
 import {useResolvedColumns} from '../../hooks/useResolvedColumns'
 import {useRoleFilteredColumns} from '../../hooks/useRoleFilteredColumns'
 import {useSanityTableData} from '../../hooks/useSanityTableData'
@@ -293,6 +300,12 @@ function SanityDocumentTableInner<T extends DocumentBase = DocumentBase>(
   }, [rawData, selectedReleaseRowsByBaseId])
   const loading = rawLoading
 
+  const {rowsByBaseId: publishedComparisonRowsByBaseId} = usePublishedComparisonRows<T>({
+    columns: columns as ColumnDef[],
+    projectionOverride: projection,
+    rows: releases && !isPublishedPerspective ? data : undefined,
+  })
+
   // Watch for new data arriving after creation — reset spinner when new row appears
   const {isCreating: isCreateInFlight, resetCreating} = createHook
   const prevDataLengthRef = useRef(data?.length ?? 0)
@@ -402,13 +415,31 @@ function SanityDocumentTableInner<T extends DocumentBase = DocumentBase>(
         : resolvedColumns,
     [isPublishedPerspective, resolvedColumns],
   )
+  const editedIndicatorTone = useMemo<EditedFieldIndicatorTone | undefined>(
+    () =>
+      releases && !isPublishedPerspective
+        ? getEditedFieldIndicatorTone(
+            selectedPerspective?.kind ?? 'drafts',
+            selectedRelease?.metadata.releaseType,
+          )
+        : undefined,
+    [isPublishedPerspective, releases, selectedPerspective?.kind, selectedRelease?.metadata.releaseType],
+  )
+  const indicatorDecoratedColumns = useMemo(
+    () =>
+      withEditedFieldIndicators(publishedReadOnlyColumns as ColumnDef<T>[], {
+        editedIndicatorTone,
+        publishedRowsByBaseId: publishedComparisonRowsByBaseId,
+      }),
+    [editedIndicatorTone, publishedComparisonRowsByBaseId, publishedReadOnlyColumns],
+  )
 
   // Auto-insert select checkbox column for bulk actions
   const finalColumns = useMemo(() => {
-    const hasSelect = publishedReadOnlyColumns.some((c: ColumnDef<T>) => c._isSelectColumn)
-    if (hasSelect) return publishedReadOnlyColumns
-    return [baseColumn.select(), ...publishedReadOnlyColumns]
-  }, [publishedReadOnlyColumns])
+    const hasSelect = indicatorDecoratedColumns.some((c: ColumnDef<T>) => c._isSelectColumn)
+    if (hasSelect) return indicatorDecoratedColumns
+    return [baseColumn.select(), ...indicatorDecoratedColumns]
+  }, [indicatorDecoratedColumns])
   const serverSortableColumnIds = useMemo(
     () => (sorting ? getServerSortableColumnIds(finalColumns as ColumnDef[]) : undefined),
     [finalColumns, sorting],
@@ -518,26 +549,6 @@ function makePublishedReadOnlyColumns<T extends DocumentBase = DocumentBase>(
 
     return baseColumnWithoutComments
   })
-}
-
-function getPerspectiveSurfaceTone(
-  perspectiveKind: 'drafts' | 'published' | 'release',
-  releaseType: 'asap' | 'scheduled' | 'undecided' | undefined,
-): FilterSurfaceTone {
-  if (perspectiveKind === 'published') {
-    return 'positive'
-  }
-
-  switch (releaseType) {
-    case 'asap':
-      return 'caution'
-    case 'scheduled':
-      return 'suggest'
-    case 'undecided':
-      return 'transparent'
-    default:
-      return 'default'
-  }
 }
 
 function DocumentStatusBatchTable({

@@ -327,13 +327,13 @@ export function useReleaseDocumentMutations(): ReleaseDocumentMutationsResult {
       }
 
       const releasesClient = client as unknown as ReleaseDocumentsClient
-      const fetchReleaseDocuments = releasesClient.releases?.fetchDocuments
+      const releasesApi = releasesClient.releases
 
-      if (!fetchReleaseDocuments) {
+      if (!releasesApi?.fetchDocuments) {
         return null
       }
 
-      const releaseDocumentsResult = await fetchReleaseDocuments({releaseId})
+      const releaseDocumentsResult = await releasesApi.fetchDocuments({releaseId})
       const releaseDocuments = Array.isArray(releaseDocumentsResult)
         ? releaseDocumentsResult
         : (releaseDocumentsResult.documents ?? [])
