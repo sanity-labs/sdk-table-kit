@@ -2,6 +2,7 @@ import {DocumentTable} from '@sanity-labs/react-table-kit'
 import type {
   ColumnDef,
   FilterDef,
+  FilterSurfaceTone,
   SortConfig,
   UseFilterUrlStateResult,
   DocumentBase,
@@ -13,9 +14,7 @@ import {mapFilterValuesToInitialValues, useFilterUrlState} from '@sanity-labs/re
 import {PublishIcon} from '@sanity/icons'
 import {publishDocument} from '@sanity/sdk'
 import {useApplyDocumentActions} from '@sanity/sdk-react'
-import {PortalProvider} from '@sanity/ui'
-import {Button} from '@sanity/ui'
-import {ToastProvider} from '@sanity/ui'
+import {Button, PortalProvider, Stack} from '@sanity/ui'
 import React from 'react'
 import {useCallback, useEffect, useMemo, useRef, useState, type ReactNode} from 'react'
 
@@ -33,10 +32,8 @@ import {useSanityTableData} from '../../hooks/useSanityTableData'
 import {useSelectedReleaseRows} from '../../hooks/useSelectedReleaseRows'
 import {ServerFilterBar} from '../filters/ServerFilterBar'
 import {AddToReleaseButton} from '../releases/AddToReleaseButton'
-import {CreateReleaseDialog} from '../releases/CreateReleaseDialog'
+import {GlobalPerspectivePicker} from '../releases/GlobalPerspectivePicker'
 import {PublishConfirmDialog} from '../releases/PublishConfirmDialog'
-import {ReleaseHeader} from '../releases/ReleaseHeader'
-import {ReleasePicker} from '../releases/ReleasePicker'
 import {PaginationControls} from './PaginationControls'
 
 /**
@@ -194,7 +191,12 @@ function SanityDocumentTableInner<T extends DocumentBase = DocumentBase>(
 
   // Always call the optional hook to preserve hook ordering.
   const releaseCtx = useOptionalReleaseContext()
+  const selectedRelease = releases ? (releaseCtx?.selectedRelease ?? null) : null
   const selectedReleaseId = releases ? (releaseCtx?.selectedReleaseId ?? null) : null
+  const filterSurfaceTone = useMemo<FilterSurfaceTone>(
+    () => getPerspectiveSurfaceTone(selectedRelease?.metadata.releaseType),
+    [selectedRelease?.metadata.releaseType],
+  )
 
   const internalFilterState = useFilterUrlState(filters)
   const filterState = controlledFilterState ?? internalFilterState
@@ -416,27 +418,34 @@ function SanityDocumentTableInner<T extends DocumentBase = DocumentBase>(
       isCreating={createHook.isCreating}
       computedFilters={computedFilters}
       hideFilterBar={!!filters?.length}
+      filterBarSearchLeading={releases ? <GlobalPerspectivePicker /> : undefined}
+      filterBarSurfaceTone={filterSurfaceTone}
+      dockToTopSurface={!!filters?.length}
     />
   )
 
   return (
     <PortalProvider>
-      <div>
-        {releases && <ReleaseHeaderWithPicker />}
-        {filters && filters.length > 0 && (
-          <ServerFilterBar
-            filterState={filterState}
-            filters={filters}
-            columns={columns as ColumnDef[]}
-          />
-        )}
-        {hasDocumentStatusColumn ? (
-          <DocumentStatusBatchTable rows={data as DocumentBase[] | undefined}>
-            {tableElement}
-          </DocumentStatusBatchTable>
-        ) : (
-          tableElement
-        )}
+      <Stack space={3}>
+        <Stack space={0}>
+          {filters && filters.length > 0 && (
+            <ServerFilterBar
+              filterState={filterState}
+              filters={filters}
+              columns={columns as ColumnDef[]}
+              searchLeading={releases ? <GlobalPerspectivePicker /> : undefined}
+              surfaceTone={filterSurfaceTone}
+              dockToTable
+            />
+          )}
+          {hasDocumentStatusColumn ? (
+            <DocumentStatusBatchTable rows={data as DocumentBase[] | undefined}>
+              {tableElement}
+            </DocumentStatusBatchTable>
+          ) : (
+            tableElement
+          )}
+        </Stack>
         {pagination && (
           <PaginationControls
             pagination={pagination}
@@ -452,9 +461,24 @@ function SanityDocumentTableInner<T extends DocumentBase = DocumentBase>(
             isPublishing={isPublishing}
           />
         )}
-      </div>
+      </Stack>
     </PortalProvider>
   )
+}
+
+function getPerspectiveSurfaceTone(
+  releaseType: 'asap' | 'scheduled' | 'undecided' | undefined,
+): FilterSurfaceTone {
+  switch (releaseType) {
+    case 'asap':
+      return 'caution'
+    case 'scheduled':
+      return 'suggest'
+    case 'undecided':
+      return 'transparent'
+    default:
+      return 'default'
+  }
 }
 
 function DocumentStatusBatchTable({
@@ -467,25 +491,4 @@ function DocumentStatusBatchTable({
   const statusBatch = useDocumentStatusBatch(rows)
 
   return <DocumentStatusBatchProvider value={statusBatch}>{children}</DocumentStatusBatchProvider>
-}
-
-/**
- * Internal component that renders the release header with picker + create dialog.
- * Must be inside ReleaseProvider.
- */
-function ReleaseHeaderWithPicker() {
-  const [showCreateDialog, setShowCreateDialog] = useState(false)
-
-  return (
-    <>
-      <ReleaseHeader>
-        <ReleasePicker onCreateRelease={() => setShowCreateDialog(true)} />
-      </ReleaseHeader>
-      {showCreateDialog && (
-        <ToastProvider>
-          <CreateReleaseDialog onClose={() => setShowCreateDialog(false)} />
-        </ToastProvider>
-      )}
-    </>
-  )
 }
