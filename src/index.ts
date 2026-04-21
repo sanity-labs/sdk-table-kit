@@ -29,6 +29,7 @@ export type {
   SortConfig,
   DocumentBase,
   SelectionConfig,
+  ServerGroupConfig,
   DocumentTableProps,
   FieldFilterOptions,
   FieldFilterDef,
@@ -70,6 +71,7 @@ export {resolveColumnAliases} from './helpers/table/resolveColumnAliases'
 export {useSanityTableData} from './hooks/useSanityTableData'
 export type {
   SanityTableDataConfig,
+  GroupingState,
   SanityTableDataResult,
   PaginationState,
   SortingState,

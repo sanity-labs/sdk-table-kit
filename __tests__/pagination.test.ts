@@ -3,6 +3,7 @@ import {renderHook, act} from '@testing-library/react'
 import {describe, it, expect, vi, beforeEach} from 'vitest'
 
 import {useSanityTableData} from '../src/hooks/useSanityTableData'
+import {NuqsHookWrapper} from './hookWrappers'
 
 // Mock @sanity/sdk-react
 const mockFetchNextPage = vi.fn()
@@ -51,12 +52,14 @@ describe('useSanityTableData — pagination', () => {
   })
 
   it('Behavior 1: returns pagination state from SDK hook', () => {
-    const {result} = renderHook(() =>
-      useSanityTableData({
-        documentType: 'article',
-        columns: testColumns,
-        pageSize: 25,
-      }),
+    const {result} = renderHook(
+      () =>
+        useSanityTableData({
+          documentType: 'article',
+          columns: testColumns,
+          pageSize: 25,
+        }),
+      {wrapper: NuqsHookWrapper},
     )
 
     expect(result.current.pagination).toBeDefined()
@@ -67,12 +70,14 @@ describe('useSanityTableData — pagination', () => {
   })
 
   it('Behavior 2: nextPage calls SDK fetchNextPage', () => {
-    const {result} = renderHook(() =>
-      useSanityTableData({
-        documentType: 'article',
-        columns: testColumns,
-        pageSize: 25,
-      }),
+    const {result} = renderHook(
+      () =>
+        useSanityTableData({
+          documentType: 'article',
+          columns: testColumns,
+          pageSize: 25,
+        }),
+      {wrapper: NuqsHookWrapper},
     )
 
     act(() => {
@@ -95,12 +100,14 @@ describe('useSanityTableData — pagination', () => {
       totalPages: 3,
     })
 
-    const {result} = renderHook(() =>
-      useSanityTableData({
-        documentType: 'article',
-        columns: testColumns,
-        pageSize: 25,
-      }),
+    const {result} = renderHook(
+      () =>
+        useSanityTableData({
+          documentType: 'article',
+          columns: testColumns,
+          pageSize: 25,
+        }),
+      {wrapper: NuqsHookWrapper},
     )
 
     act(() => {
@@ -111,34 +118,40 @@ describe('useSanityTableData — pagination', () => {
   })
 
   it('Behavior 4: totalCount reflects SDK response', () => {
-    const {result} = renderHook(() =>
-      useSanityTableData({
-        documentType: 'article',
-        columns: testColumns,
-        pageSize: 25,
-      }),
+    const {result} = renderHook(
+      () =>
+        useSanityTableData({
+          documentType: 'article',
+          columns: testColumns,
+          pageSize: 25,
+        }),
+      {wrapper: NuqsHookWrapper},
     )
 
     expect(result.current.pagination!.totalCount).toBe(75)
   })
 
   it('Behavior 5: pagination is null in useQuery mode (array documentType)', () => {
-    const {result} = renderHook(() =>
-      useSanityTableData({
-        documentType: ['article', 'page'],
-        columns: testColumns,
-      }),
+    const {result} = renderHook(
+      () =>
+        useSanityTableData({
+          documentType: ['article', 'page'],
+          columns: testColumns,
+        }),
+      {wrapper: NuqsHookWrapper},
     )
 
     expect(result.current.pagination).toBeNull()
   })
 
   it('Behavior 6: array documentType uses useQuery (no server-side pagination)', () => {
-    renderHook(() =>
-      useSanityTableData({
-        documentType: ['article', 'page'],
-        columns: testColumns,
-      }),
+    renderHook(
+      () =>
+        useSanityTableData({
+          documentType: ['article', 'page'],
+          columns: testColumns,
+        }),
+      {wrapper: NuqsHookWrapper},
     )
 
     expect(mockUseQuery).toHaveBeenCalled()
@@ -152,11 +165,13 @@ describe('useSanityTableData — pagination', () => {
   })
 
   it('Behavior 7: documentType without pageSize stays in query mode', () => {
-    const {result} = renderHook(() =>
-      useSanityTableData({
-        documentType: 'article',
-        columns: testColumns,
-      }),
+    const {result} = renderHook(
+      () =>
+        useSanityTableData({
+          documentType: 'article',
+          columns: testColumns,
+        }),
+      {wrapper: NuqsHookWrapper},
     )
 
     expect(mockUsePaginatedDocuments).toHaveBeenCalledWith(
@@ -170,13 +185,15 @@ describe('useSanityTableData — pagination', () => {
   })
 
   it('Behavior 8: filter prop keeps server pagination when pageSize is provided', () => {
-    const {result} = renderHook(() =>
-      useSanityTableData({
-        documentType: 'article',
-        columns: testColumns,
-        filter: 'status != "archived"',
-        pageSize: 10,
-      }),
+    const {result} = renderHook(
+      () =>
+        useSanityTableData({
+          documentType: 'article',
+          columns: testColumns,
+          filter: 'status != "archived"',
+          pageSize: 10,
+        }),
+      {wrapper: NuqsHookWrapper},
     )
 
     expect(mockUsePaginatedDocuments).toHaveBeenCalledWith(

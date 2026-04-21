@@ -56,6 +56,8 @@ interface ReferenceColumnConfig<
   filterable?: boolean
   /** Whether rows can be grouped by this column's values. */
   groupable?: boolean
+  /** Optional GROQ field/expression used for server-side grouping. */
+  groupField?: string
   /** Fixed column width in pixels. */
   width?: number
   /** Enable inline reference editing. */
@@ -479,6 +481,7 @@ export const column = {
       sortField,
       filterable,
       groupable,
+      groupField,
       width,
       edit,
       placeholder,
@@ -508,12 +511,24 @@ export const column = {
       _referencePreview: preview as Required<Pick<PreviewConfig, 'select' | 'prepare'>>,
       _referenceType: referenceType,
       ...(sortField && {_serverSortField: sortField}),
+      ...((groupField ?? sortField) && {_serverGroupField: groupField ?? sortField}),
       ...(sortable != null && {sortable}),
       ...(filterable != null && {filterable}),
       ...(groupable != null && {groupable}),
       ...(width != null && {width}),
       // Sort by prepared title
       sortValue: (rawValue: unknown) => {
+        if (rawValue == null) return ''
+        try {
+          const prepared = (preview.prepare as (data: Record<string, unknown>) => PreviewValue)(
+            rawValue as Record<string, unknown>,
+          )
+          return prepared.title ?? ''
+        } catch {
+          return ''
+        }
+      },
+      groupValue: (rawValue: unknown) => {
         if (rawValue == null) return ''
         try {
           const prepared = (preview.prepare as (data: Record<string, unknown>) => PreviewValue)(

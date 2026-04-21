@@ -261,6 +261,7 @@ function SanityDocumentTableInner<T extends DocumentBase = DocumentBase>(
     transitionLoading,
     pagination,
     sorting,
+    grouping,
   } = useSanityTableData<T>({
     documentType,
     filter: combinedFilter,
@@ -449,6 +450,13 @@ function SanityDocumentTableInner<T extends DocumentBase = DocumentBase>(
     () => (sorting ? getServerSortableColumnIds(finalColumns as ColumnDef[]) : undefined),
     [finalColumns, sorting],
   )
+  const serverGroupableColumnIds = useMemo(
+    () =>
+      (finalColumns as ColumnDef[])
+        .filter((column) => column.groupable)
+        .map((column) => column.field ?? column.id),
+    [finalColumns],
+  )
   const hasDocumentStatusColumn = finalColumns.some((column) => column.id === '_status')
   const tableElement = (
     <DocumentTable<T>
@@ -468,6 +476,11 @@ function SanityDocumentTableInner<T extends DocumentBase = DocumentBase>(
             }
           : undefined
       }
+      serverGroup={{
+        groupBy: grouping.current,
+        onGroupByChange: grouping.onGroupByChange,
+        groupableColumnIds: serverGroupableColumnIds,
+      }}
       onRowClick={onRowClick}
       bulkActions={wrappedBulkActions}
       onSelectionChange={onSelectionChange}
@@ -493,7 +506,10 @@ function SanityDocumentTableInner<T extends DocumentBase = DocumentBase>(
             <ServerFilterBar
               filterState={filterState}
               filters={filters}
-              columns={columns as ColumnDef[]}
+              columns={finalColumns as ColumnDef[]}
+              groupableColumns={serverGroupableColumnIds}
+              groupBy={grouping.current}
+              onGroupByChange={grouping.onGroupByChange}
               searchLeading={releases ? <GlobalPerspectivePicker /> : undefined}
               surfaceTone={filterSurfaceTone}
               dockToTable

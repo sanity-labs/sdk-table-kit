@@ -1,4 +1,4 @@
-import {column} from '@sanity-labs/react-table-kit'
+import {column, filter} from '@sanity-labs/react-table-kit'
 import {screen} from '@testing-library/react'
 import React from 'react'
 import {describe, it, expect, vi, beforeEach} from 'vitest'
@@ -53,6 +53,10 @@ const mockArticles = [
 ]
 
 const testColumns = [column.title(), column.updatedAt()]
+const groupedColumns = [
+  column.title(),
+  column.custom({field: 'status', header: 'Status', groupable: true}),
+]
 
 describe('SanityDocumentTable', () => {
   beforeEach(() => {
@@ -182,5 +186,19 @@ describe('SanityDocumentTable', () => {
         pageSize: 1,
       }),
     )
+  })
+
+  it('Behavior 9: renders server grouping controls when filters are present', () => {
+    renderWithTheme(
+      <SanityDocumentTable
+        documentType="article"
+        columns={groupedColumns}
+        filters={[filter.search({label: 'Search', fields: ['title']})]}
+      />,
+    )
+
+    expect(screen.getByTestId('group-by-select')).toBeInTheDocument()
+    expect(screen.getByText('Group by')).toBeInTheDocument()
+    expect(screen.queryByText('Group by:')).not.toBeInTheDocument()
   })
 })

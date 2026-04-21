@@ -196,4 +196,36 @@ describe('useSanityDocumentTable', () => {
 
     expect(result.current.paginationProps.pageSizeOptions).toEqual([10, 25, 50])
   })
+
+  it('Behavior 7: forwards server grouping props to DocumentTable', () => {
+    const groupedColumns = [
+      column.title(),
+      column.custom({
+        field: 'status',
+        header: 'Status',
+        groupable: true,
+        groupField: 'coalesce(status, "draft")',
+      }),
+    ]
+
+    const {result} = renderHook(
+      () =>
+        useSanityDocumentTable({
+          documentType: 'article',
+          columns: groupedColumns,
+          pageSize: 25,
+        }),
+      {
+        wrapper: ({children}: {children: React.ReactNode}) => (
+          <NuqsTestingAdapter searchParams={{groupBy: 'status'}}>{children}</NuqsTestingAdapter>
+        ),
+      },
+    )
+
+    expect(result.current.tableProps.serverGroup).toEqual({
+      groupBy: 'status',
+      onGroupByChange: expect.any(Function),
+      groupableColumnIds: ['status'],
+    })
+  })
 })

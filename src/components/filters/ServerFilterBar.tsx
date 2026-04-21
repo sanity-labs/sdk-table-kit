@@ -4,7 +4,7 @@ import {
   type FilterSurfaceTone,
   type UseFilterUrlStateResult,
 } from '@sanity-labs/react-table-kit'
-import {Card, Flex, Stack} from '@sanity/ui'
+import {Card, Flex, Label, Select, Stack} from '@sanity/ui'
 import type {CSSProperties, ReactNode} from 'react'
 
 import type {SanityColumnDef} from '../../hooks/useColumnProjection'
@@ -15,6 +15,9 @@ interface ServerFilterBarProps {
   filterState: UseFilterUrlStateResult
   filters: FilterDef[]
   columns?: SanityColumnDef[]
+  groupableColumns?: string[]
+  groupBy?: string | null
+  onGroupByChange?: (groupBy: string | null) => void
   leading?: ReactNode
   searchLeading?: ReactNode
   surfaceTone?: FilterSurfaceTone
@@ -26,6 +29,9 @@ export function ServerFilterBar({
   filterState,
   filters,
   columns,
+  groupableColumns,
+  groupBy,
+  onGroupByChange,
   leading,
   searchLeading,
   surfaceTone = 'transparent',
@@ -33,11 +39,13 @@ export function ServerFilterBar({
   dockToTable = false,
 }: ServerFilterBarProps) {
   const visibleFilters = filters.filter((filterDef) => !filterDef.hidden)
+  const hasGroupBy = Boolean(groupableColumns && groupableColumns.length > 0 && onGroupByChange)
   const firstSearchFilter = searchLeading
     ? visibleFilters.find((filterDef) => filterDef.kind === 'search')
     : undefined
   const firstSearchFilterKey = firstSearchFilter ? getFilterKey(firstSearchFilter) : null
-  const showControls = visibleFilters.length > 0 || Boolean(leading) || Boolean(searchLeading)
+  const showControls =
+    visibleFilters.length > 0 || Boolean(leading) || Boolean(searchLeading) || hasGroupBy
   const cardStyle: CSSProperties = {
     backgroundColor: 'var(--filter-surface-bg-color, var(--card-bg-color))',
     borderColor: 'var(--filter-surface-border-color, var(--card-border-color))',
@@ -67,6 +75,32 @@ export function ServerFilterBar({
       <Stack space={3}>
         <Flex align="center" gap={4} wrap="wrap">
           {leading}
+          {hasGroupBy && (
+            <Stack space={2}>
+              <Label size={2} muted>
+                Group by
+              </Label>
+              <Select
+                data-testid="group-by-select"
+                value={groupBy ?? ''}
+                onChange={(event) => onGroupByChange?.(event.currentTarget.value || null)}
+                fontSize={1}
+                padding={3}
+              >
+                <option value="">None</option>
+                {groupableColumns!.map((columnId) => {
+                  const column = columns?.find(
+                    (candidate) => (candidate.field ?? candidate.id) === columnId,
+                  )
+                  return (
+                    <option key={columnId} value={columnId}>
+                      {column?.header ?? capitalize(columnId)}
+                    </option>
+                  )
+                })}
+              </Select>
+            </Stack>
+          )}
           {visibleFilters.map((filterDef) => {
             const filterKey = getFilterKey(filterDef)
 
@@ -105,4 +139,9 @@ export function ServerFilterBar({
       </Stack>
     </Card>
   )
+}
+
+function capitalize(value: string): string {
+  const cleaned = value.replace(/^_/, '')
+  return cleaned.charAt(0).toUpperCase() + cleaned.slice(1)
 }

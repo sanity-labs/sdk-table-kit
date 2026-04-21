@@ -5,6 +5,7 @@ import {describe, it, expect, vi, beforeEach} from 'vitest'
 import type {SanityDocumentTableProps} from '../src/components/table/SanityDocumentTable'
 import type {SanityTableDataConfig} from '../src/hooks/useSanityTableData'
 import {useSanityTableData} from '../src/hooks/useSanityTableData'
+import {NuqsHookWrapper} from './hookWrappers'
 
 // Mock @sanity/sdk-react
 const mockUseQuery = vi.fn()
@@ -65,13 +66,15 @@ describe('useSanityTableData — params prop', () => {
 
   // B0.3 — buildQuery() merges user-provided params with the internal docType/docTypes params
   it('B0.3: merges user params with internal docType param', () => {
-    renderHook(() =>
-      useSanityTableData({
-        documentType: 'article',
-        columns: testColumns,
-        filter: 'assignee == $userId',
-        params: {userId: 'abc123'},
-      }),
+    renderHook(
+      () =>
+        useSanityTableData({
+          documentType: 'article',
+          columns: testColumns,
+          filter: 'assignee == $userId',
+          params: {userId: 'abc123'},
+        }),
+      {wrapper: NuqsHookWrapper},
     )
 
     expect(mockUseQuery).toHaveBeenCalled()
@@ -86,12 +89,14 @@ describe('useSanityTableData — params prop', () => {
 
   // B0.3 (array variant) — merges user params with docTypes for array documentType
   it('B0.3: merges user params with internal docTypes param (array)', () => {
-    renderHook(() =>
-      useSanityTableData({
-        documentType: ['article', 'page'],
-        columns: testColumns,
-        params: {userId: 'abc123'},
-      }),
+    renderHook(
+      () =>
+        useSanityTableData({
+          documentType: ['article', 'page'],
+          columns: testColumns,
+          params: {userId: 'abc123'},
+        }),
+      {wrapper: NuqsHookWrapper},
     )
 
     expect(mockUseQuery).toHaveBeenCalled()
@@ -106,13 +111,15 @@ describe('useSanityTableData — params prop', () => {
 
   // B0.4 — User params do NOT override internal params ($docType is always set by the table)
   it('B0.4: internal docType takes precedence over user-supplied docType', () => {
-    renderHook(() =>
-      useSanityTableData({
-        documentType: 'article',
-        columns: testColumns,
-        filter: 'defined(title)',
-        params: {docType: 'SHOULD_BE_OVERRIDDEN', userId: 'abc123'},
-      }),
+    renderHook(
+      () =>
+        useSanityTableData({
+          documentType: 'article',
+          columns: testColumns,
+          filter: 'defined(title)',
+          params: {docType: 'SHOULD_BE_OVERRIDDEN', userId: 'abc123'},
+        }),
+      {wrapper: NuqsHookWrapper},
     )
 
     expect(mockUseQuery).toHaveBeenCalled()
@@ -125,12 +132,14 @@ describe('useSanityTableData — params prop', () => {
 
   // B0.4 (array variant) — User params do NOT override internal docTypes
   it('B0.4: internal docTypes takes precedence over user-supplied docTypes', () => {
-    renderHook(() =>
-      useSanityTableData({
-        documentType: ['article', 'page'],
-        columns: testColumns,
-        params: {docTypes: ['SHOULD_BE_OVERRIDDEN'], userId: 'abc123'},
-      }),
+    renderHook(
+      () =>
+        useSanityTableData({
+          documentType: ['article', 'page'],
+          columns: testColumns,
+          params: {docTypes: ['SHOULD_BE_OVERRIDDEN'], userId: 'abc123'},
+        }),
+      {wrapper: NuqsHookWrapper},
     )
 
     expect(mockUseQuery).toHaveBeenCalled()
@@ -142,11 +151,13 @@ describe('useSanityTableData — params prop', () => {
 
   // B0.5 — When params is undefined, behavior is unchanged (backwards compatible)
   it('B0.5: when params is undefined, behavior is unchanged', () => {
-    renderHook(() =>
-      useSanityTableData({
-        documentType: ['article', 'page'],
-        columns: testColumns,
-      }),
+    renderHook(
+      () =>
+        useSanityTableData({
+          documentType: ['article', 'page'],
+          columns: testColumns,
+        }),
+      {wrapper: NuqsHookWrapper},
     )
 
     expect(mockUseQuery).toHaveBeenCalled()
@@ -156,12 +167,14 @@ describe('useSanityTableData — params prop', () => {
 
   // B0.5 (single type variant)
   it('B0.5: when params is undefined with single type + filter, only docType is in params', () => {
-    renderHook(() =>
-      useSanityTableData({
-        documentType: 'article',
-        columns: testColumns,
-        filter: 'defined(title)',
-      }),
+    renderHook(
+      () =>
+        useSanityTableData({
+          documentType: 'article',
+          columns: testColumns,
+          filter: 'defined(title)',
+        }),
+      {wrapper: NuqsHookWrapper},
     )
 
     expect(mockUseQuery).toHaveBeenCalled()
@@ -171,13 +184,15 @@ describe('useSanityTableData — params prop', () => {
 
   // B0.6 — A filter using $userId with params={{ userId: 'abc123' }} correctly passes the param to useQuery
   it('B0.6: filter using $userId with params passes correctly to useQuery', () => {
-    renderHook(() =>
-      useSanityTableData({
-        documentType: 'article',
-        columns: testColumns,
-        filter: 'assignee._ref == $userId',
-        params: {userId: 'abc123'},
-      }),
+    renderHook(
+      () =>
+        useSanityTableData({
+          documentType: 'article',
+          columns: testColumns,
+          filter: 'assignee._ref == $userId',
+          params: {userId: 'abc123'},
+        }),
+      {wrapper: NuqsHookWrapper},
     )
 
     expect(mockUseQuery).toHaveBeenCalled()

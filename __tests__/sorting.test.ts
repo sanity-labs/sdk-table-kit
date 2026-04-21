@@ -3,6 +3,7 @@ import {describe, it, expect, vi, beforeEach} from 'vitest'
 
 import {column} from '../src'
 import {useSanityTableData} from '../src/hooks/useSanityTableData'
+import {NuqsHookWrapper} from './hookWrappers'
 
 // Mock @sanity/sdk-react
 const mockUsePaginatedDocuments = vi.fn()
@@ -47,13 +48,15 @@ describe('useSanityTableData — sorting', () => {
   })
 
   it('Behavior 1: defaultSort is passed as orderings to usePaginatedDocuments', () => {
-    renderHook(() =>
-      useSanityTableData({
-        documentType: 'article',
-        columns: testColumns,
-        pageSize: 25,
-        defaultSort: {field: '_updatedAt', direction: 'desc'},
-      }),
+    renderHook(
+      () =>
+        useSanityTableData({
+          documentType: 'article',
+          columns: testColumns,
+          pageSize: 25,
+          defaultSort: {field: '_updatedAt', direction: 'desc'},
+        }),
+      {wrapper: NuqsHookWrapper},
     )
 
     expect(mockUsePaginatedDocuments).toHaveBeenCalledWith(
@@ -64,12 +67,14 @@ describe('useSanityTableData — sorting', () => {
   })
 
   it('Behavior 2: onSortChange updates orderings on next render', () => {
-    const {result} = renderHook(() =>
-      useSanityTableData({
-        documentType: 'article',
-        columns: testColumns,
-        pageSize: 25,
-      }),
+    const {result} = renderHook(
+      () =>
+        useSanityTableData({
+          documentType: 'article',
+          columns: testColumns,
+          pageSize: 25,
+        }),
+      {wrapper: NuqsHookWrapper},
     )
 
     expect(result.current.sorting).toBeDefined()
@@ -88,13 +93,15 @@ describe('useSanityTableData — sorting', () => {
   })
 
   it('Behavior 3: sort state returned with current and onSortChange', () => {
-    const {result} = renderHook(() =>
-      useSanityTableData({
-        documentType: 'article',
-        columns: testColumns,
-        pageSize: 25,
-        defaultSort: {field: 'title', direction: 'asc'},
-      }),
+    const {result} = renderHook(
+      () =>
+        useSanityTableData({
+          documentType: 'article',
+          columns: testColumns,
+          pageSize: 25,
+          defaultSort: {field: 'title', direction: 'asc'},
+        }),
+      {wrapper: NuqsHookWrapper},
     )
 
     expect(result.current.sorting).toBeDefined()
@@ -103,11 +110,13 @@ describe('useSanityTableData — sorting', () => {
   })
 
   it('Behavior 4: sorting is null in useQuery mode (client-side sorting)', () => {
-    const {result} = renderHook(() =>
-      useSanityTableData({
-        documentType: ['article', 'page'],
-        columns: testColumns,
-      }),
+    const {result} = renderHook(
+      () =>
+        useSanityTableData({
+          documentType: ['article', 'page'],
+          columns: testColumns,
+        }),
+      {wrapper: NuqsHookWrapper},
     )
 
     // In query mode (array documentType), sorting is handled client-side by DocumentTable
@@ -115,13 +124,15 @@ describe('useSanityTableData — sorting', () => {
   })
 
   it('Behavior 5: filtered paginated tables still expose server sorting', () => {
-    const {result} = renderHook(() =>
-      useSanityTableData({
-        documentType: 'article',
-        columns: testColumns,
-        filter: 'status != "archived"',
-        pageSize: 25,
-      }),
+    const {result} = renderHook(
+      () =>
+        useSanityTableData({
+          documentType: 'article',
+          columns: testColumns,
+          filter: 'status != "archived"',
+          pageSize: 25,
+        }),
+      {wrapper: NuqsHookWrapper},
     )
 
     act(() => {
@@ -138,13 +149,15 @@ describe('useSanityTableData — sorting', () => {
   })
 
   it('Behavior 6: clearing sort sets orderings to undefined', () => {
-    const {result} = renderHook(() =>
-      useSanityTableData({
-        documentType: 'article',
-        columns: testColumns,
-        pageSize: 25,
-        defaultSort: {field: 'title', direction: 'asc'},
-      }),
+    const {result} = renderHook(
+      () =>
+        useSanityTableData({
+          documentType: 'article',
+          columns: testColumns,
+          pageSize: 25,
+          defaultSort: {field: 'title', direction: 'asc'},
+        }),
+      {wrapper: NuqsHookWrapper},
     )
 
     act(() => {
@@ -174,12 +187,14 @@ describe('useSanityTableData — sorting', () => {
       }),
     ]
 
-    const {result} = renderHook(() =>
-      useSanityTableData({
-        documentType: 'article',
-        columns,
-        pageSize: 25,
-      }),
+    const {result} = renderHook(
+      () =>
+        useSanityTableData({
+          documentType: 'article',
+          columns,
+          pageSize: 25,
+        }),
+      {wrapper: NuqsHookWrapper},
     )
 
     act(() => {

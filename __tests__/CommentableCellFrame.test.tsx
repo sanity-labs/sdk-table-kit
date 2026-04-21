@@ -24,7 +24,7 @@ Object.defineProperty(window, 'matchMedia', {
 })
 
 describe('CommentableCellFrame', () => {
-  it('preserves centered child layout even when there are no comments', () => {
+  it('keeps non-text content centered by default', () => {
     renderWithTheme(
       <CommentableCellFrame
         cellPadding={{x: 16, y: 10}}

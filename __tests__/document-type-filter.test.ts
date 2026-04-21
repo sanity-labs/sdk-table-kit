@@ -2,6 +2,7 @@ import {column} from '@sanity-labs/react-table-kit'
 import {renderHook} from '@testing-library/react'
 import {describe, it, expect, vi, beforeEach} from 'vitest'
 
+import {NuqsHookWrapper} from './hookWrappers'
 // Mock @sanity/sdk-react
 const mockUsePaginatedDocuments = vi.fn()
 const mockUseQuery = vi.fn()
@@ -51,11 +52,13 @@ describe('useSanityTableData — documentType[] + filter', () => {
   })
 
   it('Behavior 1: documentType as string without pageSize stays in query mode', () => {
-    renderHook(() =>
-      useSanityTableData({
-        documentType: 'article',
-        columns: testColumns,
-      }),
+    renderHook(
+      () =>
+        useSanityTableData({
+          documentType: 'article',
+          columns: testColumns,
+        }),
+      {wrapper: NuqsHookWrapper},
     )
 
     expect(mockUsePaginatedDocuments).toHaveBeenCalledWith(
@@ -71,11 +74,13 @@ describe('useSanityTableData — documentType[] + filter', () => {
   })
 
   it('Behavior 2: documentType as string[] uses useQuery with _type in $docTypes', () => {
-    renderHook(() =>
-      useSanityTableData({
-        documentType: ['article', 'page'],
-        columns: testColumns,
-      }),
+    renderHook(
+      () =>
+        useSanityTableData({
+          documentType: ['article', 'page'],
+          columns: testColumns,
+        }),
+      {wrapper: NuqsHookWrapper},
     )
 
     expect(mockUseQuery).toHaveBeenCalled()
@@ -89,12 +94,14 @@ describe('useSanityTableData — documentType[] + filter', () => {
   })
 
   it('Behavior 3: filter prop appends to base filter (single type)', () => {
-    renderHook(() =>
-      useSanityTableData({
-        documentType: 'article',
-        columns: testColumns,
-        filter: 'status != "archived"',
-      }),
+    renderHook(
+      () =>
+        useSanityTableData({
+          documentType: 'article',
+          columns: testColumns,
+          filter: 'status != "archived"',
+        }),
+      {wrapper: NuqsHookWrapper},
     )
 
     // With filter + single documentType, should use useQuery (can't add filter to usePaginatedDocuments)
@@ -110,12 +117,14 @@ describe('useSanityTableData — documentType[] + filter', () => {
   })
 
   it('Behavior 4: documentType[] + filter combines both', () => {
-    renderHook(() =>
-      useSanityTableData({
-        documentType: ['article', 'page'],
-        columns: testColumns,
-        filter: 'defined(title)',
-      }),
+    renderHook(
+      () =>
+        useSanityTableData({
+          documentType: ['article', 'page'],
+          columns: testColumns,
+          filter: 'defined(title)',
+        }),
+      {wrapper: NuqsHookWrapper},
     )
 
     expect(mockUseQuery).toHaveBeenCalled()
@@ -130,11 +139,13 @@ describe('useSanityTableData — documentType[] + filter', () => {
   })
 
   it('Behavior 5: projection is included in generated query', () => {
-    renderHook(() =>
-      useSanityTableData({
-        documentType: ['article', 'page'],
-        columns: testColumns,
-      }),
+    renderHook(
+      () =>
+        useSanityTableData({
+          documentType: ['article', 'page'],
+          columns: testColumns,
+        }),
+      {wrapper: NuqsHookWrapper},
     )
 
     const callArgs = getPrimaryQueryCall()!
@@ -143,12 +154,14 @@ describe('useSanityTableData — documentType[] + filter', () => {
   })
 
   it('Behavior 6: single documentType without filter uses usePaginatedDocuments (server-side pagination)', () => {
-    renderHook(() =>
-      useSanityTableData({
-        documentType: 'article',
-        columns: testColumns,
-        pageSize: 25,
-      }),
+    renderHook(
+      () =>
+        useSanityTableData({
+          documentType: 'article',
+          columns: testColumns,
+          pageSize: 25,
+        }),
+      {wrapper: NuqsHookWrapper},
     )
 
     // No filter, single type → use usePaginatedDocuments for server-side pagination
