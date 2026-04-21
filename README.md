@@ -67,7 +67,7 @@ export function ArticlesTable() {
       defaultSort={{ field: "_updatedAt", direction: "desc" }}
       filters={articleFilters}
       columns={[
-        column.title({ searchable: true, edit: true }),
+        column.string({ field: "title", searchable: true, edit: true }),
         column.reference({
           field: "author",
           header: "Author",
@@ -268,20 +268,29 @@ Checkbox selection column.
 column.select(config?: {width?: number} & RoleOptions)
 ```
 
-#### `column.title()`
+#### `column.string()`
 
-Text column. Defaults to `field: 'title'`.
+Generic text column.
 
 ```ts
-column.title({
+column.string({
   ...common,
   ...roles,
-  field?: string,
+  field: string,
   sortable?: boolean,
   edit?: true | {onSave: (document, newValue: string) => void},
   comments?: CommentOptions,
 })
 ```
+
+If you omit `header`, the helper derives a neutral label from the field when possible
+(for example `title` -> `Title`, `authorName` -> `Author Name`, `web.dueDate` -> `Due Date`).
+
+#### `column.title()`
+
+Deprecated compatibility preset for the common `title` field. Equivalent to
+`column.string({field: 'title', header: 'Title'})`, while still allowing `field` overrides for
+older call sites.
 
 #### `column.type()`
 

@@ -1,13 +1,13 @@
-import {column} from '@sanity-labs/react-table-kit'
 import type {ColumnDef} from '@sanity-labs/react-table-kit'
 import React from 'react'
 import {describe, it, expect, vi, beforeEach} from 'vitest'
 
+import {column} from '../src/helpers/table/column'
 import {resolveColumnAliases} from '../src/helpers/table/resolveColumnAliases'
 
 describe('Cell accessor — projected alias resolution', () => {
   it('Behavior 1: simple field column keeps field unchanged', () => {
-    const cols = resolveColumnAliases([column.title()])
+    const cols = resolveColumnAliases([column.string({field: 'title'})])
     expect(cols[0].field).toBe('title')
   })
 
@@ -82,7 +82,7 @@ describe('Edit path resolution — auto-extract document path', () => {
     vi.clearAllMocks()
   })
   it('Behavior 1: edit:true on simple field patches the field name directly', () => {
-    const cols = resolveColumnAliases([column.title({edit: true})] as ColumnDef[])
+    const cols = resolveColumnAliases([column.string({field: 'title', edit: true})] as ColumnDef[])
 
     const {result} = renderHook(() => useResolvedColumns(cols), {wrapper: NuqsWrapper})
     const resolved = result.current
@@ -153,7 +153,7 @@ describe('Edit path resolution — auto-extract document path', () => {
   it('Behavior 5: explicit onSave is preserved (not overridden by auto-save)', () => {
     const customSave = vi.fn()
     const cols = resolveColumnAliases([
-      column.title({edit: {mode: 'text' as const, onSave: customSave}}),
+      column.string({field: 'title', edit: {mode: 'text' as const, onSave: customSave}}),
     ] as ColumnDef[])
 
     const {result} = renderHook(() => useResolvedColumns(cols), {wrapper: NuqsWrapper})
