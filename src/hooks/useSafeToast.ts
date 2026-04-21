@@ -3,13 +3,10 @@ import {createContext, useContext, type Context} from 'react'
 /** Ensures Sanity UI registers its global-scoped ToastContext (browser). */
 import '@sanity/ui'
 
+type SafeToastParams = Parameters<ToastContextValue['push']>[0]
+
 interface SafeToast {
-  push: (params: {
-    status: 'error' | 'warning' | 'success' | 'info'
-    title: string
-    closable?: boolean
-    duration?: number
-  }) => void
+  push: (params: SafeToastParams) => void
 }
 
 const noopToast: SafeToast = {push: () => {}}
