@@ -37,13 +37,9 @@ vi.mock('../src/context/ReleaseContext', () => ({
 }))
 
 const mockToastPush = vi.fn()
-vi.mock('@sanity/ui', async () => {
-  const actual = await vi.importActual('@sanity/ui')
-  return {
-    ...actual,
-    useToast: () => ({push: mockToastPush}),
-  }
-})
+vi.mock('../src/hooks/useSafeToast', () => ({
+  useSafeToast: () => ({push: mockToastPush}),
+}))
 
 describe('CreateReleaseDialog', () => {
   beforeEach(() => {
@@ -61,6 +57,10 @@ describe('CreateReleaseDialog', () => {
     expect(screen.getByTestId('release-type-asap')).toBeInTheDocument()
     expect(screen.getByTestId('release-type-scheduled')).toBeInTheDocument()
     expect(screen.getByTestId('release-type-undecided')).toBeInTheDocument()
+  })
+
+  it('Behavior 1.1: renders without a ToastProvider because release toasts are now safe', () => {
+    expect(() => renderWithTheme(<CreateReleaseDialog onClose={vi.fn()} />)).not.toThrow()
   })
 
   it('Behavior 2: description textarea is optional', async () => {
