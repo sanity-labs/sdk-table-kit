@@ -1,5 +1,12 @@
 # @sanity-labs/sdk-table-kit
 
+## 0.3.1
+
+### Patch Changes
+
+- d1b830c: Prevent release bulk actions from crashing when no Sanity UI `ToastProvider` is mounted by using
+  safe toast handling in the release UI components.
+
 ## 0.3.0
 
 ### Minor Changes
