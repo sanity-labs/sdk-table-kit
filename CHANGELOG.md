@@ -1,5 +1,18 @@
 # @sanity-labs/sdk-table-kit
 
+## 0.3.0
+
+### Minor Changes
+
+- ac67fdc: Add server-aware grouping for paginated Sanity tables, including URL-backed group state and group-aware ordering in `useSanityTableData()`, `useSanityDocumentTable()`, and `SanityDocumentTable`.
+
+  Allow SDK columns to provide server grouping metadata for display-oriented cells, including `groupField` and prepared `groupValue` support for custom and reference columns.
+
+### Patch Changes
+
+- ac67fdc: Update the `@sanity-labs/react-table-kit` dependency range to `^1.3.0` so `sdk-table-kit` ships
+  against the released `column.string()` and server-grouping APIs.
+
 ## 0.2.0
 
 ### Minor Changes
