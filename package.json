@@ -47,7 +47,7 @@
   },
   "dependencies": {
     "@portabletext/react": "^6.0.3",
-    "@sanity-labs/react-table-kit": "^1.2.0",
+    "@sanity-labs/react-table-kit": "^1.3.0",
     "@sanity-labs/sdk-addon-dataset-runtime": "^1.0.0",
     "@sanity-labs/sdk-comments": "^1.0.0",
     "@sanity-labs/sdk-tasks": "^1.0.0",

@@ -32,6 +32,7 @@ vi.mock('@sanity/sdk', () => ({
 import {renderHook} from '@testing-library/react'
 
 import {useSanityTableData} from '../src/hooks/useSanityTableData'
+import {NuqsHookWrapper} from './hookWrappers'
 
 const baseColumns = [
   {id: 'title', header: 'Title', field: 'title'},
@@ -44,12 +45,14 @@ describe('R-T2: Perspective injection into useSanityTableData', () => {
   })
 
   it('Behavior 1 [TRACER]: passes perspective to useQuery in query mode', () => {
-    renderHook(() =>
-      useSanityTableData({
-        documentType: 'article',
-        columns: baseColumns,
-        perspective: ['spring-campaign', 'published'],
-      }),
+    renderHook(
+      () =>
+        useSanityTableData({
+          documentType: 'article',
+          columns: baseColumns,
+          perspective: ['spring-campaign', 'published'],
+        }),
+      {wrapper: NuqsHookWrapper},
     )
 
     expect(mockUsePaginatedDocuments).toHaveBeenCalledWith(
@@ -67,12 +70,14 @@ describe('R-T2: Perspective injection into useSanityTableData', () => {
   })
 
   it('Behavior 2: passes perspective to useQuery in query mode', () => {
-    renderHook(() =>
-      useSanityTableData({
-        documentType: ['article', 'blogPost'],
-        columns: baseColumns,
-        perspective: ['cyber-monday', 'published'],
-      }),
+    renderHook(
+      () =>
+        useSanityTableData({
+          documentType: ['article', 'blogPost'],
+          columns: baseColumns,
+          perspective: ['cyber-monday', 'published'],
+        }),
+      {wrapper: NuqsHookWrapper},
     )
 
     expect(mockUseQuery).toHaveBeenCalledWith(
@@ -83,13 +88,15 @@ describe('R-T2: Perspective injection into useSanityTableData', () => {
   })
 
   it('Behavior 3: passes perspective to useQuery when filter is present', () => {
-    renderHook(() =>
-      useSanityTableData({
-        documentType: 'article',
-        filter: 'status != "archived"',
-        columns: baseColumns,
-        perspective: 'published',
-      }),
+    renderHook(
+      () =>
+        useSanityTableData({
+          documentType: 'article',
+          filter: 'status != "archived"',
+          columns: baseColumns,
+          perspective: 'published',
+        }),
+      {wrapper: NuqsHookWrapper},
     )
 
     expect(mockUseQuery).toHaveBeenCalledWith(
@@ -100,11 +107,13 @@ describe('R-T2: Perspective injection into useSanityTableData', () => {
   })
 
   it('Behavior 4: omits perspective when not provided (backward compat)', () => {
-    renderHook(() =>
-      useSanityTableData({
-        documentType: 'article',
-        columns: baseColumns,
-      }),
+    renderHook(
+      () =>
+        useSanityTableData({
+          documentType: 'article',
+          columns: baseColumns,
+        }),
+      {wrapper: NuqsHookWrapper},
     )
 
     const paginatedCallArgs = mockUsePaginatedDocuments.mock.calls[0][0]

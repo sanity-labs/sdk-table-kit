@@ -1,6 +1,7 @@
 import type {ColumnDef, SortConfig} from '@sanity-labs/react-table-kit'
 // In tests, this is mocked via vi.mock('@sanity/sdk-react').
 import {usePaginatedDocuments, useQuery} from '@sanity/sdk-react'
+import {parseAsString, useQueryState} from 'nuqs'
 import {useState, useCallback, useEffect, useMemo, useRef} from 'react'
 
 import {useColumnProjection} from './useColumnProjection'
@@ -20,6 +21,40 @@ function resolveServerSortField(columns: ColumnDef[], sort: SortConfig | null): 
     ...sort,
     field: serverSortField,
   }
+}
+
+function resolveServerGroupField(columns: ColumnDef[], groupBy: string | null): string | null {
+  if (!groupBy) return null
+
+  const column = columns.find(
+    (candidate) => candidate.id === groupBy || candidate.field === groupBy,
+  ) as (ColumnDef & {_serverGroupField?: string}) | undefined
+
+  if (!column) return groupBy
+
+  return column._serverGroupField ?? column.field ?? groupBy
+}
+
+function buildOrderings(
+  groupField: string | null,
+  sort: SortConfig | null,
+): Array<{direction: 'asc' | 'desc'; field: string}> {
+  const orderings: Array<{direction: 'asc' | 'desc'; field: string}> = []
+
+  if (groupField) {
+    orderings.push({field: groupField, direction: 'asc'})
+  }
+
+  if (sort) {
+    const existingIndex = orderings.findIndex((entry) => entry.field === sort.field)
+    if (existingIndex >= 0) {
+      orderings[existingIndex] = sort
+    } else {
+      orderings.push(sort)
+    }
+  }
+
+  return orderings
 }
 
 /**
@@ -88,6 +123,14 @@ export interface SortingState {
 }
 
 /**
+ * Server-side grouping state.
+ */
+export interface GroupingState {
+  current: string | null
+  onGroupByChange: (groupBy: string | null) => void
+}
+
+/**
  * Result from the SDK data-fetching hook.
  */
 export interface SanityTableDataResult<T = Record<string, unknown>> {
@@ -101,6 +144,8 @@ export interface SanityTableDataResult<T = Record<string, unknown>> {
   pagination: PaginationState | null
   /** Server-side sorting state. Null when using useQuery mode (client-side sorting). */
   sorting: SortingState | null
+  /** Server-aware grouping state shared with the table UI. */
+  grouping: GroupingState
 }
 
 /**
@@ -110,13 +155,16 @@ function buildQuery(
   documentType: string | string[],
   filter: string | undefined,
   projection: string,
-  sort: SortConfig | null,
+  orderings: Array<{direction: 'asc' | 'desc'; field: string}>,
   userParams?: Record<string, unknown>,
 ): {query: string; params: Record<string, unknown>} {
   const isArray = Array.isArray(documentType)
   const typeFilter = isArray ? '_type in $docTypes' : '_type == $docType'
   const fullFilter = filter ? `${typeFilter} && ${filter}` : typeFilter
-  const orderClause = sort ? ` | order(${sort.field} ${sort.direction})` : ''
+  const orderClause =
+    orderings.length > 0
+      ? ` | order(${orderings.map((ordering) => `${ordering.field} ${ordering.direction}`).join(', ')})`
+      : ''
 
   return {
     query: `*[${fullFilter}]${projection}${orderClause}`,
@@ -174,6 +222,10 @@ export function useSanityTableData<T = Record<string, unknown>>(
 
   // Sort state (only used in paginated mode)
   const [currentSort, setCurrentSort] = useState<SortConfig | null>(defaultSort ?? null)
+  const [currentGroupBy, setCurrentGroupBy] = useQueryState(
+    'groupBy',
+    parseAsString.withOptions({history: 'replace'}),
+  )
 
   const onSortChange = useCallback((sort: SortConfig | null) => {
     setCurrentSort(sort)
@@ -182,25 +234,29 @@ export function useSanityTableData<T = Record<string, unknown>>(
     () => resolveServerSortField(columns, currentSort),
     [columns, currentSort],
   )
-  const {query, params} = buildQuery(documentType, filter, projection, serverSort, userParams)
+  const serverGroupField = useMemo(
+    () => resolveServerGroupField(columns, currentGroupBy ?? null),
+    [columns, currentGroupBy],
+  )
+  const orderings = useMemo(
+    () => buildOrderings(serverGroupField, serverSort),
+    [serverGroupField, serverSort],
+  )
+  const {query, params} = buildQuery(documentType, filter, projection, orderings, userParams)
 
   const [effectivePageSize, setEffectivePageSize] = useState(pageSize ?? 25)
   const useSdkPagination = pageSize !== undefined
   const stalePagedDataRef = useRef<null | {data: T[]; page: number; queryKey: string}>(null)
-  const serverSortField = serverSort?.field
-  const serverSortDirection = serverSort?.direction
   const paginatedOrderings = useMemo(
-    () =>
-      serverSortField && serverSortDirection
-        ? [{field: serverSortField, direction: serverSortDirection}]
-        : undefined,
-    [serverSortDirection, serverSortField],
+    () => (orderings.length > 0 ? orderings : undefined),
+    [orderings],
   )
   const paginatedQueryKey = useMemo(
     () =>
       [
         `type:${serializeForQueryKey(documentType)}`,
         `filter:${filter ?? ''}`,
+        `groupBy:${currentGroupBy ?? ''}`,
         `orderings:${serializeForQueryKey(paginatedOrderings)}`,
         `params:${serializeForQueryKey(userParams ?? {})}`,
         `perspective:${serializeForQueryKey(perspective ?? null)}`,
@@ -211,6 +267,7 @@ export function useSanityTableData<T = Record<string, unknown>>(
       documentType,
       effectivePageSize,
       filter,
+      currentGroupBy,
       paginatedOrderings,
       perspective,
       projection,
@@ -470,6 +527,10 @@ export function useSanityTableData<T = Record<string, unknown>>(
         current: currentSort,
         onSortChange,
       },
+      grouping: {
+        current: currentGroupBy ?? null,
+        onGroupByChange: setCurrentGroupBy,
+      },
     }
   }
 
@@ -479,5 +540,9 @@ export function useSanityTableData<T = Record<string, unknown>>(
     transitionLoading: false,
     pagination: null,
     sorting: null,
+    grouping: {
+      current: currentGroupBy ?? null,
+      onGroupByChange: setCurrentGroupBy,
+    },
   }
 }

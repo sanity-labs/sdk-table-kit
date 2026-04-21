@@ -39,10 +39,14 @@ export interface SanityColumnDef<TDocument extends DocumentBase = DocumentBase> 
 > {
   /** Custom GROQ projection expression for this column. */
   projection?: string
+  /** Optional transform used when grouping this column for display. */
+  groupValue?: (rawValue: unknown, row: TDocument) => string
   /** Internal preview metadata reused by reference filters when available. */
   _referencePreview?: Required<Pick<PreviewConfig, 'select' | 'prepare'>>
   /** Internal reference target type metadata reused by reference-aware features. */
   _referenceType?: string
+  /** Backend field/expression to use when server-side grouping is enabled. */
+  _serverGroupField?: string
   /** Optional in-cell comments metadata for field-scoped comment popovers. */
   comments?: CellCommentsConfig
   /** SDK-specific edit metadata for reference columns. */

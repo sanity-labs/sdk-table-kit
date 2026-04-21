@@ -8,6 +8,7 @@ export default defineConfig({
   resolve: {
     alias: {
       'react-day-picker/style.css': path.resolve(__dirname, '__mocks__/empty-style.ts'),
+      'react-day-picker/src/style.css': path.resolve(__dirname, '__mocks__/empty-style.ts'),
       // 'sanity' is a peer dep (not installed in dev). Vitest auto-mock
       // from __mocks__/sanity.ts handles the default; individual tests
       // can override with vi.mock('sanity', ...)

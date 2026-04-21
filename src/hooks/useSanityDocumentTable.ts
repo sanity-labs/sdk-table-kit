@@ -69,6 +69,13 @@ export function useSanityDocumentTable<T extends DocumentBase = DocumentBase>(
     () => (result.sorting ? getServerSortableColumnIds(resolvedColumns as ColumnDef[]) : undefined),
     [resolvedColumns, result.sorting],
   )
+  const serverGroupableColumnIds = useMemo(
+    () =>
+      (resolvedColumns as ColumnDef[])
+        .filter((column) => column.groupable)
+        .map((column) => column.field ?? column.id),
+    [resolvedColumns],
+  )
 
   const tableProps: DocumentTableProps<T> = {
     data: result.data,
@@ -85,6 +92,11 @@ export function useSanityDocumentTable<T extends DocumentBase = DocumentBase>(
         sortableColumnIds: serverSortableColumnIds,
       },
     }),
+    serverGroup: {
+      groupBy: result.grouping.current,
+      onGroupByChange: result.grouping.onGroupByChange,
+      groupableColumnIds: serverGroupableColumnIds,
+    },
   }
 
   // Provide a safe default pagination for PaginationControls

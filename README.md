@@ -9,6 +9,7 @@ This package sits on top of `@sanity-labs/react-table-kit` and adds:
 - Sanity SDK-backed data fetching and pagination
 - automatic GROQ projection generation from your columns
 - explicit filter definitions with URL-backed state
+- server-aware grouping for paginated tables
 - inline editing, inline create, and release-aware staging
 - Sanity-specific cells for references, users, document status, tasks, comments, and Studio links
 
@@ -202,6 +203,8 @@ most apps reach for first:
   `string[]` when you want one query-backed table across multiple document types.
 - `pageSize` changes how data is loaded. In the documented single-type flow it enables SDK
   pagination; without it, the table falls back to query mode.
+- When paginated mode is active, grouping is server-aware. The current group key is stored in the
+  `groupBy` URL param and the SDK prefixes the active group ordering ahead of the current sort.
 - `params` are merged with compiled filter params. The internal document-type params still win, so
   avoid relying on your own `docType` or `docTypes` keys.
 - `columns` are not only presentation config. Their `field` values also drive the generated GROQ
@@ -213,6 +216,38 @@ most apps reach for first:
 - `releases` does not filter the table or change the table read perspective. It keeps the normal
   row set visible and treats the selected release as the staging target for edits and release
   actions.
+
+### Server-backed grouping
+
+`SanityDocumentTable` and `useSanityDocumentTable()` automatically wire server-backed grouping for
+paginated tables. Mark columns as `groupable: true`, and the table will expose them in the group-by
+UI while `useSanityTableData()` keeps the active group key in URL state and injects the matching
+ordering into the SDK query.
+
+For display-oriented columns, you can separate the visible group label from the backend ordering
+field:
+
+```ts
+column.custom({
+  field: 'status',
+  header: 'Status',
+  groupable: true,
+  groupValue: (rawValue) => statusLabels[String(rawValue ?? '')] ?? String(rawValue ?? ''),
+  groupField: 'coalesce(status, "draft")',
+})
+
+column.reference({
+  field: 'section',
+  header: 'Section',
+  referenceType: 'section',
+  preview,
+  groupable: true,
+  groupField: 'section->title',
+})
+```
+
+Use `groupValue` when group headers should show a prepared or friendly label. Use `groupField` when
+the server should group by a different path or GROQ expression than the rendered cell value.
 
 ## `column` Helper Reference
 
@@ -323,26 +358,18 @@ column.updatedAt({
 
 #### `column.custom()`
 
-Escape hatch for custom rendering, sorting, filtering, and SDK projection control.
+Advanced escape hatch for columns that need computed projections or custom rendering, sorting,
+grouping, filtering, or editing behavior.
 
 ```ts
 column.custom({
-  ...common,
-  ...roles,
   field: string,
-  cell?: (value, row) => React.ReactNode,
-  sortable?: boolean,
-  sortValue?: (rawValue, row) => string | number,
-  edit?: ColumnEditConfig,
-  filterFn?: (row, filterValue) => boolean,
-  filterMode?: 'exact' | 'range',
-  projection?: string,
-  comments?: CommentOptions,
+  ...advancedOptions,
 })
 ```
 
-Use `projection` when the rendered value should come from a custom GROQ expression instead of the
-column `field`.
+Prefer `column.string()`, `column.badge()`, `column.date()`, or `column.reference()` when they fit
+the data shape. See `Advanced: column.custom()` below for the full prop reference and example.
 
 #### `column.badge()`
 
@@ -425,6 +452,7 @@ column.reference({
   sortField?: string,
   filterable?: boolean,
   groupable?: boolean,
+  groupField?: string,
   width?: number,
   edit?: boolean,
   placeholder?: string,
@@ -433,6 +461,8 @@ column.reference({
 ```
 
 Use `sortField` when the server should sort by a different field than the rendered preview title.
+Use `groupField` when server-backed grouping should use a different path or expression than the
+prepared preview title.
 
 #### `column.preview()`
 
@@ -471,6 +501,135 @@ Task summary cell for document-scoped tasks.
 ```ts
 column.tasks(config?: {header?: string; width?: number})
 ```
+
+## Advanced: `column.custom()`
+
+Use `column.custom()` when a built-in helper does not model the column cleanly.
+
+Reach for it when:
+
+- the rendered value comes from a computed GROQ projection
+- the cell needs custom JSX
+- sorting should compare a derived label rather than the raw value
+- group headers should show a friendly label
+- server-backed grouping should use a different backend field or GROQ expression
+- filtering needs a custom predicate
+- editing needs the full `ColumnEditConfig` surface
+
+Prefer a built-in helper when:
+
+- the value is plain text and maps cleanly to one field: `column.string()`
+- the value is categorical and should render as a badge: `column.badge()`
+- the value is a date or datetime: `column.date()`
+- the value is a Sanity reference preview: `column.reference()`
+
+### Full config surface
+
+```ts
+column.custom({
+  // identity and data
+  field: string,
+  projection?: string,
+
+  // presentation
+  header?: string,
+  icon?: React.ComponentType<React.SVGProps<SVGSVGElement>>,
+  filterable?: boolean,
+  groupable?: boolean,
+  searchable?: boolean,
+  flex?: number,
+  width?: number,
+
+  // rendering and table behavior
+  cell?: (value, row) => React.ReactNode,
+  sortable?: boolean,
+  sortValue?: (rawValue, row) => string | number,
+  groupValue?: (rawValue, row) => string,
+  groupField?: string,
+  filterFn?: (row, filterValue) => boolean,
+  filterMode?: 'exact' | 'range',
+
+  // editing, access, and comments
+  edit?: ColumnEditConfig,
+  visibleTo?: string[],
+  editableBy?: string[],
+  comments?: CommentOptions,
+})
+```
+
+### What each prop is for
+
+Identity and data:
+
+- `field` is required. It gives the column a stable key and names the row value used by the cell.
+  When you also provide `projection`, `field` is usually a simple alias such as `workflowStage` or
+  `enteredStageAt`.
+- `projection` is SDK-only. Use it when the rendered value should come from a custom GROQ
+  expression instead of reading directly from `field`.
+
+Presentation:
+
+- `header`, `icon`, `flex`, and `width` control how the column is labeled and laid out.
+- `filterable`, `groupable`, and `searchable` decide whether the column participates in those table
+  features.
+
+Rendering and table behavior:
+
+- `cell` renders the value with custom JSX.
+- `sortable` enables or disables sorting for the column.
+- `sortValue` transforms the raw value before sorting. Use it when the visible label differs from
+  the stored value.
+- `groupValue` transforms the raw value into the visible group label.
+- `groupField` is the backend field or GROQ expression to use for server-backed grouping when that
+  should differ from the rendered cell value.
+- `filterFn` lets you provide a custom client-side predicate for the column.
+- `filterMode` chooses how built-in filtering should interpret values: exact match or range.
+
+Editing, access, and comments:
+
+- `edit` accepts the full `ColumnEditConfig`, so `column.custom()` can opt into `text`, `select`,
+  `date`, or fully custom editing flows.
+- `visibleTo` limits which role slugs can see the column.
+- `editableBy` limits which role slugs can edit the column.
+- `comments` enables field-scoped comments. Use `true` for the default field path and label, or an
+  object to override `fieldPath` and `fieldLabel`.
+
+### Example: computed workflow stage column
+
+```tsx
+import {Badge} from '@sanity/ui'
+import {column} from '@sanity-labs/sdk-table-kit'
+
+const STAGE_LABELS: Record<string, string> = {
+  draft: 'Draft & Edit',
+  ideation: 'Ideation',
+  scheduled: 'Scheduled',
+}
+
+export const workflowStageColumn = column.custom({
+  field: 'workflowStage',
+  header: 'Workflow stage',
+  projection: 'coalesce(status, "draft")',
+  groupable: true,
+  filterable: true,
+  searchable: true,
+  cell: (value) => {
+    const stage = String(value ?? 'draft')
+    return <Badge tone={stage === 'scheduled' ? 'positive' : 'primary'}>{STAGE_LABELS[stage]}</Badge>
+  },
+  sortValue: (rawValue) => STAGE_LABELS[String(rawValue ?? 'draft')] ?? 'Draft & Edit',
+  groupValue: (rawValue) => STAGE_LABELS[String(rawValue ?? 'draft')] ?? 'Draft & Edit',
+  groupField: 'coalesce(status, "draft")',
+})
+```
+
+Why this uses `column.custom()`:
+
+- `field` is a stable alias for a computed value rather than a real document field.
+- `projection` fetches that computed value from GROQ.
+- `cell` renders the value as a badge instead of plain text.
+- `sortValue` and `groupValue` keep sorting and group labels aligned with the displayed stage label.
+- `groupField` tells server-backed grouping which backend expression to use.
 
 ## How Filters Work
 
@@ -652,6 +811,8 @@ That prevents task popovers from needing to suspend while resolving users intern
 Use the lower-level APIs when you want a custom layout:
 
 - `useSanityTableData()` gives you raw `data`, `loading`, `pagination`, and `sorting`.
+- `useSanityTableData()` also exposes `grouping` so custom layouts can keep the group-by UI in sync
+  with the server-backed query state.
 - `useSanityDocumentTable()` gives you ready-to-spread `tableProps` for `DocumentTable` and
   `paginationProps` for `PaginationControls`.
 

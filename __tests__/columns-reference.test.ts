@@ -95,4 +95,23 @@ describe('columns.reference()', () => {
     expect(col._serverSortField).toBe('section->name')
     expect(getServerSortableColumnIds([col])).toEqual(['section'])
   })
+
+  it('Behavior 7: reuses the prepared title for grouping and server grouping', () => {
+    const col = column.reference({
+      field: 'section',
+      header: 'Section',
+      referenceType: 'section',
+      preview: {
+        select: {name: 'name'},
+        prepare: ({name}) => ({title: String(name)}),
+      },
+      sortField: 'section->name',
+      groupable: true,
+    })
+
+    expect(col._serverGroupField).toBe('section->name')
+    expect(col.groupValue?.({name: 'Politics'} as never, {_id: 'doc-1', _type: 'article'})).toBe(
+      'Politics',
+    )
+  })
 })
