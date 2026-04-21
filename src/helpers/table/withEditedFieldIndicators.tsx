@@ -3,8 +3,8 @@ import {isEqual} from 'lodash-es'
 
 import {CommentableCell} from '../../components/comments/CommentableCell'
 import {CellDecoratorFrame} from '../../components/table/CellDecoratorFrame'
-import type {EditedFieldIndicatorTone} from '../../helpers/releases/perspectiveTones'
 import {normalizeBaseDocumentId} from '../../helpers/releases/documentIds'
+import type {EditedFieldIndicatorTone} from '../../helpers/releases/perspectiveTones'
 import type {CellCommentsConfig} from '../../hooks/useColumnProjection'
 
 interface DecoratorAwareColumn<T extends DocumentBase = DocumentBase> extends ColumnDef<T> {

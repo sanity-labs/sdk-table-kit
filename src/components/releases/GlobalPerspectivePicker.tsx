@@ -1,16 +1,5 @@
 import {ChevronDownIcon} from '@sanity/icons'
-import {
-  Box,
-  Button,
-  Card,
-  Flex,
-  Label,
-  Menu,
-  MenuButton,
-  MenuItem,
-  Stack,
-  Text,
-} from '@sanity/ui'
+import {Box, Button, Card, Flex, Label, Menu, MenuButton, MenuItem, Stack, Text} from '@sanity/ui'
 import {useMemo} from 'react'
 import styled from 'styled-components'
 
@@ -59,7 +48,7 @@ const StyledMenu = styled(Menu)`
 
   & [data-ui='Stack'] {
     gap: 0;
-  };
+  }
   min-width: 240px;
   overflow: hidden;
   padding: var(--menu-inset);
@@ -69,8 +58,7 @@ const SectionLabel = styled(Box)`
   padding-left: 44px;
 `
 
-const ReleaseMenuItemWrapper = styled.div`
-`
+const ReleaseMenuItemWrapper = styled.div``
 
 const MenuRows = styled(Flex)`
   & > [data-release-row] + [data-release-row] {
@@ -175,8 +163,7 @@ export function GlobalPerspectivePicker() {
     selectedReleaseId,
     setSelectedPerspective,
     setSelectedReleaseId,
-  } =
-    useReleaseContext()
+  } = useReleaseContext()
 
   const grouped = useMemo<Record<ReleaseType, ReleaseDocument[]>>(
     () => ({
@@ -189,7 +176,7 @@ export function GlobalPerspectivePicker() {
 
   const activeLayer: PerspectiveLayer = isPublishedPerspective
     ? 'published'
-    : selectedRelease?.metadata.releaseType ?? 'drafts'
+    : (selectedRelease?.metadata.releaseType ?? 'drafts')
   const visibleGroups = useMemo(
     () =>
       ORDERED_RELEASE_TYPES.map((type) => ({type, releases: grouped[type]})).filter(
@@ -201,7 +188,7 @@ export function GlobalPerspectivePicker() {
   const pillLabel = isPublishedPerspective
     ? 'Published'
     : selectedRelease
-      ? selectedRelease.metadata.title ?? selectedRelease.name
+      ? (selectedRelease.metadata.title ?? selectedRelease.name)
       : 'Drafts'
   const selectedTypeIndex =
     selectedRelease?.metadata.releaseType != null
@@ -210,7 +197,9 @@ export function GlobalPerspectivePicker() {
 
   return (
     <Stack space={2}>
-      <Label size={2} muted>Perspective</Label>
+      <Label size={2} muted>
+        Perspective
+      </Label>
       <PillShell data-testid="release-picker-pill" radius="full" border tone="inherit">
         <Flex align="center" gap={2}>
           <ReleaseAvatarIcon layer={activeLayer} variant="pill" />
@@ -382,7 +371,6 @@ export function GlobalPerspectivePicker() {
                     })}
                   </Stack>
                 </ScrollSection>
-
               </StyledMenu>
             }
             popover={{

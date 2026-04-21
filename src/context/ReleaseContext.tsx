@@ -83,7 +83,8 @@ export function ReleaseProvider({children}: {children: React.ReactNode}) {
     () => parseReleasePerspectiveParam(releaseParam),
     [releaseParam],
   )
-  const selectedReleaseId = selectedPerspective.kind === 'release' ? selectedPerspective.releaseId : null
+  const selectedReleaseId =
+    selectedPerspective.kind === 'release' ? selectedPerspective.releaseId : null
   const isPublishedPerspective = selectedPerspective.kind === 'published'
   const isDraftsPerspective = selectedPerspective.kind === 'drafts'
 

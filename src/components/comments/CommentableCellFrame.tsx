@@ -72,7 +72,13 @@ export function CommentableCellFrame({
       data-testid="commentable-cell-root"
       onMouseEnter={() => onHoverChange(true)}
       onMouseLeave={() => onHoverChange(false)}
-      style={{alignItems: 'stretch', alignSelf: 'stretch', display: 'flex', minWidth: 0, width: '100%'}}
+      style={{
+        alignItems: 'stretch',
+        alignSelf: 'stretch',
+        display: 'flex',
+        minWidth: 0,
+        width: '100%',
+      }}
     >
       <CellDecoratorFrame
         cellPadding={cellPadding}

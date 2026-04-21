@@ -80,7 +80,11 @@ export function ServerFilterBar({
                   wrap="wrap"
                 >
                   {searchLeading}
-                  <FilterControl columns={columns} filterDef={filterDef} filterState={filterState} />
+                  <FilterControl
+                    columns={columns}
+                    filterDef={filterDef}
+                    filterState={filterState}
+                  />
                 </Flex>
               )
             }

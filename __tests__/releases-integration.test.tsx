@@ -208,10 +208,14 @@ describe('R-T9: Integration — SanityDocumentTable releases prop', () => {
     expect(screen.getByTestId('release-picker-button')).toBeInTheDocument()
     expect(filterSurface).toContainElement(pickerPill)
     expect(filterSurface).toContainElement(searchInput)
-    expect(filterSurface.compareDocumentPosition(tableSurface) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(
+      filterSurface.compareDocumentPosition(tableSurface) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
     expect(pickerGroup).toBe(searchGroup)
     expect(statusGroup).not.toBe(pickerGroup)
-    expect(pickerPill.compareDocumentPosition(searchInput) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(
+      pickerPill.compareDocumentPosition(searchInput) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
   })
 
   it('Behavior 6c: selected ASAP release applies caution tone to the full filter surface', () => {

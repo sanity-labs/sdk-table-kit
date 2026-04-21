@@ -3,8 +3,8 @@ import {SearchIcon} from '@sanity/icons'
 import {Label, Stack, TextInput} from '@sanity/ui'
 import {useEffect, useState} from 'react'
 
-import type {BaseFilterControlProps} from './types'
 import {DefaultToneScope} from './DefaultToneScope'
+import type {BaseFilterControlProps} from './types'
 
 export function SearchFilterControl({
   filterDef,

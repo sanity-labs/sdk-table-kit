@@ -6,7 +6,15 @@ import {
   type FilterDef,
 } from '@sanity-labs/react-table-kit'
 import {CalendarIcon} from '@sanity/icons'
-import {Button, Card, Label, Popover, Stack, useClickOutsideEvent, useGlobalKeyDown} from '@sanity/ui'
+import {
+  Button,
+  Card,
+  Label,
+  Popover,
+  Stack,
+  useClickOutsideEvent,
+  useGlobalKeyDown,
+} from '@sanity/ui'
 import type {KeyboardEvent as ReactKeyboardEvent} from 'react'
 import {useCallback, useEffect, useMemo, useRef, useState} from 'react'
 import {DayPicker, type DateRange} from 'react-day-picker'

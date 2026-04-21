@@ -11,7 +11,10 @@ export function CommentableCell(props: CommentableCellProps) {
   if (!addonData) {
     if (props.editedIndicatorTone) {
       return (
-        <CellDecoratorFrame cellPadding={props.cellPadding} indicatorTone={props.editedIndicatorTone}>
+        <CellDecoratorFrame
+          cellPadding={props.cellPadding}
+          indicatorTone={props.editedIndicatorTone}
+        >
           {props.children}
         </CellDecoratorFrame>
       )

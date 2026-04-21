@@ -16,5 +16,7 @@ export function TaskSummaryCellView({
     return <span style={{color: 'var(--card-muted-fg-color)'}}>—</span>
   }
 
-  return <TaskSummaryCellInner documentId={documentId} documentType={documentType} readOnly={readOnly} />
+  return (
+    <TaskSummaryCellInner documentId={documentId} documentType={documentType} readOnly={readOnly} />
+  )
 }

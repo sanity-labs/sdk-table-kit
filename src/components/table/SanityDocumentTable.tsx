@@ -22,12 +22,12 @@ import {DocumentStatusBatchProvider} from '../../context/DocumentStatusBatchCont
 import {ReleaseProvider, useOptionalReleaseContext} from '../../context/ReleaseContext'
 import {compileFilters} from '../../helpers/filters/compileFilters'
 import {getServerSortableColumnIds} from '../../helpers/filters/getServerSortableColumnIds'
+import {normalizeBaseDocumentId} from '../../helpers/releases/documentIds'
 import {
   getEditedFieldIndicatorTone,
   getPerspectiveSurfaceTone,
   type EditedFieldIndicatorTone,
 } from '../../helpers/releases/perspectiveTones'
-import {normalizeBaseDocumentId} from '../../helpers/releases/documentIds'
 import {resolveColumnAliases} from '../../helpers/table/resolveColumnAliases'
 import {withEditedFieldIndicators} from '../../helpers/table/withEditedFieldIndicators'
 import {useCreateDocument, type CreateDocumentConfig} from '../../hooks/useCreateDocument'
@@ -423,7 +423,12 @@ function SanityDocumentTableInner<T extends DocumentBase = DocumentBase>(
             selectedRelease?.metadata.releaseType,
           )
         : undefined,
-    [isPublishedPerspective, releases, selectedPerspective?.kind, selectedRelease?.metadata.releaseType],
+    [
+      isPublishedPerspective,
+      releases,
+      selectedPerspective?.kind,
+      selectedRelease?.metadata.releaseType,
+    ],
   )
   const indicatorDecoratedColumns = useMemo(
     () =>
