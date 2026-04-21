@@ -25,7 +25,8 @@ export interface SDKEditHandlerResult {
  * const { createOnSave } = useSDKEditHandler()
  *
  * const cols = [
- *   column.custom('title', {
+ *   column.custom({
+ *     field: 'title',
  *     header: 'Title',
  *     edit: {
  *       mode: 'text',
