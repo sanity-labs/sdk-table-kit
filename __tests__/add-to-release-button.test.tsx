@@ -49,15 +49,10 @@ vi.mock('../src/context/ReleaseContext', () => ({
   }),
 }))
 
-// Mock @sanity/ui useToast
 const mockToastPush = vi.fn()
-vi.mock('@sanity/ui', async () => {
-  const actual = await vi.importActual('@sanity/ui')
-  return {
-    ...actual,
-    useToast: () => ({push: mockToastPush}),
-  }
-})
+vi.mock('../src/hooks/useSafeToast', () => ({
+  useSafeToast: () => ({push: mockToastPush}),
+}))
 
 // jsdom doesn't have matchMedia — Sanity UI Popover needs it
 Object.defineProperty(window, 'matchMedia', {
@@ -84,6 +79,10 @@ describe('R-T6: AddToReleaseButton', () => {
   it('Behavior 1 [TRACER]: renders "Add to Release" button', () => {
     renderWithTheme(<AddToReleaseButton selectedIds={['doc1', 'doc2']} />)
     expect(screen.getByRole('button', {name: /add to release/i})).toBeInTheDocument()
+  })
+
+  it('Behavior 1.1: renders without a ToastProvider because release toasts are now safe', () => {
+    expect(() => renderWithTheme(<AddToReleaseButton selectedIds={['doc1']} />)).not.toThrow()
   })
 
   it('Behavior 2: click opens popover with active releases list', async () => {

@@ -1,8 +1,9 @@
-import {Button, Dialog, Flex, Stack, Text, TextArea, TextInput, useToast} from '@sanity/ui'
+import {Button, Dialog, Flex, Stack, Text, TextArea, TextInput} from '@sanity/ui'
 import {useCallback, useState} from 'react'
 
 import {useReleaseContext} from '../../context/ReleaseContext'
 import type {CreateReleaseMetadata} from '../../context/ReleaseContext'
+import {useSafeToast} from '../../hooks/useSafeToast'
 
 interface CreateReleaseDialogProps {
   onClose: () => void
@@ -10,7 +11,7 @@ interface CreateReleaseDialogProps {
 
 export function CreateReleaseDialog({onClose}: CreateReleaseDialogProps) {
   const {createRelease} = useReleaseContext()
-  const toast = useToast()
+  const toast = useSafeToast()
 
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')

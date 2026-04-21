@@ -1,8 +1,9 @@
 import {AddIcon} from '@sanity/icons'
-import {Button, Flex, Menu, MenuButton, MenuDivider, MenuItem, Text, useToast} from '@sanity/ui'
+import {Button, Flex, Menu, MenuButton, MenuDivider, MenuItem, Text} from '@sanity/ui'
 import React, {useCallback, useState} from 'react'
 
 import {useReleaseContext} from '../../context/ReleaseContext'
+import {useSafeToast} from '../../hooks/useSafeToast'
 
 const DOT_COLORS: Record<string, string> = {
   asap: '#f59e0b',
@@ -31,7 +32,7 @@ export function AddToReleaseButton({
   onCreateRelease,
 }: AddToReleaseButtonProps) {
   const {activeReleases, addToRelease} = useReleaseContext()
-  const toast = useToast()
+  const toast = useSafeToast()
   const [isAdding, setIsAdding] = useState(false)
 
   // Group releases by type
