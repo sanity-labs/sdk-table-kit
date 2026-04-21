@@ -1,6 +1,7 @@
 import {column, DocumentTable} from '@sanity-labs/react-table-kit'
 import {renderHook} from '@testing-library/react'
 import {screen} from '@testing-library/react'
+import {NuqsTestingAdapter} from 'nuqs/adapters/testing'
 import React from 'react'
 import {describe, it, expect, vi, beforeEach} from 'vitest'
 
@@ -11,6 +12,13 @@ import {renderWithTheme} from './helpers'
 // Mock @sanity/sdk-react
 const mockUsePaginatedDocuments = vi.fn()
 const mockUseQuery = vi.fn()
+const mockClient = {
+  config: () => ({projectId: 'test', dataset: 'production'}),
+  fetch: vi.fn().mockResolvedValue(null),
+  releases: {
+    fetchDocuments: vi.fn().mockResolvedValue([]),
+  },
+}
 
 vi.mock('@sanity/sdk-react', () => ({
   useCurrentUser: () => ({id: 'user1', name: 'Test', roles: [{name: 'editor', title: 'Editor'}]}),
@@ -19,6 +27,7 @@ vi.mock('@sanity/sdk-react', () => ({
   useQuery: (...args: unknown[]) => mockUseQuery(...args),
   useApplyDocumentActions: () => vi.fn().mockResolvedValue(undefined),
   useActiveReleases: () => [],
+  useClient: () => mockClient,
 }))
 
 vi.mock('@sanity/sdk', () => ({
@@ -51,6 +60,10 @@ const mockHandles = mockArticles.map((article) => ({
 
 const testColumns = [column.title(), column.updatedAt()]
 
+function NuqsWrapper({children}: {children: React.ReactNode}) {
+  return <NuqsTestingAdapter hasMemory>{children}</NuqsTestingAdapter>
+}
+
 describe('useSanityDocumentTable', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -74,12 +87,14 @@ describe('useSanityDocumentTable', () => {
   })
 
   it('Behavior 1: returns tableProps with data, columns, loading', () => {
-    const {result} = renderHook(() =>
-      useSanityDocumentTable({
-        documentType: 'article',
-        columns: testColumns,
-        pageSize: 25,
-      }),
+    const {result} = renderHook(
+      () =>
+        useSanityDocumentTable({
+          documentType: 'article',
+          columns: testColumns,
+          pageSize: 25,
+        }),
+      {wrapper: NuqsWrapper},
     )
 
     expect(result.current.tableProps).toBeDefined()
@@ -89,12 +104,14 @@ describe('useSanityDocumentTable', () => {
   })
 
   it('Behavior 2: returns paginationProps with pagination and loading', () => {
-    const {result} = renderHook(() =>
-      useSanityDocumentTable({
-        documentType: 'article',
-        columns: testColumns,
-        pageSize: 25,
-      }),
+    const {result} = renderHook(
+      () =>
+        useSanityDocumentTable({
+          documentType: 'article',
+          columns: testColumns,
+          pageSize: 25,
+        }),
+      {wrapper: NuqsWrapper},
     )
 
     expect(result.current.paginationProps).toBeDefined()
@@ -105,12 +122,14 @@ describe('useSanityDocumentTable', () => {
   })
 
   it('Behavior 3: tableProps spreadable onto DocumentTable', () => {
-    const {result} = renderHook(() =>
-      useSanityDocumentTable({
-        documentType: 'article',
-        columns: testColumns,
-        pageSize: 25,
-      }),
+    const {result} = renderHook(
+      () =>
+        useSanityDocumentTable({
+          documentType: 'article',
+          columns: testColumns,
+          pageSize: 25,
+        }),
+      {wrapper: NuqsWrapper},
     )
 
     renderWithTheme(<DocumentTable {...result.current.tableProps} />)
@@ -121,12 +140,14 @@ describe('useSanityDocumentTable', () => {
   })
 
   it('Behavior 4: paginationProps spreadable onto PaginationControls', () => {
-    const {result} = renderHook(() =>
-      useSanityDocumentTable({
-        documentType: 'article',
-        columns: testColumns,
-        pageSize: 25,
-      }),
+    const {result} = renderHook(
+      () =>
+        useSanityDocumentTable({
+          documentType: 'article',
+          columns: testColumns,
+          pageSize: 25,
+        }),
+      {wrapper: NuqsWrapper},
     )
 
     renderWithTheme(<PaginationControls {...result.current.paginationProps} />)
@@ -137,12 +158,14 @@ describe('useSanityDocumentTable', () => {
   })
 
   it('Behavior 5: custom layout with both components', () => {
-    const {result} = renderHook(() =>
-      useSanityDocumentTable({
-        documentType: 'article',
-        columns: testColumns,
-        pageSize: 25,
-      }),
+    const {result} = renderHook(
+      () =>
+        useSanityDocumentTable({
+          documentType: 'article',
+          columns: testColumns,
+          pageSize: 25,
+        }),
+      {wrapper: NuqsWrapper},
     )
 
     renderWithTheme(
@@ -160,13 +183,15 @@ describe('useSanityDocumentTable', () => {
   })
 
   it('Behavior 6: paginationProps forwards page size options', () => {
-    const {result} = renderHook(() =>
-      useSanityDocumentTable({
-        documentType: 'article',
-        columns: testColumns,
-        pageSize: 25,
-        pageSizeOptions: [10, 25, 50],
-      }),
+    const {result} = renderHook(
+      () =>
+        useSanityDocumentTable({
+          documentType: 'article',
+          columns: testColumns,
+          pageSize: 25,
+          pageSizeOptions: [10, 25, 50],
+        }),
+      {wrapper: NuqsWrapper},
     )
 
     expect(result.current.paginationProps.pageSizeOptions).toEqual([10, 25, 50])

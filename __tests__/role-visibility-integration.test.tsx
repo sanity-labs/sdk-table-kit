@@ -27,6 +27,13 @@ beforeAll(() => {
 const mockCurrentUser = vi.fn()
 const mockUsePaginatedDocuments = vi.fn()
 const mockUseQuery = vi.fn()
+const mockClient = {
+  config: () => ({projectId: 'test', dataset: 'production'}),
+  fetch: vi.fn().mockResolvedValue(null),
+  releases: {
+    fetchDocuments: vi.fn().mockResolvedValue([]),
+  },
+}
 
 vi.mock('@sanity/sdk-react', () => ({
   useCurrentUser: () => mockCurrentUser(),
@@ -36,6 +43,7 @@ vi.mock('@sanity/sdk-react', () => ({
   useQuery: (...args: unknown[]) => mockUseQuery(...args),
   useDocumentPreview: () => ({data: {title: 'Preview'}}),
   useUsers: () => ({data: []}),
+  useClient: () => mockClient,
 }))
 vi.mock('@sanity/sdk', () => ({
   createDocument: vi.fn(() => ({type: 'createDocument'})),
