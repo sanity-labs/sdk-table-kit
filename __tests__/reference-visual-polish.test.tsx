@@ -14,6 +14,13 @@ const mockUseQuery = vi.fn()
 const mockApply = vi.fn()
 const mockUseDocuments = vi.fn()
 const mockUseDocumentProjection = vi.fn()
+const mockClient = {
+  config: () => ({projectId: 'test', dataset: 'production'}),
+  fetch: vi.fn().mockResolvedValue(null),
+  releases: {
+    fetchDocuments: vi.fn().mockResolvedValue([]),
+  },
+}
 
 vi.mock('@sanity/sdk-react', () => ({
   useCurrentUser: () => ({id: 'user1', name: 'Test', roles: [{name: 'editor', title: 'Editor'}]}),
@@ -22,6 +29,7 @@ vi.mock('@sanity/sdk-react', () => ({
   useApplyDocumentActions: () => mockApply,
   useDocuments: (...args: unknown[]) => mockUseDocuments(...args),
   useDocumentProjection: (...args: unknown[]) => mockUseDocumentProjection(...args),
+  useClient: () => mockClient,
 }))
 
 vi.mock('@sanity/sdk', () => ({

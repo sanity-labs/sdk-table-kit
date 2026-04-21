@@ -58,7 +58,7 @@ export function SingleSelectFilterControl({
             ))}
           </Menu>
         }
-        popover={{portal: false}}
+        popover={{animate: true, placement: 'bottom-start', portal: false, tone: 'default'}}
       />
     </Stack>
   )
@@ -92,7 +92,6 @@ export function MultiSelectFilterControl({
         {filterDef.label}
       </Label>
       <FilterPopover
-        animate
         content={
           <Stack space={1}>
             {options.length === 0 ? (

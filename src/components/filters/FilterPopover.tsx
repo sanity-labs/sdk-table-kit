@@ -11,9 +11,9 @@ interface FilterPopoverProps {
 export function FilterPopover({animate, children, content, minWidth, open}: FilterPopoverProps) {
   return (
     <Popover
-      animate={animate}
+      animate={animate ?? true}
       content={
-        <Card padding={2} radius={3} style={minWidth ? {minWidth} : undefined}>
+        <Card padding={2} radius={3} tone="default" style={minWidth ? {minWidth} : undefined}>
           {content}
         </Card>
       }

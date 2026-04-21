@@ -6,6 +6,13 @@ import React from 'react'
 import {describe, it, expect, vi, beforeAll} from 'vitest'
 
 const mockApply = vi.fn().mockResolvedValue({})
+const mockClient = {
+  config: () => ({projectId: 'test', dataset: 'production'}),
+  fetch: vi.fn().mockResolvedValue(null),
+  releases: {
+    fetchDocuments: vi.fn().mockResolvedValue([]),
+  },
+}
 
 vi.mock('@sanity/sdk-react', () => ({
   useCurrentUser: () => ({id: 'u1', name: 'T', roles: [{name: 'editor', title: 'E'}]}),
@@ -34,6 +41,7 @@ vi.mock('@sanity/sdk-react', () => ({
   useUsers: () => ({data: []}),
   useDocumentPermissions: () => ({allowed: true, message: null}),
   useActiveReleases: () => [],
+  useClient: () => mockClient,
 }))
 vi.mock('@sanity/sdk', () => ({
   createDocument: vi.fn(() => ({type: 'createDocument'})),

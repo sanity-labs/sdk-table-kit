@@ -1,40 +1,13 @@
 import type {ColumnDef, DocumentBase} from '@sanity-labs/react-table-kit'
 import {ToggleSwitch} from '@sanity-labs/react-table-kit'
-import {editDocument} from '@sanity/sdk'
-import {useApplyDocumentActions} from '@sanity/sdk-react'
 import type {PreviewConfig, PreviewValue} from '@sanity/types'
-import React, {useMemo, useCallback, useEffect, useRef} from 'react'
+import React, {useMemo, useCallback} from 'react'
 
 import {ReferenceCell} from '../components/references/ReferenceCell'
-import {useOptionalReleaseContext} from '../context/ReleaseContext'
+import {useSDKEditHandler} from './useSDKEditHandler'
 
-/**
- * Resolve a document ID for editing based on the active release.
- * When a release is selected, edits target the version document.
- * Strips drafts./versions. prefixes to get the published base ID first.
- */
-function resolveEditDocumentId(documentId: string, selectedReleaseId: string | null): string {
-  // Strip any prefix to get the published base ID
-  let baseId = documentId
-  if (baseId.startsWith('drafts.')) {
-    baseId = baseId.slice(7)
-  } else if (baseId.startsWith('versions.')) {
-    // versions.<releaseName>.<docId> — extract docId
-    const parts = baseId.split('.')
-    baseId = parts.slice(2).join('.')
-  }
-
-  if (selectedReleaseId) {
-    return `versions.${selectedReleaseId}.${baseId}`
-  }
-  return documentId
-}
-
-function createDocumentHandle(document: DocumentBase, documentId: string) {
-  return {
-    documentId,
-    documentType: document._type,
-  }
+interface UseResolvedColumnsOptions {
+  readOnly?: boolean
 }
 
 /**
@@ -64,48 +37,22 @@ interface EditConfigWithRef {
  */
 export function useResolvedColumns<T extends DocumentBase = DocumentBase>(
   columns: ColumnDef<T>[],
+  options: UseResolvedColumnsOptions = {},
 ): ColumnDef<T>[] {
-  const apply = useApplyDocumentActions()
-  const applyRef = useRef(apply)
-
-  // Get release context for version-aware editing (null if no ReleaseProvider)
-  const releaseCtx = useOptionalReleaseContext()
-  const selectedReleaseId = releaseCtx?.selectedReleaseId ?? null
-
-  useEffect(() => {
-    applyRef.current = apply
-  }, [apply])
+  const {readOnly = false} = options
+  const {createOnSave, handleEdit} = useSDKEditHandler()
 
   const applyFieldPatch = useCallback(
-    (document: DocumentBase, field: string, value: unknown) => {
-      const targetId = resolveEditDocumentId(document._id, selectedReleaseId)
-      const action = editDocument(createDocumentHandle(document, targetId), {set: {[field]: value}})
-      return applyRef.current(action)
-    },
-    [selectedReleaseId],
-  )
-
-  const createOnSave = useCallback(
-    (field: string) => {
-      return (document: DocumentBase, newValue: string) => {
-        try {
-          void applyFieldPatch(document, field, newValue)
-        } catch (err) {
-          console.error('[useResolvedColumns] apply() threw:', err)
-        }
-      }
-    },
-    [applyFieldPatch],
+    (document: DocumentBase, field: string, value: unknown) => handleEdit(document, field, value),
+    [handleEdit],
   )
 
   const createReferenceOnSave = useCallback(
     (field: string) => {
       return (row: DocumentBase, newValue: {_type: 'reference'; _ref: string} | null) => {
-        try {
-          applyFieldPatch(row, field, newValue)
-        } catch (err) {
+        void applyFieldPatch(row, field, newValue).catch((err) => {
           console.error('[useResolvedColumns] reference apply() threw:', err)
-        }
+        })
       }
     },
     [applyFieldPatch],
@@ -114,6 +61,12 @@ export function useResolvedColumns<T extends DocumentBase = DocumentBase>(
   return useMemo(() => {
     return columns.map((col) => {
       if (!col.edit || !col.edit._autoSave || !col.edit._field) {
+        if (readOnly && col.edit) {
+          return {
+            ...col,
+            edit: undefined,
+          }
+        }
         return col
       }
 
@@ -137,30 +90,34 @@ export function useResolvedColumns<T extends DocumentBase = DocumentBase>(
                 row={row}
                 prepare={preview?.prepare as (data: Record<string, unknown>) => PreviewValue}
                 selectKeys={preview ? Object.keys(preview.select) : []}
-                editMeta={{
-                  onSave,
-                  referenceType,
-                  preview,
-                  placeholder,
-                  rawRefValue: (() => {
-                    // The resolved value is the dereferenced object (not the raw ref).
-                    // Use the column's id (alias) to look up the resolved object,
-                    // then construct a raw ref from its _id.
-                    const colId = col.id || field
-                    const resolved = (row as Record<string, unknown>)[colId]
-                    if (
-                      resolved &&
-                      typeof resolved === 'object' &&
-                      '_id' in (resolved as Record<string, unknown>)
-                    ) {
-                      return {
-                        _type: 'reference' as const,
-                        _ref: String((resolved as Record<string, unknown>)._id),
+                editMeta={
+                  readOnly
+                    ? undefined
+                    : {
+                        onSave,
+                        referenceType,
+                        preview,
+                        placeholder,
+                        rawRefValue: (() => {
+                          // The resolved value is the dereferenced object (not the raw ref).
+                          // Use the column's id (alias) to look up the resolved object,
+                          // then construct a raw ref from its _id.
+                          const colId = col.id || field
+                          const resolved = (row as Record<string, unknown>)[colId]
+                          if (
+                            resolved &&
+                            typeof resolved === 'object' &&
+                            '_id' in (resolved as Record<string, unknown>)
+                          ) {
+                            return {
+                              _type: 'reference' as const,
+                              _ref: String((resolved as Record<string, unknown>)._id),
+                            }
+                          }
+                          return null
+                        })(),
                       }
-                    }
-                    return null
-                  })(),
-                }}
+                }
               />
             )
           },
@@ -174,6 +131,10 @@ export function useResolvedColumns<T extends DocumentBase = DocumentBase>(
           ...col,
           edit: undefined, // Remove edit config — cell handles its own toggle
           cell: (value: unknown, row: T) => {
+            if (readOnly) {
+              return <ReadOnlyBooleanCell checked={!!value} />
+            }
+
             return (
               <OptimisticBooleanCell
                 documentId={row._id}
@@ -189,6 +150,13 @@ export function useResolvedColumns<T extends DocumentBase = DocumentBase>(
       }
 
       // Resolve _autoSave marker into actual onSave callback
+      if (readOnly) {
+        return {
+          ...col,
+          edit: undefined,
+        }
+      }
+
       const {_autoSave, _field, ...editRest} = col.edit
       return {
         ...col,
@@ -198,7 +166,7 @@ export function useResolvedColumns<T extends DocumentBase = DocumentBase>(
         },
       }
     })
-  }, [applyFieldPatch, columns, createOnSave, createReferenceOnSave])
+  }, [applyFieldPatch, columns, createOnSave, createReferenceOnSave, readOnly])
 }
 
 /**
@@ -291,6 +259,14 @@ function OptimisticBooleanCell({
           onToggle(newValue)
         }}
       />
+    </div>
+  )
+}
+
+function ReadOnlyBooleanCell({checked}: {checked: boolean}) {
+  return (
+    <div style={{display: 'flex', justifyContent: 'center', width: '100%'}}>
+      <ToggleSwitch checked={checked} readOnly />
     </div>
   )
 }

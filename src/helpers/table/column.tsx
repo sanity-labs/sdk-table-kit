@@ -96,6 +96,16 @@ interface BaseColumnConfig {
   width?: number
 }
 
+interface TextEditConfig<T extends DocumentBase = DocumentBase> {
+  onSave: (document: T, newValue: string) => void
+}
+
+interface StringColumnConfig<T extends DocumentBase = DocumentBase> extends BaseColumnConfig {
+  field: string
+  sortable?: boolean
+  edit?: true | TextEditConfig<T>
+}
+
 interface SelectEditConfig<T extends DocumentBase = DocumentBase> {
   onSave: (document: T, newValue: string) => void
   options: EditOption[]
@@ -252,7 +262,7 @@ function buildReferenceProjection(field: string, select: Record<string, string>)
  * import { column } from '@sanity-labs/sdk-table-kit'
  *
  * column.select({width: 24})
- * column.title({searchable: true, edit: true})
+ * column.string({field: 'title', searchable: true, edit: true})
  * column.badge({field: 'status', colorMap: {...}, edit: true})
  * column.reference({
  *   field: 'author',
@@ -282,14 +292,26 @@ export const column = {
     } as SanityColumnDef & RoleProps
   },
   /** {@inheritDoc} */
+  string<T extends DocumentBase = DocumentBase>(
+    config: StringColumnConfig<T> & RoleProps & CommentableConfig,
+  ): SanityColumnDef {
+    const {comments, editableBy, visibleTo, ...baseConfig} = config
+    const col = baseColumn.string<T>(
+      baseConfig as Parameters<typeof baseColumn.string<T>>[0],
+    ) as SanityColumnDef
+    return finalizeColumn(col, {comments, editableBy, visibleTo})
+  },
+  /**
+   * @deprecated Use `column.string({field: 'title'})` instead.
+   *
+   * {@inheritDoc}
+   */
   title<T extends DocumentBase = DocumentBase>(
     config?: Parameters<typeof baseColumn.title<T>>[0] & RoleProps & CommentableConfig,
   ): SanityColumnDef {
     const {comments, editableBy, visibleTo, ...baseConfig} = config ?? {}
-    const col = baseColumn.title<T>(
-      baseConfig as Parameters<typeof baseColumn.title<T>>[0],
-    ) as SanityColumnDef
-    return finalizeColumn(col, {comments, editableBy, visibleTo})
+    const col = baseColumn.title<T>(baseConfig as Parameters<typeof baseColumn.title<T>>[0])
+    return finalizeColumn(col as SanityColumnDef, {comments, editableBy, visibleTo})
   },
   /** {@inheritDoc} */
   type<T extends DocumentBase = DocumentBase>(

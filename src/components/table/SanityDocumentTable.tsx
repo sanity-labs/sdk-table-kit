@@ -1,6 +1,7 @@
 import {DocumentTable} from '@sanity-labs/react-table-kit'
 import type {
   ColumnDef,
+  FilterSurfaceTone,
   FilterDef,
   SortConfig,
   UseFilterUrlStateResult,
@@ -12,10 +13,8 @@ import {column as baseColumn} from '@sanity-labs/react-table-kit'
 import {mapFilterValuesToInitialValues, useFilterUrlState} from '@sanity-labs/react-table-kit'
 import {PublishIcon} from '@sanity/icons'
 import {publishDocument} from '@sanity/sdk'
-import {useApplyDocumentActions, useQuery} from '@sanity/sdk-react'
-import {PortalProvider} from '@sanity/ui'
-import {Button} from '@sanity/ui'
-import {ToastProvider} from '@sanity/ui'
+import {useApplyDocumentActions} from '@sanity/sdk-react'
+import {Button, PortalProvider, Stack} from '@sanity/ui'
 import React from 'react'
 import {useCallback, useEffect, useMemo, useRef, useState, type ReactNode} from 'react'
 
@@ -23,18 +22,26 @@ import {DocumentStatusBatchProvider} from '../../context/DocumentStatusBatchCont
 import {ReleaseProvider, useOptionalReleaseContext} from '../../context/ReleaseContext'
 import {compileFilters} from '../../helpers/filters/compileFilters'
 import {getServerSortableColumnIds} from '../../helpers/filters/getServerSortableColumnIds'
+import {normalizeBaseDocumentId} from '../../helpers/releases/documentIds'
+import {
+  getEditedFieldIndicatorTone,
+  getPerspectiveSurfaceTone,
+  type EditedFieldIndicatorTone,
+} from '../../helpers/releases/perspectiveTones'
 import {resolveColumnAliases} from '../../helpers/table/resolveColumnAliases'
+import {withEditedFieldIndicators} from '../../helpers/table/withEditedFieldIndicators'
 import {useCreateDocument, type CreateDocumentConfig} from '../../hooks/useCreateDocument'
 import {useDocumentStatusBatch} from '../../hooks/useDocumentStatusBatch'
+import {usePublishedComparisonRows} from '../../hooks/usePublishedComparisonRows'
 import {useResolvedColumns} from '../../hooks/useResolvedColumns'
 import {useRoleFilteredColumns} from '../../hooks/useRoleFilteredColumns'
 import {useSanityTableData} from '../../hooks/useSanityTableData'
+import {useSelectedReleaseRows} from '../../hooks/useSelectedReleaseRows'
 import {ServerFilterBar} from '../filters/ServerFilterBar'
 import {AddToReleaseButton} from '../releases/AddToReleaseButton'
-import {CreateReleaseDialog} from '../releases/CreateReleaseDialog'
+import {GlobalPerspectivePicker} from '../releases/GlobalPerspectivePicker'
 import {PublishConfirmDialog} from '../releases/PublishConfirmDialog'
-import {ReleaseHeader} from '../releases/ReleaseHeader'
-import {ReleasePicker} from '../releases/ReleasePicker'
+import {TaskSummaryCellView} from '../tasks/TaskSummaryCellView'
 import {PaginationControls} from './PaginationControls'
 
 /**
@@ -121,7 +128,7 @@ export interface SanityDocumentTableProps<T extends DocumentBase = DocumentBase>
   createDocument?: boolean | CreateDocumentConfig
 
   // === Releases ===
-  /** Enable release-aware UI (header bar, perspective picker, version-aware editing). */
+  /** Enable release-aware UI (header bar, staging-target picker, version-aware editing). */
   releases?: boolean
 
   // === Computed Filters ===
@@ -152,45 +159,18 @@ export function SanityDocumentTable<T extends DocumentBase = DocumentBase>(
   if (props.releases) {
     return (
       <ReleaseProvider>
-        <ReleaseEnabledTableInner {...props} />
+        <SanityDocumentTableInner {...props} />
       </ReleaseProvider>
     )
   }
-  return <SanityDocumentTableInner {...props} releaseQueryData={null} releaseQueryPending={false} />
-}
-
-/**
- * Release-enabled wrapper — runs release-only hooks inside ReleaseProvider.
- */
-function ReleaseEnabledTableInner<T extends DocumentBase = DocumentBase>(
-  props: SanityDocumentTableProps<T>,
-) {
-  const releaseCtx = useOptionalReleaseContext()
-  const selectedReleaseId = releaseCtx?.selectedReleaseId ?? null
-  const releaseVersionQuery = useQuery({
-    query: selectedReleaseId
-      ? `*[_id in path("versions.${selectedReleaseId}.*")]._id`
-      : '*[_id == "___never___"][0..0]',
-    params: {},
-  })
-
-  return (
-    <SanityDocumentTableInner
-      {...props}
-      releaseQueryData={releaseVersionQuery.data}
-      releaseQueryPending={releaseVersionQuery.isPending}
-    />
-  )
+  return <SanityDocumentTableInner {...props} />
 }
 
 /**
  * Inner table component — all common hooks run here.
  */
 function SanityDocumentTableInner<T extends DocumentBase = DocumentBase>(
-  props: SanityDocumentTableProps<T> & {
-    releaseQueryData: unknown
-    releaseQueryPending: boolean
-  },
+  props: SanityDocumentTableProps<T>,
 ) {
   const {
     documentType,
@@ -215,25 +195,25 @@ function SanityDocumentTableInner<T extends DocumentBase = DocumentBase>(
     onColumnOrderChange,
     createDocument: createDocumentConfig,
     computedFilters,
-    releaseQueryData,
-    releaseQueryPending,
   } = props
 
   // Always call the optional hook to preserve hook ordering.
   const releaseCtx = useOptionalReleaseContext()
-  const perspective = releases ? releaseCtx?.getQueryPerspective() : undefined
+  const selectedPerspective = releases
+    ? (releaseCtx?.selectedPerspective ?? {kind: 'drafts' as const})
+    : null
+  const isPublishedPerspective = releases ? (releaseCtx?.isPublishedPerspective ?? false) : false
+  const selectedRelease = releases ? (releaseCtx?.selectedRelease ?? null) : null
   const selectedReleaseId = releases ? (releaseCtx?.selectedReleaseId ?? null) : null
-
-  // Extract base document IDs from version IDs (versions.<release>.<docId> → <docId>)
-  const releaseDocIds = useMemo(() => {
-    if (!selectedReleaseId || !Array.isArray(releaseQueryData)) return null
-    const prefix = `versions.${selectedReleaseId}.`
-    return new Set(
-      (releaseQueryData as string[])
-        .filter((id) => typeof id === 'string' && id.startsWith(prefix))
-        .map((id) => id.slice(prefix.length)),
-    )
-  }, [selectedReleaseId, releaseQueryData])
+  const queryPerspective = releases ? releaseCtx?.getQueryPerspective() : undefined
+  const filterSurfaceTone = useMemo<FilterSurfaceTone>(
+    () =>
+      getPerspectiveSurfaceTone(
+        selectedPerspective?.kind ?? 'drafts',
+        selectedRelease?.metadata.releaseType,
+      ),
+    [selectedPerspective?.kind, selectedRelease?.metadata.releaseType],
+  )
 
   const internalFilterState = useFilterUrlState(filters)
   const filterState = controlledFilterState ?? internalFilterState
@@ -289,19 +269,42 @@ function SanityDocumentTableInner<T extends DocumentBase = DocumentBase>(
     onPageSizeChange,
     defaultSort,
     projection,
-    perspective,
     params: combinedParams,
+    perspective: queryPerspective,
   })
 
-  // Client-side filter: when a release is selected, only show documents in that release
+  const {rowsByBaseId: selectedReleaseRowsByBaseId} = useSelectedReleaseRows<T>({
+    columns: columns as ColumnDef[],
+    projectionOverride: projection,
+    rows: rawData,
+    selectedReleaseId: selectedPerspective?.kind === 'release' ? selectedReleaseId : null,
+  })
+
   const data = useMemo(() => {
-    if (!releaseDocIds || !rawData) return rawData
-    return rawData.filter((row) => {
-      const baseId = row._id.replace(/^drafts\./, '')
-      return releaseDocIds.has(baseId)
+    if (!Array.isArray(rawData) || selectedReleaseRowsByBaseId.size === 0) {
+      return rawData
+    }
+
+    return rawData.map((row) => {
+      const selectedReleaseRow = selectedReleaseRowsByBaseId.get(normalizeBaseDocumentId(row._id))
+
+      if (!selectedReleaseRow) {
+        return row
+      }
+
+      return {
+        ...row,
+        ...selectedReleaseRow,
+      }
     })
-  }, [rawData, releaseDocIds])
-  const loading = rawLoading || (selectedReleaseId !== null && releaseQueryPending)
+  }, [rawData, selectedReleaseRowsByBaseId])
+  const loading = rawLoading
+
+  const {rowsByBaseId: publishedComparisonRowsByBaseId} = usePublishedComparisonRows<T>({
+    columns: columns as ColumnDef[],
+    projectionOverride: projection,
+    rows: releases && !isPublishedPerspective ? data : undefined,
+  })
 
   // Watch for new data arriving after creation — reset spinner when new row appears
   const {isCreating: isCreateInFlight, resetCreating} = createHook
@@ -367,6 +370,11 @@ function SanityDocumentTableInner<T extends DocumentBase = DocumentBase>(
   // Wrap consumer bulkActions to prepend default Publish button + Add to Release
   const wrappedBulkActions = useCallback(
     (selection: SelectionConfig<T>) => {
+      if (isPublishedPerspective) {
+        selectionClearRef.current = selection.clearSelection ?? null
+        return null
+      }
+
       const selectedRows = selection.selectedRows ?? []
       const count = selectedRows.length
       selectionClearRef.current = selection.clearSelection ?? null
@@ -393,18 +401,50 @@ function SanityDocumentTableInner<T extends DocumentBase = DocumentBase>(
         </>
       )
     },
-    [bulkActions, handlePublishClick, releases, selectedReleaseId],
+    [bulkActions, handlePublishClick, isPublishedPerspective, releases, selectedReleaseId],
   )
 
   // Resolve edit: true markers into actual onSave callbacks via SDK
-  const resolvedColumns = useResolvedColumns(roleFilteredColumns as ColumnDef<T>[])
+  const resolvedColumns = useResolvedColumns(roleFilteredColumns as ColumnDef<T>[], {
+    readOnly: isPublishedPerspective,
+  })
+  const publishedReadOnlyColumns = useMemo(
+    () =>
+      isPublishedPerspective
+        ? makePublishedReadOnlyColumns(resolvedColumns as ColumnDef<T>[])
+        : resolvedColumns,
+    [isPublishedPerspective, resolvedColumns],
+  )
+  const editedIndicatorTone = useMemo<EditedFieldIndicatorTone | undefined>(
+    () =>
+      releases && !isPublishedPerspective
+        ? getEditedFieldIndicatorTone(
+            selectedPerspective?.kind ?? 'drafts',
+            selectedRelease?.metadata.releaseType,
+          )
+        : undefined,
+    [
+      isPublishedPerspective,
+      releases,
+      selectedPerspective?.kind,
+      selectedRelease?.metadata.releaseType,
+    ],
+  )
+  const indicatorDecoratedColumns = useMemo(
+    () =>
+      withEditedFieldIndicators(publishedReadOnlyColumns as ColumnDef<T>[], {
+        editedIndicatorTone,
+        publishedRowsByBaseId: publishedComparisonRowsByBaseId,
+      }),
+    [editedIndicatorTone, publishedComparisonRowsByBaseId, publishedReadOnlyColumns],
+  )
 
   // Auto-insert select checkbox column for bulk actions
   const finalColumns = useMemo(() => {
-    const hasSelect = resolvedColumns.some((c: ColumnDef<T>) => c._isSelectColumn)
-    if (hasSelect) return resolvedColumns
-    return [baseColumn.select(), ...resolvedColumns]
-  }, [resolvedColumns])
+    const hasSelect = indicatorDecoratedColumns.some((c: ColumnDef<T>) => c._isSelectColumn)
+    if (hasSelect) return indicatorDecoratedColumns
+    return [baseColumn.select(), ...indicatorDecoratedColumns]
+  }, [indicatorDecoratedColumns])
   const serverSortableColumnIds = useMemo(
     () => (sorting ? getServerSortableColumnIds(finalColumns as ColumnDef[]) : undefined),
     [finalColumns, sorting],
@@ -434,32 +474,39 @@ function SanityDocumentTableInner<T extends DocumentBase = DocumentBase>(
       reorderable={reorderable}
       columnOrder={columnOrder}
       onColumnOrderChange={onColumnOrderChange}
-      onCreateDocument={isCreateEnabled ? createHook.create : undefined}
-      createButtonText={isCreateEnabled ? createButtonText : undefined}
-      isCreating={createHook.isCreating}
+      onCreateDocument={isCreateEnabled && !isPublishedPerspective ? createHook.create : undefined}
+      createButtonText={isCreateEnabled && !isPublishedPerspective ? createButtonText : undefined}
+      isCreating={isPublishedPerspective ? false : createHook.isCreating}
       computedFilters={computedFilters}
       hideFilterBar={!!filters?.length}
+      filterBarSearchLeading={releases ? <GlobalPerspectivePicker /> : undefined}
+      filterBarSurfaceTone={filterSurfaceTone}
+      dockToTopSurface={!!filters?.length}
     />
   )
 
   return (
     <PortalProvider>
-      <div>
-        {releases && <ReleaseHeaderWithPicker />}
-        {filters && filters.length > 0 && (
-          <ServerFilterBar
-            filterState={filterState}
-            filters={filters}
-            columns={columns as ColumnDef[]}
-          />
-        )}
-        {hasDocumentStatusColumn ? (
-          <DocumentStatusBatchTable rows={data as DocumentBase[] | undefined}>
-            {tableElement}
-          </DocumentStatusBatchTable>
-        ) : (
-          tableElement
-        )}
+      <Stack space={3}>
+        <Stack space={0}>
+          {filters && filters.length > 0 && (
+            <ServerFilterBar
+              filterState={filterState}
+              filters={filters}
+              columns={columns as ColumnDef[]}
+              searchLeading={releases ? <GlobalPerspectivePicker /> : undefined}
+              surfaceTone={filterSurfaceTone}
+              dockToTable
+            />
+          )}
+          {hasDocumentStatusColumn ? (
+            <DocumentStatusBatchTable rows={data as DocumentBase[] | undefined}>
+              {tableElement}
+            </DocumentStatusBatchTable>
+          ) : (
+            tableElement
+          )}
+        </Stack>
         {pagination && (
           <PaginationControls
             pagination={pagination}
@@ -475,9 +522,38 @@ function SanityDocumentTableInner<T extends DocumentBase = DocumentBase>(
             isPublishing={isPublishing}
           />
         )}
-      </div>
+      </Stack>
     </PortalProvider>
   )
+}
+
+interface ReadOnlyAwareColumn<T extends DocumentBase = DocumentBase> extends ColumnDef<T> {
+  comments?: unknown
+}
+
+function makePublishedReadOnlyColumns<T extends DocumentBase = DocumentBase>(
+  columns: ColumnDef<T>[],
+): ColumnDef<T>[] {
+  return columns.map((column) => {
+    const roleAwareColumn = column as ReadOnlyAwareColumn<T>
+    const baseColumnWithoutComments = roleAwareColumn.comments
+      ? (() => {
+          const {comments: _comments, cellDecorator: _cellDecorator, ...rest} = roleAwareColumn
+          return rest as ColumnDef<T>
+        })()
+      : column
+
+    if (baseColumnWithoutComments.id === '_tasks') {
+      return {
+        ...baseColumnWithoutComments,
+        cell: (_value: unknown, row: T) => (
+          <TaskSummaryCellView documentId={row._id} documentType={row._type} readOnly />
+        ),
+      }
+    }
+
+    return baseColumnWithoutComments
+  })
 }
 
 function DocumentStatusBatchTable({
@@ -490,25 +566,4 @@ function DocumentStatusBatchTable({
   const statusBatch = useDocumentStatusBatch(rows)
 
   return <DocumentStatusBatchProvider value={statusBatch}>{children}</DocumentStatusBatchProvider>
-}
-
-/**
- * Internal component that renders the release header with picker + create dialog.
- * Must be inside ReleaseProvider.
- */
-function ReleaseHeaderWithPicker() {
-  const [showCreateDialog, setShowCreateDialog] = useState(false)
-
-  return (
-    <>
-      <ReleaseHeader>
-        <ReleasePicker onCreateRelease={() => setShowCreateDialog(true)} />
-      </ReleaseHeader>
-      {showCreateDialog && (
-        <ToastProvider>
-          <CreateReleaseDialog onClose={() => setShowCreateDialog(false)} />
-        </ToastProvider>
-      )}
-    </>
-  )
 }

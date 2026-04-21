@@ -131,11 +131,11 @@ describe('R-T6: AddToReleaseButton', () => {
     )
   })
 
-  it('Behavior 7: "Create new release" option in popover opens dialog callback', async () => {
+  it('Behavior 7: "Create release" option in popover opens dialog callback', async () => {
     const onCreateRelease = vi.fn()
     renderWithTheme(<AddToReleaseButton selectedIds={['doc1']} onCreateRelease={onCreateRelease} />)
     await user.click(screen.getByRole('button', {name: /add to release/i}))
-    await user.click(screen.getByText('Create new release'))
+    await user.click(screen.getByText('Create release'))
     expect(onCreateRelease).toHaveBeenCalled()
   })
 })

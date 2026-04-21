@@ -16,6 +16,7 @@ export function CommentableCellInner({
   documentId,
   documentTitle,
   documentType,
+  editedIndicatorTone,
 }: CommentableCellProps) {
   const commentsState = useAddonComments(documentId)
   const {comments} = commentsState
@@ -50,6 +51,7 @@ export function CommentableCellInner({
       documentId={documentId}
       documentTitle={documentTitle}
       documentType={documentType}
+      editedIndicatorTone={editedIndicatorTone}
       onHoverChange={setHovered}
       open={open}
       setOpen={setOpen}

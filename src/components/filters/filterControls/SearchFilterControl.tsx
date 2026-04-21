@@ -3,6 +3,7 @@ import {SearchIcon} from '@sanity/icons'
 import {Label, Stack, TextInput} from '@sanity/ui'
 import {useEffect, useState} from 'react'
 
+import {DefaultToneScope} from './DefaultToneScope'
 import type {BaseFilterControlProps} from './types'
 
 export function SearchFilterControl({
@@ -29,15 +30,17 @@ export function SearchFilterControl({
       <Label size={2} muted>
         {filterDef.label}
       </Label>
-      <TextInput
-        fontSize={1}
-        icon={SearchIcon}
-        onChange={(event) => setDraftValue(event.currentTarget.value)}
-        padding={3}
-        placeholder={filterDef.placeholder ?? 'Search...'}
-        style={{minWidth: 200, flex: '1 1 200px'}}
-        value={draftValue}
-      />
+      <DefaultToneScope>
+        <TextInput
+          fontSize={1}
+          icon={SearchIcon}
+          onChange={(event) => setDraftValue(event.currentTarget.value)}
+          padding={3}
+          placeholder={filterDef.placeholder ?? 'Search...'}
+          style={{minWidth: 200, flex: '1 1 200px'}}
+          value={draftValue}
+        />
+      </DefaultToneScope>
     </Stack>
   )
 }

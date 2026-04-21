@@ -6,7 +6,15 @@ import {
   type FilterDef,
 } from '@sanity-labs/react-table-kit'
 import {CalendarIcon} from '@sanity/icons'
-import {Button, Label, Popover, Stack, useClickOutsideEvent, useGlobalKeyDown} from '@sanity/ui'
+import {
+  Button,
+  Card,
+  Label,
+  Popover,
+  Stack,
+  useClickOutsideEvent,
+  useGlobalKeyDown,
+} from '@sanity/ui'
 import type {KeyboardEvent as ReactKeyboardEvent} from 'react'
 import {useCallback, useEffect, useMemo, useRef, useState} from 'react'
 import {DayPicker, type DateRange} from 'react-day-picker'
@@ -108,36 +116,39 @@ export function DateFilterControl({
         {filterDef.label}
       </Label>
       <Popover
+        animate
         content={
-          <CalendarPopoverContent
-            onKeyDown={(event: ReactKeyboardEvent<HTMLDivElement>) => {
-              if (event.key !== 'Escape') return
-              event.preventDefault()
-              event.stopPropagation()
-              closePopover()
-            }}
-            popoverRef={popoverRef}
-          >
-            {filterDef.operator === 'range' ? (
-              <DayPicker
-                defaultMonth={draftRange?.from ?? committedRange?.from}
-                mode="range"
-                numberOfMonths={1}
-                onSelect={handleSelect}
-                selected={draftRange}
-                showOutsideDays
-              />
-            ) : (
-              <DayPicker
-                defaultMonth={draftRange?.from ?? committedRange?.from}
-                mode="single"
-                numberOfMonths={1}
-                onSelect={(date) => handleSelect(date ? {from: date, to: date} : undefined)}
-                selected={draftRange?.from}
-                showOutsideDays
-              />
-            )}
-          </CalendarPopoverContent>
+          <Card padding={2} radius={3} tone="default">
+            <CalendarPopoverContent
+              onKeyDown={(event: ReactKeyboardEvent<HTMLDivElement>) => {
+                if (event.key !== 'Escape') return
+                event.preventDefault()
+                event.stopPropagation()
+                closePopover()
+              }}
+              popoverRef={popoverRef}
+            >
+              {filterDef.operator === 'range' ? (
+                <DayPicker
+                  defaultMonth={draftRange?.from ?? committedRange?.from}
+                  mode="range"
+                  numberOfMonths={1}
+                  onSelect={handleSelect}
+                  selected={draftRange}
+                  showOutsideDays
+                />
+              ) : (
+                <DayPicker
+                  defaultMonth={draftRange?.from ?? committedRange?.from}
+                  mode="single"
+                  numberOfMonths={1}
+                  onSelect={(date) => handleSelect(date ? {from: date, to: date} : undefined)}
+                  selected={draftRange?.from}
+                  showOutsideDays
+                />
+              )}
+            </CalendarPopoverContent>
+          </Card>
         }
         open={open}
         placement="bottom-start"

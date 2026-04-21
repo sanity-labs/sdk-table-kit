@@ -1,12 +1,13 @@
-import {column} from '@sanity-labs/react-table-kit'
 import type {ColumnDef} from '@sanity-labs/react-table-kit'
+import React from 'react'
 import {describe, it, expect, vi, beforeEach} from 'vitest'
 
+import {column} from '../src/helpers/table/column'
 import {resolveColumnAliases} from '../src/helpers/table/resolveColumnAliases'
 
 describe('Cell accessor — projected alias resolution', () => {
   it('Behavior 1: simple field column keeps field unchanged', () => {
-    const cols = resolveColumnAliases([column.title()])
+    const cols = resolveColumnAliases([column.string({field: 'title'})])
     expect(cols[0].field).toBe('title')
   })
 
@@ -44,9 +45,18 @@ describe('Cell accessor — projected alias resolution', () => {
 })
 
 // Mock SDK modules
+const mockClient = {
+  config: () => ({projectId: 'test', dataset: 'production'}),
+  fetch: vi.fn().mockResolvedValue(null),
+  releases: {
+    fetchDocuments: vi.fn().mockResolvedValue([]),
+  },
+}
+
 vi.mock('@sanity/sdk-react', () => ({
   useCurrentUser: () => ({id: 'user1', name: 'Test', roles: [{name: 'editor', title: 'Editor'}]}),
   useApplyDocumentActions: () => vi.fn().mockResolvedValue({}),
+  useClient: () => mockClient,
 }))
 vi.mock('@sanity/sdk', () => ({
   createDocument: vi.fn(() => ({type: 'createDocument'})),
@@ -58,18 +68,23 @@ vi.mock('@sanity/sdk', () => ({
 
 import {editDocument} from '@sanity/sdk'
 import {renderHook} from '@testing-library/react'
+import {NuqsTestingAdapter} from 'nuqs/adapters/testing'
 
 // Import after mocks
 import {useResolvedColumns} from '../src/hooks/useResolvedColumns'
+
+function NuqsWrapper({children}: {children: React.ReactNode}) {
+  return React.createElement(NuqsTestingAdapter, {hasMemory: true}, children)
+}
 
 describe('Edit path resolution — auto-extract document path', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
   it('Behavior 1: edit:true on simple field patches the field name directly', () => {
-    const cols = resolveColumnAliases([column.title({edit: true})] as ColumnDef[])
+    const cols = resolveColumnAliases([column.string({field: 'title', edit: true})] as ColumnDef[])
 
-    const {result} = renderHook(() => useResolvedColumns(cols))
+    const {result} = renderHook(() => useResolvedColumns(cols), {wrapper: NuqsWrapper})
     const resolved = result.current
     const titleCol = resolved[0]
 
@@ -91,7 +106,7 @@ describe('Edit path resolution — auto-extract document path', () => {
     expect(cols[0].field).toBe('dueDate')
     expect(cols[0].edit?._field).toBe('web.dueDate')
 
-    const {result} = renderHook(() => useResolvedColumns(cols))
+    const {result} = renderHook(() => useResolvedColumns(cols), {wrapper: NuqsWrapper})
     const resolved = result.current
     const dateCol = resolved[0]
 
@@ -112,7 +127,7 @@ describe('Edit path resolution — auto-extract document path', () => {
     expect(cols[0].field).toBe('status')
     expect(cols[0].edit?._field).toBe('status')
 
-    const {result} = renderHook(() => useResolvedColumns(cols))
+    const {result} = renderHook(() => useResolvedColumns(cols), {wrapper: NuqsWrapper})
     const resolved = result.current
     const badgeCol = resolved[0]
 
@@ -129,7 +144,7 @@ describe('Edit path resolution — auto-extract document path', () => {
       column.date({field: 'web.dueDate', header: 'Due Date'}), // no edit
     ] as ColumnDef[])
 
-    const {result} = renderHook(() => useResolvedColumns(cols))
+    const {result} = renderHook(() => useResolvedColumns(cols), {wrapper: NuqsWrapper})
     const resolved = result.current
 
     expect(resolved[0].edit).toBeUndefined()
@@ -138,10 +153,10 @@ describe('Edit path resolution — auto-extract document path', () => {
   it('Behavior 5: explicit onSave is preserved (not overridden by auto-save)', () => {
     const customSave = vi.fn()
     const cols = resolveColumnAliases([
-      column.title({edit: {mode: 'text' as const, onSave: customSave}}),
+      column.string({field: 'title', edit: {mode: 'text' as const, onSave: customSave}}),
     ] as ColumnDef[])
 
-    const {result} = renderHook(() => useResolvedColumns(cols))
+    const {result} = renderHook(() => useResolvedColumns(cols), {wrapper: NuqsWrapper})
     const resolved = result.current
     const titleCol = resolved[0]
 

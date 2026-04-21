@@ -7,19 +7,8 @@ import type {
   DocumentStatusBatchContextValue,
   DocumentStatusSnapshot,
 } from '../context/DocumentStatusBatchContext'
-
-export function normalizeBaseDocumentId(documentId: string): string {
-  if (documentId.startsWith('drafts.')) {
-    return documentId.slice(7)
-  }
-
-  if (documentId.startsWith('versions.')) {
-    const parts = documentId.split('.')
-    return parts.slice(2).join('.')
-  }
-
-  return documentId
-}
+import {normalizeBaseDocumentId} from '../helpers/releases/documentIds'
+export {normalizeBaseDocumentId} from '../helpers/releases/documentIds'
 
 export function useDocumentStatusBatch(
   rows: Array<Pick<DocumentBase, '_id'>> | undefined,
