@@ -20,7 +20,7 @@ table to fetch and act on Sanity documents directly.
 ## Installation
 
 ```bash
-pnpm add @sanity-labs/react-table-kit @sanity-labs/sdk-table-kit
+pnpm add @sanity-labs/sdk-table-kit @sanity-labs/react-table-kit @sanity/sdk @sanity/sdk-react @sanity/icons @sanity/types @sanity/ui styled-components
 ```
 
 Peer dependencies for the SDK layer:
@@ -33,8 +33,47 @@ Peer dependencies for the SDK layer:
 - `react`
 - `react-dom`
 
-You will also need `styled-components` because it is a peer dependency of
-`@sanity-labs/react-table-kit`.
+`nuqs` is installed by `@sanity-labs/sdk-table-kit`, but your app still needs to mount the
+framework adapter that matches your router. `styled-components` is required because it is a peer
+dependency of `@sanity-labs/react-table-kit` and `@sanity/ui`.
+
+## Required App Providers
+
+`sdk-table-kit` uses two app-level contexts:
+
+- `nuqs` stores filter, pagination, grouping, sorting, and release state in URL search params.
+- `@sanity/ui` components read Sanity theme tokens from `ThemeProvider`.
+
+Mount these providers once around the part of your app that renders the table:
+
+```tsx
+import {ThemeProvider} from '@sanity/ui'
+import {buildTheme} from '@sanity/ui/theme'
+import {NuqsAdapter} from 'nuqs/adapters/react'
+import type {ReactNode} from 'react'
+
+const theme = buildTheme()
+
+export function AppProviders({children}: {children: ReactNode}) {
+  return (
+    <ThemeProvider theme={theme}>
+      <NuqsAdapter>{children}</NuqsAdapter>
+    </ThemeProvider>
+  )
+}
+```
+
+Use the `nuqs` adapter for your framework:
+
+- Vite, plain React, or Sanity SDK apps without a framework router: `nuqs/adapters/react`
+- Next.js App Router: `nuqs/adapters/next/app`
+- Next.js Pages Router: `nuqs/adapters/next/pages`
+- React Router v6: `nuqs/adapters/react-router/v6`
+- React Router v7: `nuqs/adapters/react-router/v7`
+
+If you render inside a Sanity Studio surface that already provides the Sanity UI theme, do not add a
+second `ThemeProvider`; keep the existing Studio theme boundary and add the `NuqsAdapter` at the
+nearest stable app-shell level.
 
 ## Quick Start
 
@@ -44,6 +83,7 @@ import {
   column,
   filter,
 } from "@sanity-labs/sdk-table-kit";
+import {AppProviders} from "./AppProviders";
 
 const articleFilters = [
   filter.search({
@@ -95,6 +135,14 @@ export function ArticlesTable() {
         column.openInStudio(),
       ]}
     />
+  );
+}
+
+export function ArticlesApp() {
+  return (
+    <AppProviders>
+      <ArticlesTable />
+    </AppProviders>
   );
 }
 ```
@@ -223,6 +271,9 @@ most apps reach for first:
 paginated tables. Mark columns as `groupable: true`, and the table will expose them in the group-by
 UI while `useSanityTableData()` keeps the active group key in URL state and injects the matching
 ordering into the SDK query.
+
+Because grouping state is URL-backed, these APIs must run under the `NuqsAdapter` described in
+[Required App Providers](#required-app-providers).
 
 For display-oriented columns, you can separate the visible group label from the backend ordering
 field:
@@ -743,6 +794,7 @@ const filterState = useFilterUrlState(filters);
 
 Pass `filterState` when another surface should share the same filter source of truth. If you omit
 it, `SanityDocumentTable` creates an internal URL-backed state for the same filter definitions.
+Both controlled and internal filter state require a mounted `NuqsAdapter`.
 
 `useFilterPresets()` is useful when stat cards or shortcut buttons should write named filter values
 into that shared state.
@@ -792,6 +844,7 @@ If you pass both, the table combines them with `&&`.
 ## Addons, Comments, and Tasks
 
 If you use task or comment surfaces, wrap the relevant part of your app with `AddonDataProvider`.
+This provider is in addition to the required app providers above.
 
 ### `AddonDataProvider` and seeded users
 
@@ -815,6 +868,50 @@ Use the lower-level APIs when you want a custom layout:
   with the server-backed query state.
 - `useSanityDocumentTable()` gives you ready-to-spread `tableProps` for `DocumentTable` and
   `paginationProps` for `PaginationControls`.
+
+These hooks use the same URL-backed state as `SanityDocumentTable`, so custom layouts also need the
+same `NuqsAdapter` and Sanity UI theme provider setup.
+
+## Troubleshooting
+
+### `[nuqs] requires an adapter`
+
+`sdk-table-kit` reads and writes URL search params through `nuqs`. This error means the component or
+hook is rendering outside a `NuqsAdapter`.
+
+Wrap your app shell with the adapter for your framework, for example:
+
+```tsx
+import {NuqsAdapter} from 'nuqs/adapters/react'
+
+export function AppProviders({children}: {children: React.ReactNode}) {
+  return <NuqsAdapter>{children}</NuqsAdapter>
+}
+```
+
+For Next.js or React Router, use the adapter listed in
+[Required App Providers](#required-app-providers).
+
+### `theme.sanity is undefined`
+
+`sdk-table-kit` renders `@sanity/ui` primitives. This error usually means the table is rendering
+outside Sanity UI's `ThemeProvider`, or under a non-Sanity theme object.
+
+Wrap the table surface with a Sanity UI theme:
+
+```tsx
+import {ThemeProvider} from '@sanity/ui'
+import {buildTheme} from '@sanity/ui/theme'
+
+const theme = buildTheme()
+
+export function AppProviders({children}: {children: React.ReactNode}) {
+  return <ThemeProvider theme={theme}>{children}</ThemeProvider>
+}
+```
+
+If your table is inside Sanity Studio, prefer the Studio's existing theme boundary and avoid nesting
+an extra `ThemeProvider` unless you intentionally want a separate theme.
 
 ## Local Development
 
