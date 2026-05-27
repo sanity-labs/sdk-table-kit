@@ -43,6 +43,7 @@ import {GlobalPerspectivePicker} from '../releases/GlobalPerspectivePicker'
 import {PublishConfirmDialog} from '../releases/PublishConfirmDialog'
 import {TaskSummaryCellView} from '../tasks/TaskSummaryCellView'
 import {PaginationControls} from './PaginationControls'
+import {SdkTableKitSetupBoundary} from './SdkTableKitSetupBoundary'
 
 /**
  * Props for the SDK-native SanityDocumentTable component.
@@ -158,12 +159,18 @@ export function SanityDocumentTable<T extends DocumentBase = DocumentBase>(
 ) {
   if (props.releases) {
     return (
-      <ReleaseProvider>
-        <SanityDocumentTableInner {...props} />
-      </ReleaseProvider>
+      <SdkTableKitSetupBoundary>
+        <ReleaseProvider>
+          <SanityDocumentTableInner {...props} />
+        </ReleaseProvider>
+      </SdkTableKitSetupBoundary>
     )
   }
-  return <SanityDocumentTableInner {...props} />
+  return (
+    <SdkTableKitSetupBoundary>
+      <SanityDocumentTableInner {...props} />
+    </SdkTableKitSetupBoundary>
+  )
 }
 
 /**

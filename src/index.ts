@@ -80,6 +80,14 @@ export {useSanityDocumentTable} from './hooks/useSanityDocumentTable'
 export type {SanityDocumentTableHookResult} from './hooks/useSanityDocumentTable'
 export {SanityDocumentTable} from './components/table/SanityDocumentTable'
 export type {SanityDocumentTableProps} from './components/table/SanityDocumentTable'
+export {
+  SdkTableKitSetupBoundary,
+  getSdkTableKitSetupDiagnostic,
+} from './components/table/SdkTableKitSetupBoundary'
+export type {
+  SdkTableKitSetupDiagnostic,
+  SdkTableKitSetupProblem,
+} from './components/table/SdkTableKitSetupBoundary'
 export {PaginationControls} from './components/table/PaginationControls'
 export type {PaginationControlsProps} from './components/table/PaginationControls'
 export {PreviewCell} from './components/table/PreviewCell'

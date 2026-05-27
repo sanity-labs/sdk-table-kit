@@ -29,6 +29,9 @@ importers:
       lucide-react:
         specifier: ^1.7.0
         version: 1.8.0(react@19.2.5)
+      nuqs:
+        specifier: ^2.8.9
+        version: 2.8.9(react@19.2.5)
       slate:
         specifier: ^0.124.0
         version: 0.124.0
@@ -84,9 +87,6 @@ importers:
       jsdom:
         specifier: ^26.0.0
         version: 26.1.0
-      nuqs:
-        specifier: ^2.8.9
-        version: 2.8.9(react@19.2.5)
       oxfmt:
         specifier: ^0.41.0
         version: 0.41.0
